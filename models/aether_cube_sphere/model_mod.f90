@@ -360,8 +360,8 @@ type(location_type),           intent(inout) :: base_loc      ! location of inte
 type(location_type),           intent(inout) :: locs(:)       ! obs locations
 integer,                       intent(in)    :: loc_qtys(:)   ! QTYS for obs
 integer,                       intent(in)    :: loc_types(:)  ! TYPES for obs
-integer,                       intent(out)   :: num_close     ! how many are close
-integer,                       intent(out)   :: close_ind(:)  ! incidies into the locs array
+integer(i8),                   intent(out)   :: num_close     ! how many are close
+integer(i8),                   intent(out)   :: close_ind(:)  ! incidies into the locs array
 real(r8),            optional, intent(out)   :: dist(:)       ! distances in radians
 type(ensemble_type), optional, intent(in)    :: ens_handle
 
@@ -384,8 +384,8 @@ integer,                       intent(in)    :: base_type    ! observation TYPE
 type(location_type),           intent(inout) :: locs(:)      ! state locations
 integer,                       intent(in)    :: loc_qtys(:)  ! QTYs for state
 integer(i8),                   intent(in)    :: loc_indx(:)  ! indices into DART state vector
-integer,                       intent(out)   :: num_close    ! how many are close
-integer,                       intent(out)   :: close_ind(:) ! indices into the locs array
+integer(i8),                   intent(out)   :: num_close    ! how many are close
+integer(i8),                   intent(out)   :: close_ind(:) ! indices into the locs array
 real(r8),            optional, intent(out)   :: dist(:)      ! distances in radians
 type(ensemble_type), optional, intent(in)    :: ens_handle
 

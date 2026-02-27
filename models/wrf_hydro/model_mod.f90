@@ -871,7 +871,7 @@ integer,              intent(in)    :: base_type    !< observation TYPE
 type(location_type),  intent(inout) :: locs(:)      !< locations on my task
 integer,              intent(in)    :: loc_qtys(:)  !< QTYs for locations on my task
 integer(i8),          intent(in)    :: loc_indx(:)  !< indices into DART state on my task
-integer,              intent(out)   :: num_close    !< how many are close
+integer(i8),          intent(out)   :: num_close    !< how many are close
 integer,              intent(out)   :: close_ind(:) !< indices in the the locs array
 real(r8),             optional, intent(out) :: dist(:)      !< distances
 type(ensemble_type),  optional, intent(in)  :: ens_handle
@@ -880,18 +880,18 @@ character(len=*),parameter :: routine = 'get_close_state'
 
 ! vars for determining stream ... Must be 3*n_link
 ! if the subsurface or surface parameters are part of the state.
-integer     :: stream_nclose
+integer(i8)     :: stream_nclose
 integer(i8), allocatable :: stream_indices(:)
 real(r8), allocatable    :: stream_dists(:)
 
 ! vars for determining who is on my task
-integer     :: state_nclose
-integer     :: state_indices(size(close_ind))
+integer(i8) :: state_nclose
+integer(i8) :: state_indices(size(close_ind))
 real(r8)    :: state_dists(size(close_ind))
 real(r8)    :: stream_ens_mean(1)
 
-integer :: iclose, iparam, start_indx, num_close_tmp, close_index
-integer :: ivars, num_vars_hydro_dom
+integer(i8) :: iclose, iparam, start_indx, num_close_tmp, close_index
+integer(i8) :: ivars, num_vars_hydro_dom
 
 !integer     :: istream
 integer     :: iloc, base_qty
@@ -1100,7 +1100,7 @@ subroutine get_close_streamflows(base_qty, identity_index, &
 
 integer,     intent(in)  :: base_qty         !< observation TYPE
 integer,     intent(in)  :: identity_index   !< identity observation
-integer,     intent(out) :: num_close
+integer(i8), intent(out) :: num_close
 integer(i8), intent(out) :: close_indices(:) !< full DART indices
 real(r8),    intent(out) :: distances(:)     !< in radians
 
@@ -1114,7 +1114,7 @@ real(r8),    intent(out) :: distances(:)     !< in radians
 
 character(len=*),parameter :: routine = 'get_close_streamflows'
 
-integer     :: stream_nclose
+integer(i8) :: stream_nclose
 integer(i8) :: stream_indices(n_link)
 real(r8)    :: stream_distances(n_link)
 

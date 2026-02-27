@@ -603,12 +603,12 @@ type(get_close_type),          intent(in)     :: gc
 type(location_type),           intent(inout)  :: base_loc, locs(:)
 integer,                       intent(in)     :: base_type, loc_qtys(:)
 integer(i8),                   intent(in)     :: loc_indx(:)
-integer,                       intent(out)    :: num_close, close_ind(:)
+integer(i8),                   intent(out)    :: num_close, close_ind(:)
 real(r8),            optional, intent(out)    :: dist(:)
 type(ensemble_type), optional, intent(in)     :: state_handle
 
 integer :: k, q_ind
-integer :: n
+integer(i8) :: n
 integer :: istatus
 
 n = size(locs)
@@ -664,7 +664,7 @@ subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: state_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer,             intent(in)    :: loc_types(:)
@@ -704,7 +704,7 @@ subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: state_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer(i8),         intent(in)    :: loc_indx(:)

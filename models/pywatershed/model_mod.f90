@@ -853,8 +853,8 @@ type(location_type),  intent(inout)         :: locs(:)      ! all locations on m
 integer,              intent(in)            :: base_type    ! observation TYPE
 integer,              intent(in)            :: loc_qtys(:)  ! QTYs for all locations
 integer,              intent(in)            :: loc_types(:) ! TYPEs for all locations
-integer,              intent(out)           :: num_close    ! how many are close
-integer,              intent(out)           :: close_ind(:) ! index on task of close locs
+integer(i8),          intent(out)           :: num_close    ! how many are close
+integer(i8),          intent(out)           :: close_ind(:) ! index on task of close locs
 real(r8),             optional, intent(out) :: dist(:)      ! distances (in radians)
 type(ensemble_type),  optional, intent(in)  :: ens_handle   
 
@@ -1052,8 +1052,8 @@ integer,          intent(in)  :: num_superset
 integer(i8),      intent(in)  :: superset_indices(:)
 real(r8),         intent(in)  :: superset_distances(:)
 integer(i8),      intent(in)  :: my_task_indices(:)
-integer,          intent(out) :: num_close
-integer,          intent(out) :: close_ind(:)
+integer(i8),      intent(out) :: num_close
+integer(i8),      intent(out) :: close_ind(:)
 real(r8),         intent(out) :: dist(:)
 
 integer, dimension(:), allocatable :: index_map
@@ -1103,8 +1103,8 @@ integer,              intent(in)            :: base_type    ! observation TYPE
 type(location_type),  intent(inout)         :: locs(:)      ! locations on my task
 integer,              intent(in)            :: loc_qtys(:)  ! QTYs for locations on my task
 integer(i8),          intent(in)            :: loc_indx(:)  ! indices into DART state on my task
-integer,              intent(out)           :: num_close    ! how many are close
-integer,              intent(out)           :: close_ind(:) ! indices in the the locs array
+integer(i8),          intent(out)           :: num_close    ! how many are close
+integer(i8),          intent(out)           :: close_ind(:) ! indices in the the locs array
 real(r8),             optional, intent(out) :: dist(:)      ! distances
 type(ensemble_type),  optional, intent(in)  :: ens_handle
 

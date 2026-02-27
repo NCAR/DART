@@ -74,11 +74,11 @@ end type periodic_info_type
 
 type box_type
    private
-   integer           :: num                      
+   integer(i8)       :: num                      
    real(r8)          :: maxdist              ! furthest seperation between "close" locations  
-   integer, allocatable  :: loc_box(:)           ! (nloc); List of loc indices in boxes
-   integer, allocatable  :: count(:, :, :)       ! (nx, ny, nz); # of locs in each box
-   integer, allocatable  :: start(:, :, :)       ! (nx, ny, nz); Start of list of locs in this box
+   integer(i8), allocatable  :: loc_box(:)           ! (nloc); List of loc indices in boxes
+   integer(i8), allocatable  :: count(:, :, :)       ! (nx, ny, nz); # of locs in each box
+   integer(i8), allocatable  :: start(:, :, :)       ! (nx, ny, nz); Start of list of locs in this box
    real(r8)          :: bot_x, top_x         ! extents in x, y, z
    real(r8)          :: bot_y, top_y
    real(r8)          :: bot_z, top_z
@@ -1030,14 +1030,14 @@ end subroutine interactive_location
 
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
 type(get_close_type), intent(inout) :: gc
-integer,              intent(in)    :: num
+integer(i8),          intent(in)    :: num
 real(r8),             intent(in)    :: maxdist
 type(location_type),  intent(in)    :: locs(:)
 real(r8), intent(in), optional      :: maxdist_list(:)
 
-integer :: i, j, k, cum_start, l, n
-integer :: x_box(num), y_box(num), z_box(num)
-integer :: tstart(nx, ny, nz)
+integer(i8) :: i, j, k, cum_start, l, n
+integer(i8) :: x_box(num), y_box(num), z_box(num)
+integer(i8) :: tstart(nx, ny, nz)
 
 
 integer :: typecount, distcount
@@ -1258,7 +1258,7 @@ subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(in)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 
@@ -1279,7 +1279,7 @@ type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(in)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
 integer(i8),                   intent(in)  :: loc_indx(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 
@@ -1295,7 +1295,7 @@ subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
 type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_loc,  locs(:)
 integer,              intent(in)  :: base_type, loc_qtys(:)
-integer,              intent(out) :: num_close, close_ind(:)
+integer(i8),          intent(out) :: num_close, close_ind(:)
 real(r8), optional,   intent(out) :: dist(:)
 type(ensemble_type),  intent(in)  :: ens_handle
 
@@ -1310,8 +1310,8 @@ real(r8) :: this_dist, this_maxdist
 ! Variables needed for comparing against correct case.
 ! these could be large - make them allocatable
 ! and only allocate them if needed.
-integer :: cnum_close
-integer, allocatable :: cclose_ind(:)
+integer(i8) :: cnum_close
+integer(i8), allocatable :: cclose_ind(:)
 real(r8), allocatable :: cdist(:)
 
 ! First, set the intent out arguments to a missing value
@@ -2288,7 +2288,7 @@ subroutine convert_vertical_obs(ens_handle, num, locs, loc_kinds, loc_types, &
                                 which_vert, status)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_kinds(:), loc_types(:)
 integer,             intent(in)    :: which_vert
@@ -2304,7 +2304,7 @@ subroutine convert_vertical_state(ens_handle, num, locs, loc_kinds, loc_indx, &
                                   which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_kinds(:)
 integer(i8),         intent(in)    :: loc_indx(:)

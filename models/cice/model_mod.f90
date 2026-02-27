@@ -2258,8 +2258,8 @@ integer,              intent(in)    :: base_type
 type(location_type),  intent(inout) :: locs(:)
 integer,              intent(in)    :: loc_qtys(:)
 integer(i8),          intent(in)    :: loc_indx(:)
-integer,              intent(out)   :: num_close
-integer,              intent(out)   :: close_indices(:)
+integer(i8),          intent(out)   :: num_close
+integer(i8),          intent(out)   :: close_indices(:)
 real(r8),             intent(out), optional :: distances(:)
 type(ensemble_type),  intent(in),  optional :: state_handle
 

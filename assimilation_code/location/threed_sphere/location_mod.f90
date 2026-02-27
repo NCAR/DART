@@ -77,12 +77,12 @@ end type location_type
 
 type get_close_type_by_type
    private
-   integer               :: num
+   integer(i8)           :: num
    real(r8)              :: maxdist              ! furthest separation between "close" locations
-   integer, allocatable  :: lon_offset(:, :)     ! (nlat, nlat), lon box indices searched (nlat 2x IS correct)
-   integer, allocatable  :: loc_box(:)           ! (nloc), List of loc indices in boxes
-   integer, allocatable  :: count(:, :)          ! (nlon, nlat), # of loc in each box
-   integer, allocatable  :: start(:, :)          ! (nlon, nlat), Start of list of loc in this box
+   integer(i8), allocatable  :: lon_offset(:, :)     ! (nlat, nlat), lon box indices searched (nlat 2x IS correct)
+   integer(i8), allocatable  :: loc_box(:)           ! (nloc), List of loc indices in boxes
+   integer(i8), allocatable  :: count(:, :)          ! (nlon, nlat), # of loc in each box
+   integer(i8), allocatable  :: start(:, :)          ! (nlon, nlat), Start of list of loc in this box
    real(r8)              :: bot_lat, top_lat     ! Bottom and top latitudes of latitude boxes
    real(r8)              :: bot_lon, top_lon     ! Bottom and top longitudes of longitude boxes
    real(r8)              :: lon_width, lat_width ! Width of boxes in lon and lat
@@ -1108,7 +1108,7 @@ subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, status)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:), loc_types(:)
 integer,             intent(in)    :: which_vert
@@ -1124,7 +1124,7 @@ subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer(i8),         intent(in)    :: loc_indx(:)
@@ -1146,7 +1146,7 @@ subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
 ! Initializes part of get_close accelerator dependent on the particular location
 
 type(get_close_type), intent(inout) :: gc
-integer,              intent(in)    :: num
+integer(i8),          intent(in)    :: num
 real(r8),             intent(in)    :: maxdist
 type(location_type),  intent(in)    :: locs(:)
 real(r8), intent(in), optional      :: maxdist_list(:)
@@ -1386,7 +1386,7 @@ subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout) :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 
@@ -1408,7 +1408,7 @@ type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
 integer(i8),                   intent(in)  :: loc_indx(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 
@@ -1429,7 +1429,7 @@ subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 
@@ -1440,7 +1440,7 @@ integer :: lon_box, lat_box, i, j, k, n_lon, lon_ind, n_in_box, st, t_ind, bt
 real(r8) :: this_dist, this_maxdist
 
 ! Variables needed for comparing against correct case
-integer :: cnum_close, cclose_ind(size(locs))
+integer(i8) :: cnum_close, cclose_ind(size(locs))
 real(r8) :: cdist(size(locs))
 
 
@@ -1630,7 +1630,7 @@ subroutine find_box_ranges(gtt, num, locs)
 ! tries to find boxes that only span the range of the data.
   
 type(get_close_type_by_type), intent(inout) :: gtt
-integer,                      intent(in)    :: num
+integer(i8),                  intent(in)    :: num
 type(location_type),          intent(in)    :: locs(num)
 
 real(r8) :: min_lat, max_lat, beg_box_lon, end_box_lon, first_loc_lon, last_loc_lon
@@ -1882,12 +1882,12 @@ end function next_empty_box
 function find_closest_to_start(beg_box_lon, num, locs)
  
 real(r8),            intent(in) :: beg_box_lon
-integer,             intent(in) :: num
+integer(i8),         intent(in) :: num
 type(location_type), intent(in) :: locs(num)
 real(r8)                        :: find_closest_to_start
 
 real(r8) :: least_dist, dist
-integer  :: i
+integer(i8)  :: i
 
 ! Start with large value
 least_dist = 2.0_r8 * PI
@@ -1908,7 +1908,7 @@ end function find_closest_to_start
 function find_closest_to_end(end_box_lon, num, locs)
  
 real(r8),            intent(in) :: end_box_lon
-integer,             intent(in) :: num
+integer(i8),         intent(in) :: num
 type(location_type), intent(in) :: locs(num)
 real(r8)                        :: find_closest_to_end
 

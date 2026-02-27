@@ -67,9 +67,9 @@ function comp_reg_factor(num_groups, regress, obs_time, &
 integer,         intent(in) :: num_groups
 real(r8),        intent(in) :: regress(num_groups)
 type(time_type), intent(in) :: obs_time
-integer,         intent(in) :: obs_index
+integer(i8),      intent(in) :: obs_index
 integer(i8),     intent(in) :: state_index
-integer,         intent(in), optional :: obs_state_ind, obs_state_max
+integer(i8),    intent(in), optional :: obs_state_ind, obs_state_max
 
 real(r8) :: comp_reg_factor
 

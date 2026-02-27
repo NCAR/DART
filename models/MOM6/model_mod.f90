@@ -505,7 +505,7 @@ subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
 which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: state_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(num) !locations
 integer,             intent(in)    :: loc_qtys(num) !qty at location
 integer(i8),         intent(in)    :: loc_indx(num) !state index
@@ -575,8 +575,8 @@ type(location_type),           intent(inout) :: base_loc      ! location of inte
 type(location_type),           intent(inout) :: locs(:)       ! obs locations
 integer,                       intent(in)    :: loc_qtys(:)   ! QTYS for obs
 integer,                       intent(in)    :: loc_types(:)  ! TYPES for obs
-integer,                       intent(out)   :: num_close     ! how many are close
-integer,                       intent(out)   :: close_ind(:)  ! incidies into the locs array
+integer(i8),                   intent(out)   :: num_close     ! how many are close
+integer(i8),                   intent(out)   :: close_ind(:)  ! incidies into the locs array
 real(r8),            optional, intent(out)   :: dist(:)       ! distances in radians
 type(ensemble_type), optional, intent(in)    :: ens_handle
 
@@ -599,8 +599,8 @@ integer,                       intent(in)    :: base_type    ! observation TYPE
 type(location_type),           intent(inout) :: locs(:)      ! state locations
 integer,                       intent(in)    :: loc_qtys(:)  ! QTYs for state
 integer(i8),                   intent(in)    :: loc_indx(:)  ! indices into DART state vector
-integer,                       intent(out)   :: num_close    ! how many are close
-integer,                       intent(out)   :: close_ind(:) ! indices into the locs array
+integer(i8),                   intent(out)   :: num_close    ! how many are close
+integer(i8),                   intent(out)   :: close_ind(:) ! indices into the locs array
 real(r8),            optional, intent(out)   :: dist(:)      ! distances in radians
 type(ensemble_type), optional, intent(in)    :: ens_handle
 
@@ -629,7 +629,7 @@ do ii = 1, num_close
 
   lon_lat_vert = get_location(locs(ind))
   if (query_location(locs(ind)) /= VERTISHEIGHT) then ! assuming VERTISHEIGHT
-    call convert_vertical_state(ens_handle, 1, locs(ind:ind), loc_qtys(ind:ind), loc_indx(ind:ind), VERTISHEIGHT, istatus)
+    call convert_vertical_state(ens_handle, 1_r8, locs(ind:ind), loc_qtys(ind:ind), loc_indx(ind:ind), VERTISHEIGHT, istatus)
   endif
   call get_model_variable_indices(loc_indx(ind), i, j, k)
   if ( below_sea_floor(i,j,lon_lat_vert(3)) ) then 

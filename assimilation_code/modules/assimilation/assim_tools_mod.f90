@@ -139,7 +139,7 @@ real(r8) :: cutoff                          = 0.2_r8
 logical  :: sort_obs_inc                    = .true.
 logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
-integer  :: adaptive_localization_threshold = -1
+integer(i8)  :: adaptive_localization_threshold = -1
 real(r8) :: adaptive_cutoff_floor           = 0.0_r8
 integer  :: print_every_nth_obs             = 0
 
@@ -346,18 +346,19 @@ integer(i8) :: state_index
 integer(i8), allocatable :: my_state_indx(:)
 integer(i8), allocatable :: my_obs_indx(:)
 
-integer :: my_num_obs, i, j, owner, owners_index, my_num_state, ierr
+integer(i8) :: my_num_obs, my_num_state, i, j, owners_index
+integer :: owner, ierr
 integer :: obs_mean_index, obs_var_index
 integer :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
-integer :: num_close_obs, obs_index, num_close_states
-integer :: last_num_close_obs, last_num_close_states
+integer(i8) :: num_close_obs, obs_index, num_close_states
+integer(i8) :: last_num_close_obs, last_num_close_states
 integer :: base_obs_kind, base_obs_type, nth_obs
-integer :: num_close_obs_cached, num_close_states_cached
+integer(i8) :: num_close_obs_cached, num_close_states_cached
 integer :: num_close_obs_calls_made, num_close_states_calls_made
 integer :: whichvert_obs_in_localization_coord
 integer :: istatus, localization_unit
-integer, allocatable :: close_obs_ind(:)
-integer, allocatable :: close_state_ind(:)
+integer(i8), allocatable :: close_obs_ind(:)
+integer(i8), allocatable :: close_state_ind(:)
 integer, allocatable :: my_obs_kind(:)
 integer, allocatable :: my_obs_type(:)
 integer, allocatable :: my_state_kind(:)
@@ -614,7 +615,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    call get_obs_values(observation, obs, obs_val_index)
 
    ! Find out who has this observation and where it is
-   call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
+   call get_var_owner_index(ens_handle, i, owner, owners_index)
 
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------
@@ -2023,7 +2024,7 @@ real(r8),            intent(in)  :: net_a(num_groups)
 integer,             intent(in)  :: grp_size
 integer,             intent(in)  :: grp_beg(num_groups)
 integer,             intent(in)  :: grp_end(num_groups)
-integer,             intent(in)  :: reg_factor_obs_index
+integer(i8),         intent(in)  :: reg_factor_obs_index
 integer(i8),         intent(in)  :: reg_factor_ens_index
 real(r8),            intent(inout) :: final_factor
 real(r8),            intent(out) :: correl(num_groups)
@@ -2127,7 +2128,7 @@ end subroutine set_assim_tools_trace
 
 function revised_distance(orig_dist, newcount, oldcount, base, cutfloor)
  real(r8),            intent(in) :: orig_dist
- integer,             intent(in) :: newcount, oldcount
+ integer(i8),         intent(in) :: newcount, oldcount
  type(location_type), intent(in) :: base
  real(r8),            intent(in) :: cutfloor
 
@@ -2202,9 +2203,10 @@ end function revised_distance
 !--------------------------------------------------------------------
 
 function count_close(num_close, index_list, my_types, dist, maxdist)
- integer, intent(in)  :: num_close, index_list(:), my_types(:)
+ integer(i8), intent(in)  :: num_close, index_list(:) 
+ integer, intent(in) :: my_types(:)
  real(r8), intent(in) :: dist(:), maxdist
- integer :: count_close
+ integer(i8) :: count_close
 
 ! return the total number of items from the index_list which
 ! are types which are going to be assimilated, and within distance.
@@ -2212,7 +2214,8 @@ function count_close(num_close, index_list, my_types, dist, maxdist)
 ! items too far away.   this routine does a global communication
 ! so if any MPI tasks make this call, all must.
 
-integer :: k, thistype, local_count
+integer(i8) :: k, local_count
+integer :: thistype
 
 local_count = 0
 do k=1, num_close
@@ -2247,18 +2250,19 @@ subroutine adaptive_localization_and_diags(cutoff_orig, cutoff_rev, adaptive_loc
 
 real(r8),            intent(in)  :: cutoff_orig
 real(r8),            intent(out) :: cutoff_rev
-integer,             intent(in)  :: adaptive_localization_threshold
+integer(i8),         intent(in)  :: adaptive_localization_threshold
 real(r8),            intent(in)  :: adaptive_cutoff_floor
-integer,             intent(in)  :: num_close_obs
-integer,             intent(in)  :: close_obs_ind(:)
+integer(i8),         intent(in)  :: num_close_obs
+integer(i8),         intent(in)  :: close_obs_ind(:)
 real(r8),            intent(in)  :: close_obs_dist(:)
 integer,             intent(in)  :: my_obs_type(:)
-integer,             intent(in)  :: base_obs_index
+integer(i8),         intent(in)  :: base_obs_index
 type(location_type), intent(in)  :: base_obs_loc
 type(obs_def_type),  intent(in)  :: obs_def
 integer,             intent(in)  :: out_unit
 
-integer :: total_num_close_obs, rev_num_close_obs, secs, days
+integer(i8) :: total_num_close_obs, rev_num_close_obs 
+integer :: secs, days
 type(time_type) :: this_obs_time
 character(len = 200) :: base_loc_text   ! longer than longest location formatting possible
 
@@ -2356,13 +2360,13 @@ subroutine get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type, &
 type(get_close_type),          intent(in)  :: gc_obs
 type(location_type),           intent(inout) :: base_obs_loc, my_obs_loc(:)
 integer,                       intent(in)  :: base_obs_type, my_obs_kind(:), my_obs_type(:)
-integer,                       intent(out) :: num_close_obs
-integer,                       intent(inout) :: close_obs_ind(:)
+integer(i8),                   intent(out) :: num_close_obs
+integer(i8),                   intent(inout) :: close_obs_ind(:)
 real(r8),                      intent(inout) :: close_obs_dist(:)
 type(ensemble_type),           intent(in)  :: ens_handle
 type(location_type), intent(inout) :: last_base_obs_loc
-integer, intent(inout) :: last_num_close_obs
-integer, intent(inout) :: num_close_obs_cached, num_close_obs_calls_made
+integer(i8), intent(inout) :: last_num_close_obs, num_close_obs_cached
+integer,     intent(inout) :: num_close_obs_calls_made
 
 ! This logic could be arranged to make code less redundant
 if (.not. close_obs_caching) then
@@ -2399,13 +2403,13 @@ type(get_close_type),          intent(in)    :: gc_state
 type(location_type),           intent(inout) :: base_obs_loc, my_state_loc(:)
 integer,                       intent(in)    :: base_obs_type, my_state_kind(:)
 integer(i8),                   intent(in)    :: my_state_indx(:)
-integer,                       intent(out)   :: num_close_states
-integer,                       intent(inout) :: close_state_ind(:)
+integer(i8),                   intent(out)   :: num_close_states
+integer(i8),                   intent(inout) :: close_state_ind(:)
 real(r8),                      intent(inout) :: close_state_dist(:)
 type(ensemble_type),           intent(in)    :: ens_handle
 type(location_type), intent(inout) :: last_base_states_loc
-integer, intent(inout) :: last_num_close_states
-integer, intent(inout) :: num_close_states_cached, num_close_states_calls_made
+integer(i8), intent(inout) :: last_num_close_states, num_close_states_cached
+integer, intent(inout) :: num_close_states_calls_made
 
 ! This logic could be arranged to make code less redundant
 if (.not. close_obs_caching) then

@@ -659,7 +659,7 @@ subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, status)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:), loc_types(:)
 integer,             intent(in)    :: which_vert
@@ -675,7 +675,7 @@ subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer(i8),         intent(in)    :: loc_indx(:)

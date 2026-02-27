@@ -1925,7 +1925,7 @@ subroutine get_from_mean(owner, window, mindex, x)
 
 integer,  intent(in)  :: owner  ! task in the window that owns the memory
 integer,  intent(in)  :: window ! window object
-integer,  intent(in)  :: mindex ! index in the tasks memory
+integer(i8),  intent(in)  :: mindex ! index in the tasks memory
 real(r8), intent(out) :: x      ! result
 
 integer(KIND=MPI_ADDRESS_KIND) :: target_disp
@@ -1951,7 +1951,7 @@ subroutine get_from_fwd(owner, window, mindex, rows_in_window, num_rows, x)
 
 integer,  intent(in)  :: owner    ! task in the window that owns the memory
 integer,  intent(in)  :: window   ! window object
-integer,  intent(in)  :: mindex   ! index in the tasks memory
+integer(i8),  intent(in)  :: mindex   ! index in the tasks memory
 integer,  intent(in)  :: rows_in_window ! number of rows in the window
 integer,  intent(in)  :: num_rows ! number of rows to get from the window
 real(r8), intent(out) :: x(num_rows)     ! result

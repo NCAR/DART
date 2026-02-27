@@ -654,7 +654,7 @@ subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, my_status)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer,             intent(in)    :: loc_types(:)
@@ -708,7 +708,7 @@ end subroutine convert_vertical_obs
 subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 !SENote: This argument is not used here, but is required to support external calls. Should reexamine
 integer,             intent(in)    :: loc_qtys(:)
@@ -2457,7 +2457,7 @@ base_loc(1) = loc
 base_type(1) = otype
 base_qty(1) = get_quantity_for_type_of_obs(otype)
 
-call convert_vertical_obs(ens_handle, 1, base_loc, base_qty, base_type, vert_type, status)
+call convert_vertical_obs(ens_handle, 1_i8, base_loc, base_qty, base_type, vert_type, status)
 
 status1 = status(1)
 

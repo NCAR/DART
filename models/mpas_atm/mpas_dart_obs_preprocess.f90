@@ -2192,7 +2192,7 @@ subroutine increase_obs_err_bdy(seq, obsbdydist, maxfac)
 type(obs_sequence_type), intent(inout) :: seq
 real(r8), intent(in)                   :: obsbdydist, maxfac
 
-integer            :: nbdy, i
+integer(i8)        :: nbdy, i
 logical            :: last_obs
 real(r8)           :: slope, intercept, minbdydist, obsfac
 
@@ -2321,15 +2321,16 @@ integer,              intent(in)    :: nlocs
 type(location_type),  intent(inout) :: loclist(:)
 real(r8),             intent(out)   :: mindist
 
-integer :: num_close
-integer, allocatable :: close_ind(:), dummy(:)
+integer(i8) :: num_close
+integer(i8), allocatable :: close_ind(:)
+integer, allocatable ::  dummy(:)
 real(r8), allocatable :: dist(:)
 
 allocate(close_ind(nlocs), dummy(nlocs), dist(nlocs))
 dummy(:) = 1
 
 ! FIXME: could call get_close() w/o replicating dummy in call
-call get_close_obs(gc, obsloc, 1, loclist, dummy, dummy, &
+call get_close_obs(gc, obsloc, 1_r8, loclist, dummy, dummy, &
                    num_close, close_ind, dist)
 
 if (num_close <= 0) then

@@ -57,7 +57,7 @@ type(ensemble_type), intent(inout), optional :: qc_ens_handle
 
 integer :: ierr
 integer :: bytesize !< size in bytes of each element in the window
-integer :: my_num_vars !< my number of vars
+integer(i8) :: my_num_vars !< my number of vars
 
 ! Find out how many copies to get, maybe different to state_ens_handle%num_copies
 data_count = copies_in_window(state_ens_handle)
@@ -97,7 +97,7 @@ logical,             intent(in)  :: distribute_mean
 
 integer               :: ierr
 integer               :: bytesize
-integer               :: my_num_vars !< number of elements a task owns
+integer(i8)           :: my_num_vars !< number of elements a task owns
 
 ! create an ensemble handle of just the mean copy.
 use_distributed_mean = distribute_mean

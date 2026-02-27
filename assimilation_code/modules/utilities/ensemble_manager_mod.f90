@@ -54,7 +54,8 @@ type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
    !!!private
    integer(i8)                  :: num_vars
-   integer                      :: num_copies, my_num_copies, my_num_vars
+   integer(i8)                  :: my_num_vars
+   integer                      :: num_copies, my_num_copies
    integer,        allocatable  :: my_copies(:)
    integer(i8),    allocatable  :: my_vars(:)
    ! Storage in next line is to be used when each pe has all copies of subset of vars
@@ -585,8 +586,8 @@ subroutine set_up_ens_distribution(ens_handle)
 
 type (ensemble_type),  intent(inout)  :: ens_handle
 
-integer :: num_per_pe_below, num_left_over, i
-integer(i8) :: per_pe, suggest_pes
+integer :: num_per_pe_below, num_left_over, i, dummy
+integer(i8) :: per_pe, suggest_pes, dummy8
 
 ! Check that there are enough pes for the state
 per_pe = ens_handle%num_vars / num_pes
@@ -638,7 +639,7 @@ endif
 ens_handle%copies = MISSING_R8
 
 ! Fill out the number of my members
-call get_copy_list(ens_handle, ens_handle%num_copies, ens_handle%my_pe, ens_handle%my_copies, i)
+call get_copy_list(ens_handle, ens_handle%num_copies, ens_handle%my_pe, ens_handle%my_copies, dummy)
 
 ! Initialize times to missing
 ! This is only initializing times for pes that have ensemble copies
@@ -647,7 +648,7 @@ do i = 1, ens_handle%my_num_copies
 end do
 
 ! Fill out the number of my vars
-call get_var_list(ens_handle, ens_handle%num_vars, ens_handle%my_pe, ens_handle%my_vars, i)
+call get_var_list(ens_handle, ens_handle%num_vars, ens_handle%my_pe, ens_handle%my_vars, dummy8)
 
 end subroutine set_up_ens_distribution
 
@@ -686,9 +687,9 @@ subroutine get_var_owner_index(ens_handle, var_number, owner, owners_index)
 type (ensemble_type), intent(in)  :: ens_handle
 integer(i8), intent(in)  :: var_number
 integer,     intent(out) :: owner
-integer,     intent(out) :: owners_index
+integer(i8),     intent(out) :: owners_index
 
-integer :: div
+integer(i8) :: div
 
 ! Asummes distribution type 1
 div = (var_number - 1) / num_pes
@@ -708,7 +709,7 @@ function get_max_num_vars(ens_handle, num_vars)
 
 type (ensemble_type), intent(in)  :: ens_handle
 integer(i8), intent(in) :: num_vars
-integer                 :: get_max_num_vars
+integer(i8)             :: get_max_num_vars
 !!!integer, intent(in) :: distribution_type
 
 !could this be instead:
@@ -760,10 +761,10 @@ type (ensemble_type), intent(in)  :: ens_handle
 integer(i8),   intent(in)  :: num_vars
 integer,       intent(in)  :: pe
 integer(i8),   intent(out) :: var_list(:)
-integer,       intent(out) :: pes_num_vars
+integer(i8),   intent(out) :: pes_num_vars
 !!!integer, intent(in) :: distribution_type
 
-integer :: num_per_pe_below, num_left_over, i
+integer(i8) :: num_per_pe_below, num_left_over, i
 
 ! Figure out number of vars stored by pe
 num_per_pe_below = num_vars / num_pes
@@ -919,10 +920,10 @@ integer(i8), allocatable :: var_list(:)
 integer,     allocatable :: copy_list(:)
 real(r8),    allocatable :: transfer_temp(:)
 
-integer(i8) :: num_vars
-integer     :: num_copies, my_num_vars, my_num_copies, my_pe
+integer(i8) :: num_vars, my_num_vars, num_vars_to_send, sv
+integer     :: num_copies, my_num_copies, my_pe
 integer     :: max_num_vars, max_num_copies, num_copies_to_receive
-integer     :: sending_pe, recv_pe, k, sv, num_vars_to_send, copy
+integer     :: sending_pe, recv_pe, k, copy
 integer     :: global_ens_index
 
 ! only output if there is a label
@@ -1076,10 +1077,10 @@ integer(i8),  allocatable :: var_list(:)
 integer,      allocatable :: copy_list(:)
 real(r8),     allocatable :: transfer_temp(:)
 
-integer(i8) :: num_vars
-integer     :: num_copies, my_num_vars, my_num_copies, my_pe
-integer     :: max_num_vars, max_num_copies, num_vars_to_receive
-integer     :: sending_pe, recv_pe, k, sv, copy, num_copies_to_send
+integer(i8) :: num_vars, my_num_vars, max_num_vars, num_vars_to_receive, sv
+integer     :: num_copies, my_num_copies, my_pe
+integer     :: max_num_copies
+integer     :: sending_pe, recv_pe, k, copy, num_copies_to_send
 integer     :: global_ens_index
 
 ! only output if there is a label

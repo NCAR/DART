@@ -722,8 +722,8 @@ integer,                           intent(in)    :: base_obs_type
 type(location_type),               intent(inout) :: locs(:)
 integer,                           intent(in)    :: loc_qtys(:)
 integer,                           intent(in)    :: loc_types(:)
-integer,                           intent(out)   :: num_close
-integer,                           intent(out)   :: close_ind(:)
+integer(i8),                       intent(out)   :: num_close
+integer(i8),                       intent(out)   :: close_ind(:)
 real(r8),            optional,     intent(out)   :: dist(:)
 type(ensemble_type), optional,     intent(in)    :: ens_handle
 
@@ -863,8 +863,8 @@ integer,              intent(in)    :: base_obs_type
 type(location_type),  intent(inout) :: locs(:)
 integer,              intent(in)    :: loc_qtys(:)
 integer(i8),          intent(in)    :: loc_indx(:)
-integer,              intent(out)   :: num_close
-integer,              intent(out)   :: close_ind(:)
+integer(i8),          intent(out)   :: num_close
+integer(i8),          intent(out)   :: close_ind(:)
 real(r8),             optional, intent(out)   :: dist(:)
 type(ensemble_type),  optional, intent(in)    :: ens_handle
 

@@ -7,7 +7,7 @@
 
 module probit_transform_mod
 
-use types_mod, only : r8, missing_r8
+use types_mod, only : r8, missing_r8, i8
 
 use sort_mod,  only : index_sort
 
@@ -517,14 +517,14 @@ subroutine transform_all_from_probit(ens_size, num_vars, probit_ens, p, state_en
    transform_ok)
 
 integer, intent(in)                  :: ens_size
-integer, intent(in)                  :: num_vars
+integer(i8), intent(in)              :: num_vars
 real(r8), intent(in)                 :: probit_ens(:, :)
 type(distribution_params_type), intent(inout) :: p(num_vars)
 real(r8), intent(out)                :: state_ens(:, :)
 logical,  intent(in)                 :: transform_ok(num_vars)
 
 ! Transform back to the original space
-integer  :: i
+integer(i8)  :: i
 real(r8) :: temp_ens(ens_size)
 
 do i = 1, num_vars

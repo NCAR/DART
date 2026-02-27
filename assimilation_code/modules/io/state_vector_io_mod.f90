@@ -351,8 +351,8 @@ type(ensemble_type),         intent(inout) :: ens_handle
 type(adaptive_inflate_type), intent(in)    :: prior_inflate_handle
 type(adaptive_inflate_type), intent(in)    :: post_inflate_handle
 
-integer :: owner, owners_index
-integer(i8) :: first_element
+integer :: owner 
+integer(i8) :: first_element, owners_index
 real(r8), allocatable :: inf_array(:) ! 2 or 4 values
 integer :: inf_count
 logical :: return_me ! flag to return if not read any inflation values from files

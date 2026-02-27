@@ -1698,7 +1698,7 @@ end subroutine compute_mean_mass
 subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer(i8),         intent(in)    :: loc_indx(:)
@@ -1938,7 +1938,7 @@ subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, my_status)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer,             intent(in)    :: loc_types(:)
@@ -2189,7 +2189,7 @@ bl(1) = loc
 bt(1) = otype
 bq(1) = get_quantity_for_type_of_obs(otype)
 
-call convert_vertical_obs(ens_handle, 1, bl, bq, bt, &
+call convert_vertical_obs(ens_handle, 1_i8, bl, bq, bt, &
                              vert_type, status)
 
 status1 = status(1)
@@ -2212,7 +2212,7 @@ subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout) :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 
@@ -2269,7 +2269,7 @@ do i=1, num_close
 !print *, 'close_o, vval, vtype = ', i, query_location(locs(this), 'VLOC'), vert_type
 
    if (vert_type /= vertical_localization_type) then
-      call convert_vertical_obs(ens_handle, 1, locs(this:this), &
+      call convert_vertical_obs(ens_handle, 1_i8, locs(this:this), &
                                 loc_qtys(this:this), loc_types(this:this), &
                                 vertical_localization_type, status)
       if (status(1) /= 0) then
@@ -2307,13 +2307,14 @@ type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
 integer(i8),                   intent(in)  :: loc_indx(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 
 character(len=*), parameter :: routine = 'get_close_state'
 
-integer :: i, status, this, vert_type
+integer :: i, status, vert_type
+integer(i8) :: this
 real(r8) :: vert_value, extra_damping_dist
 real(r8), parameter :: LARGE_DIST = 999999.0  ! positive and large
 
@@ -2358,7 +2359,7 @@ do i=1, num_close
 !print *, 'close_s, vval, vtype = ', i, query_location(locs(this), 'VLOC'), vert_type
 
    if (vert_type /= vertical_localization_type) then
-      call convert_vertical_state(ens_handle, 1, locs(this:this), &
+      call convert_vertical_state(ens_handle, 1_i8, locs(this:this), &
                                  loc_qtys(this:this), loc_indx(this:this), &
                                  vertical_localization_type, status)
       if (status /= 0) then

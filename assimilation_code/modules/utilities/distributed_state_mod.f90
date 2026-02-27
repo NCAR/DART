@@ -93,7 +93,7 @@ integer(i8),         intent(in)  :: my_index !! index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
 integer                        :: owner_of_state !! task who owns the state
-integer                        :: element_index !! local index of element
+integer(i8)                    :: element_index !! local index of element
 
 if (get_allow_transpose(state_ens_handle)) then
    x = state_ens_handle%vars(my_index, 1:data_count)
@@ -126,7 +126,7 @@ integer(i8),         intent(in)  :: my_index !! index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
 integer                        :: owner_of_state !! task who owns the state
-integer                        :: element_index !! local index of element
+integer(i8)                    :: element_index !! local index of element
 
 if (get_allow_transpose(mean_ens_handle)) then
    x(1) = mean_ens_handle%vars(my_index, 1)

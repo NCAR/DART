@@ -38,7 +38,7 @@ end type location_type
 ! Needed as stub but not used in this low-order model
 type get_close_type
    private
-   integer  :: num
+   integer(i8)  :: num
    real(r8) :: maxdist
 end type get_close_type
 
@@ -376,7 +376,7 @@ end subroutine interactive_location
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
 
 type(get_close_type), intent(inout) :: gc
-integer,              intent(in)    :: num
+integer(i8),          intent(in)    :: num
 real(r8),             intent(in)    :: maxdist
 type(location_type),  intent(in)    :: locs(:)
 real(r8), intent(in), optional      :: maxdist_list(:)
@@ -410,7 +410,7 @@ subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(in)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:) 
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ensemble_handle
 
@@ -428,7 +428,7 @@ type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(in)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
 integer(i8),                   intent(in)  :: loc_indx(:) 
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ensemble_handle
 
@@ -445,11 +445,11 @@ subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(in)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ensemble_handle
 
-integer :: i
+integer(i8) :: i
 real(r8) :: this_dist
 
 ! the list of locations in the locs() argument must be the same
@@ -540,7 +540,7 @@ subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, status)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer,             intent(in)    :: loc_types(:)
@@ -557,7 +557,7 @@ subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, status)
 
 type(ensemble_type), intent(in)    :: ens_handle
-integer,             intent(in)    :: num
+integer(i8),         intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
 integer(i8),         intent(in)    :: loc_indx(:)
