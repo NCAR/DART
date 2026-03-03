@@ -3,7 +3,7 @@
 .. _pytools:
 
 =========================
-DART Python tools
+DART Python Tools
 =========================
 
 Installation
