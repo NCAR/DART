@@ -10,9 +10,9 @@ DART provides a set of Python tools that can be used to work with DART data and 
 These tools are located in the DART/pytools directory.
 
 Available tools:
-- :ref:`ioda2obsq`
-- :ref:`pyqceff`
-- :ref:`pyfortran`
+* :ref:`ioda2obsq`
+* :ref:`pyqceff`
+* :ref:`pyfortran`
 
 Installation
 ------------
