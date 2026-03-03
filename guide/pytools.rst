@@ -10,6 +10,7 @@ DART provides a set of Python tools that can be used to work with DART data and 
 These tools are located in the DART/pytools directory.
 
 Available tools:
+
 * :ref:`ioda2obsq`
 * :ref:`pyqceff`
 * :ref:`pyfortran`
@@ -194,10 +195,10 @@ pyfortran
 
 The `pyfortran` package provides utilities for working with DART's Fortran codebase.
 
-`pyfortran` includes a program called ``check_fortran_module_usage.py`` that can be used to determine which subroutines in a Fortran module
+`pyfortran` includes a program called ``check_fortran_module_usage.py`` that can be used to determine which routines in a Fortran module
 are not being used by any other part of the codebase. It displays:
-* Subroutines that are in the module but neither called in the file nor marked as public
-* Subroutines from other modules that are declared in the use statements but not actually called in the file.
+* Routines that are in the module but neither called in the file nor marked as public
+* Routines from other modules that are declared in the use statements but not actually called in the file.
 
 It can be run as follows:
 
