@@ -6,11 +6,16 @@
 DART Python Tools
 =========================
 
-Installation
-------------
-
 DART provides a set of Python tools that can be used to work with DART data and models.
 These tools are located in the DART/pytools directory.
+
+Available tools:
+- :ref:`ioda2obsq`
+- :ref:`pyqceff`
+- :ref:`pyfortran`
+
+Installation
+------------
 
 We recommend creating a `virtual environment <https://docs.python.org/3/library/venv.html>`__ 
 to install DART Python tools. This helps to keep the DART Python tools and their dependencies 
