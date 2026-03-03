@@ -190,9 +190,9 @@ pyfortran
 The `pyfortran` package provides utilities for working with DART's Fortran codebase.
 
 `pyfortran` includes a program called ``check_fortran_module_usage.py`` that can be used to determine which subroutines in a Fortran module
-are not being used by any other part of the codebase. It displays subroutines that are written in the module but neither called in the file
-or marked as public, assuming subroutines made public are used in other modules, as well as subroutines from other modules that are declared
-in the use statements but not actualy called in the file.
+are not being used by any other part of the codebase. It displays:
+* Subroutines that are in the module but neither called in the file nor marked as public
+* Subroutines from other modules that are declared in the use statements but not actually called in the file.
 
 It can be run as follows:
 
