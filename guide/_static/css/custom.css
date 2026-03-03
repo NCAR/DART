@@ -1,67 +1,328 @@
-h1,h2,.rst-content .toctree-wrapper p.caption,h3,h4,h5,h6,legend{margin-top:0;font-weight:400;font-family:Poppins, "Tw Cen MT", Futura, sans-serif; color: #424242;}
+/* =====================================================
+   NCAR Documentation Custom Styles
+   ===================================================== */
 
-body {font-family: Roboto, Arial, Helvetica, sans-serif; font-weight:400; color: #616161;}
-.wy-nav-side{background-color: #1A658F;}
-.wy-side-nav-search{background-color: #DBE2E9;}
-.wy-side-nav-search>div.version{color: #012169 !important;}
-.wy-menu-vertical header, .wy-menu-vertical p.caption{font-weight:700;font-family:Poppins, "Tw Cen MT", Futura, sans-serif; color: #012169;}
-.wy-menu-vertical a:hover, .wy-menu-vertical a:active { background-color: #012169; color: #d9d9d9; }
-.wy-menu-vertical a, .wy-menu-vertical a:visited { color: #d9d9d9; }
-.wy-body-for-nav { background: #CED9E5; background-image: url("../NCAR-Waves-Vertical.png"); background-repeat: no-repeat; background-size: 630px 1827px; background-position-x: 97%; background-position-y: top;}
-.wy-nav-content { max-width: 904px; background: #FFF; }
+/* NCAR color palette */
+:root {
+  --ncar-blue: #0057C2;
+  --ncar-dark-blue: #00357A;
+  --space: #011837;
+  --white: #FFFFFF;
+  --light-gray: #F1F0EE;
+  --light-blue: #42C0FF;
+  --orange: #FAA119;
+  --yellow: #ffdd31;
+  --search-section-height: 150px; /* Adjust this value to match your search section height */
+}
 
+/* Apply Poppins font to text elements (excluding code blocks) */
+body,
+h1, h2, h3, h4, h5, h6,
+p, li, td, th, span,
+.wy-menu-vertical a,
+.wy-menu-vertical p.caption,
+.wy-menu-vertical header {
+  font-family: Poppins, "Tw Cen MT", Futura, sans-serif;
+}
+
+/* Keep code elements monospace */
+code, pre, .pre,
+code span, pre span, .pre span {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+
+/* page width */
+.wy-nav-content {
+    max-width: 800px;
+}
+
+/* Sidebar background */
+.wy-nav-side {
+    background-color: var(--ncar-blue);
+}
+
+/* Mobile navigation bar */
+.wy-nav-top {
+    background-color: var(--ncar-blue) !important;
+    color: var(--white);
+}
+
+.wy-nav-top a {
+    color: var(--white);
+}
+
+/* Navigation scroll container - offset for sticky search */
+.wy-side-scroll {
+    scroll-padding-top: var(--search-section-height);
+}
+
+/* Navigation items - scroll margin to keep them below search */
+.wy-menu-vertical li {
+    scroll-margin-top: var(--search-section-height);
+}
+
+/* Search section - sticky at top */
+.wy-side-nav-search {
+    background-color: var(--ncar-dark-blue);
+    border-bottom: 1px solid var(--ncar-blue);
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+}
+
+/* Keep search input visible */
+.wy-side-nav-search input[type=text] {
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Logo link - no hover effect */
+.wy-side-nav-search a {
+    display: block;
+    text-decoration: none;
+}
+
+.wy-side-nav-search a:hover {
+    background-color: transparent;
+    opacity: 1;
+}
+
+.wy-side-nav-search a img {
+    transition: none;
+}
+
+.wy-side-nav-search a:hover img {
+    opacity: 1;
+    filter: none;
+}
+
+/* Sidebar links (default state) */
+.wy-menu-vertical a {
+    color: var(--white);
+    background-color: transparent;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Visited links - keep same as default */
+.wy-menu-vertical a:visited {
+    color: var(--white);
+}
+
+/* Hover state for all nav links */
+.wy-menu-vertical a:hover {
+    background-color: var(--ncar-dark-blue) !important;
+    color: var(--orange) !important;
+}
+
+/* Top-level current page */
+/*     padding-left: 12px; */
+.wy-menu-vertical li.current > a {
+    font-weight: 600;
+    border-left: 3px solid var(--orange);
+    background-color: var(--ncar-dark-blue);
+    color: var(--white) !important;
+}
+
+/* Remove indentation for all levels */
+.wy-menu-vertical li.toctree-l1 > a,
+.wy-menu-vertical li.toctree-l2 > a,
+.wy-menu-vertical li.toctree-l3 > a,
+.wy-menu-vertical li.toctree-l4 > a,
+.wy-menu-vertical li.toctree-l5 > a {
+    padding-left: 12px !important;
+}
+
+/* Expanded group background */
+.wy-menu-vertical li.current > ul {
+    background-color: var(--white) !important;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+/* All nested ul elements - force white background */
+.wy-menu-vertical li.current ul ul,
+.wy-menu-vertical li.current li.current > ul,
+.wy-menu-vertical li.current li ul {
+    background-color: var(--white) !important;
+}
+
+/* All nested li elements - transparent */
+.wy-menu-vertical li.current li,
+.wy-menu-vertical li.current li.current {
+    background-color: transparent !important;
+}
+
+/* Links inside expanded groups - dark text, white background */
+.wy-menu-vertical li.current > ul a {
+    color: var(--space) !important;
+    background-color: transparent !important;
+}
+
+/* Visited links in expanded groups */
+.wy-menu-vertical li.current > ul a:visited {
+    color: var(--space) !important;
+    background-color: transparent !important;
+}
+
+/* Hover state for links in expanded groups - dark bg, orange text */
+.wy-menu-vertical li.current > ul a:hover {
+    background-color: var(--ncar-dark-blue) !important;
+    color: var(--orange) !important;
+}
+
+/* Current/active page within expanded group - white bg, dark text, orange border */
+.wy-menu-vertical li.current a.current {
+    background-color: transparent !important;
+    color: var(--space) !important;
+    font-weight: 600;
+    border-left: 3px solid var(--orange);
+}
+
+/* All nested current items - white bg, dark text, orange border */
+.wy-menu-vertical li.current li.current > a {
+    background-color: transparent !important;
+    color: var(--space) !important;
+    font-weight: 600;
+    border-left: 3px solid var(--orange);
+}
+
+/* Expand arrow */
 .wy-menu-vertical li span.toctree-expand {
-  color: #FFF;
+    color: var(--white);
+    opacity: 0.7;
 }
 
-.wy-table-responsive table td {
-    white-space: normal !important;
+
+/* Section headers */
+.wy-menu-vertical header,
+.wy-menu-vertical p.caption {
+    font-weight: 700;
+    color: var(--orange);
+    letter-spacing: 0.4px;
+    margin-top: 18px;
 }
+
+/* =====================================================
+   Main Content Styles
+   ===================================================== */
+
+/* Body text */
+body {
+    font-weight: 400;
+    color: var(--space);
+}
+
+/* Main content area links */
+.wy-nav-content a {
+    color: var(--ncar-blue);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.wy-nav-content a:visited {
+    color: var(--ncar-blue);
+}
+
+.wy-nav-content a:hover {
+    color: var(--orange);
+    text-decoration: underline;
+}
+
+.wy-nav-content a:active {
+    color: var(--orange);
+}
+
+/* =====================================================
+   Table Styles
+   ===================================================== */
+
+/* Responsive table wrapper - horizontal scrolling */
 .wy-table-responsive {
-    overflow: visible !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    margin-bottom: 24px;
+    border: 1px solid var(--light-gray);
+    border-radius: 4px;
 }
 
-
-div.section thead, th
-{
-  background-color: #FFFFFF;    
+/* Table cell text wrapping */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal !important;
+    padding: 8px 12px;
 }
 
-div.section tr.row-odd
-{
-  background-color: #FFFFFF;    
+/* Table styling */
+.wy-table-responsive table {
+    margin: 0;
+    border-collapse: collapse;
+    width: 100%;
 }
 
-footer div[role=contentinfo] { color: #616161; }
-
-a {color: #007FA3; }
-a:visited { color: #1A658F; }
-a:hover, a:active { color: #00797C; }
-
-/* CSS for sphinx-prompt */
-
-pre.highlight {
-    border: 1px solid #e1e4e5;
-    overflow-x: auto;
-    margin: 1px 0 24px 0;
-    padding: 12px 12px;
+/* Table headers */
+.wy-table-responsive table thead th {
+    background-color: var(--space);
+    color: var(--white);
+    font-weight: 600;
+    text-align: left;
+    border-bottom: 2px solid var(--ncar-dark-blue);
 }
 
-/* Tweak css for sphinx_prompt #5281 */
-pre.highlight span[class^="prompt"] {
-    font-size: 12px;
-    line-height: 1.4;
+/* Table rows */
+.wy-table-responsive table tbody tr {
+    border-bottom: 1px solid var(--light-gray);
 }
 
-@font-face{font-family:Poppins;font-style:normal;font-weight:400;src:url("../fonts/Poppins/Poppins-Regular.ttf") format("truetype")}
-@font-face{font-family:Poppins;font-style:normal;font-weight:700;src:url("../fonts/Poppins/Poppins-Bold.ttf") format("truetype")}
-
-@font-face{font-family:Roboto;font-style:normal;font-weight:400;src:url("../fonts/Roboto/Roboto-Regular.ttf") format("truetype")}
-@font-face{font-family:Roboto;font-style:italic;font-weight:400;src:url("../fonts/Roboto/Roboto-Italic.ttf") format("truetype")}
-@font-face{font-family:Roboto;font-style:normal;font-weight:700;src:url("../fonts/Roboto/Roboto-Bold.ttf") format("truetype")}
-@font-face{font-family:Roboto;font-style:italic;font-weight:700;src:url("../fonts/Roboto/Roboto-BoldItalic.ttf") format("truetype")}
-
-.bolditalic {
-  font-weight: bold;
-  font-style: italic;
+.wy-table-responsive table tbody tr:last-child {
+    border-bottom: none;
 }
+
+/* Alternating row colors */
+.wy-table-responsive table tbody tr:nth-child(odd) {
+    background-color: var(--white);
+}
+
+.wy-table-responsive table tbody tr:nth-child(even) {
+    background-color: rgba(241, 240, 238, 0.3);
+}
+
+/* Table hover effect */
+.wy-table-responsive table tbody tr:hover {
+    background-color: rgba(0, 87, 194, 0.05);
+}
+
+/* =====================================================
+   Admonition Styles (Notes, Warnings, etc.)
+   ===================================================== */
+
+/* Note admonition */
+.note,
+.admonition.note {
+    background-color: rgba(0, 87, 194, 0.08);
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+}
+
+.note .admonition-title,
+.admonition.note .admonition-title {
+    background-color: #7fc3f4;
+    color: var(--white);
+    font-weight: 600;
+    padding: 8px 12px;
+    margin: -12px -16px 12px -16px;
+    border-radius: 2px 2px 0 0;
+}
+
+/* Warning admonition */
+.warning,
+.admonition.warning {
+    background-color: rgba(250, 161, 25, 0.08);
+}
+
+.warning .admonition-title,
+.admonition.warning .admonition-title {
+    background-color: var(--orange);
+    color: var(--white);
+}
+
