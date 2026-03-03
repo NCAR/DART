@@ -187,7 +187,7 @@ To view the help, run:
 pyfortran
 ^^^^^^^^^
 
-The pyfortran package provides utilities for working with DART's Fortran codebase.
+The `pyfortran` package provides utilities for working with DART's Fortran codebase.
 
 pyfortran includes a program called ``check_fortran_module_usage.py`` that can be used to determine which subroutines in a Fortran module
 are not being used by any other part of the codebase. It displays subroutines that are written in the module but neither called in the file
