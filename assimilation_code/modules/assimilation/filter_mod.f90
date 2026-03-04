@@ -213,6 +213,9 @@ logical  :: single_file_out = .false. ! all copies written to 1 file
 ! optimization option:
 logical :: compute_posterior   = .true. ! set to false to not compute posterior values
 
+! Output the sequential observation priors from assim_tools for stongly coupled DA
+logical :: output_sequential_prior = .false.
+
 ! Stages to write.  Valid values are:
 ! multi-file:    input, forecast, preassim, postassim, analysis, output
 ! single-file:          forecast, preassim, postassim, analysis, output
@@ -298,6 +301,7 @@ namelist /filter_nml/ async,     &
    perturb_from_single_instance, &
    perturbation_amplitude,       &
    compute_posterior,            &
+   output_sequential_prior,      &
    stages_to_write,              &
    input_state_files,            &
    output_state_files,           &
@@ -467,6 +471,9 @@ endif
 ! Can't output more ensemble members than exist
 if(num_output_state_members > ens_size) num_output_state_members = ens_size
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
+
+! If outputting sequential priors, must output the whole ensemble
+if(output_sequential_prior) num_output_obs_members = ens_size
 
 ! Set up stages to write : input, preassim, postassim, output
 call parse_stages_to_write(stages_to_write)
@@ -901,6 +908,10 @@ AdvanceTime : do
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
       OBS_VAR_END, inflate_only = .false.)
 
+   ! JLA: Strongly coupled development note: At this point, copies 1:ens_size in 
+   ! the obs_ens_handles%copies contains the sequential priors from the assimilation
+   ! of these observations.  Output them to the observation sequence
+
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
 
@@ -1193,7 +1204,7 @@ logical,                     intent(in)    :: do_post
 ! THese are the prior and posterior state output files and the observation sequence
 ! output file which contains both prior and posterior data.
 
-character(len=metadatalength) :: prior_meta_data, posterior_meta_data
+character(len=metadatalength) :: meta_data
 integer :: i, num_obs_copies
 
 ! only PE0 (here task 0) will allocate space for the obs_seq.final
@@ -1215,27 +1226,27 @@ endif
 num_obs_copies = in_obs_copy
 
 num_obs_copies = num_obs_copies + 1
-prior_meta_data = 'prior ensemble mean'
-call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
+meta_data = 'prior ensemble mean'
+call set_copy_meta_data(seq, num_obs_copies, meta_data)
 prior_obs_mean_index = num_obs_copies
 
 if (do_post) then
    num_obs_copies = num_obs_copies + 1
-   posterior_meta_data = 'posterior ensemble mean'
-   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+   meta_data = 'posterior ensemble mean'
+   call set_copy_meta_data(seq, num_obs_copies, meta_data)
    posterior_obs_mean_index = num_obs_copies
 endif
 
 ! Set up obs ensemble spread
 num_obs_copies = num_obs_copies + 1
-prior_meta_data = 'prior ensemble spread'
-call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
+meta_data = 'prior ensemble spread'
+call set_copy_meta_data(seq, num_obs_copies, meta_data)
 prior_obs_spread_index = num_obs_copies
 
 if (do_post) then
    num_obs_copies = num_obs_copies + 1
-   posterior_meta_data = 'posterior ensemble spread'
-   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+   meta_data = 'posterior ensemble spread'
+   call set_copy_meta_data(seq, num_obs_copies, meta_data)
    posterior_obs_spread_index = num_obs_copies
 endif
 
@@ -1251,12 +1262,18 @@ endif
 ! Set up obs ensemble members as requested
 do i = 1, num_output_obs_members
    num_obs_copies = num_obs_copies + 1
-   write(prior_meta_data, '(a21, 1x, i6)') 'prior ensemble member', i
-   call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
+   write(meta_data, '(a21, 1x, i6)') 'prior ensemble member', i
+   call set_copy_meta_data(seq, num_obs_copies, meta_data)
    if (do_post) then
       num_obs_copies = num_obs_copies + 1
-      write(posterior_meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
-      call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+      write(meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
+      call set_copy_meta_data(seq, num_obs_copies, meta_data)
+   endif
+   ! Space for sequential prior ensemble needed for strongly coupled
+   if (output_sequential_prior) then
+      num_obs_copies = num_obs_copies + 1
+      write(meta_data, '(a25, 1x, i6)') 'sequential prior ensemble member', i
+      call set_copy_meta_data(seq, num_obs_copies, meta_data)
    endif
 end do
 
@@ -1335,9 +1352,14 @@ if (my_task == io_task) then
       ! prior values for all requested members
       copies_num_inc = 2 + (1 * num_output_obs_members)
    endif
+   ! Also add in ens_size space if outputting the sequential prior values for strongly coupled
+   if(output_sequential_prior) copies_num_inc = copies_num_inc + num_output_obs_members
+
+! All other tasks don't need additional storage
 else
    copies_num_inc = 0
 endif
+
 
 ! if there are less than 2 incoming qc fields, we will need
 ! to make at least 2 (one for the dummy data qc and one for
