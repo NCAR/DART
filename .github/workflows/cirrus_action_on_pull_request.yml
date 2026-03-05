@@ -1,7 +1,8 @@
-name: Build and run Lorenz 96 on CIRRUS Runners with all compilers available in NCAR HPC Containers
+name: Build and run Lorenz 96 on CIRRUS Runners with NCAR HPC Containers for gfortran and nvhpc
 
 on:
   workflow_dispatch:
+  
   push:
     branches:
       - cirrus_actions
