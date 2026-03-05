@@ -1259,7 +1259,7 @@ if(num_output_obs_members > 10000) then
    call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source)
 endif
 
-! Set up obs ensemble members as requested
+! Set up prior and possiblty posterior obs ensemble members as requested
 do i = 1, num_output_obs_members
    num_obs_copies = num_obs_copies + 1
    write(meta_data, '(a21, 1x, i6)') 'prior ensemble member', i
@@ -1269,13 +1269,18 @@ do i = 1, num_output_obs_members
       write(meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
       call set_copy_meta_data(seq, num_obs_copies, meta_data)
    endif
-   ! Space for sequential prior ensemble needed for strongly coupled
-   if (output_sequential_prior) then
-      num_obs_copies = num_obs_copies + 1
-      write(meta_data, '(a25, 1x, i6)') 'sequential prior ensemble member', i
-      call set_copy_meta_data(seq, num_obs_copies, meta_data)
-   endif
 end do
+
+! Sequential prior ensemble members are currently all at the end to avoid changes to 
+! existing diagnostic software that accesses the prior and posterior members by order rather than metadata
+! Space for sequential prior ensemble needed for strongly coupled
+if (output_sequential_prior) then
+   do i = 1, num_output_obs_members
+         num_obs_copies = num_obs_copies + 1
+         write(meta_data, '(a25, 1x, i6)') 'sequential prior ensemble member', i
+         call set_copy_meta_data(seq, num_obs_copies, meta_data)
+   end do
+endif
 
 
 end subroutine filter_generate_copy_meta_data
