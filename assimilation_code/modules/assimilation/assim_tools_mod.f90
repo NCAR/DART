@@ -614,7 +614,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    call get_obs_values(observation, obs, obs_val_index)
 
    ! Find out who has this observation and where it is
-   call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
+   call get_var_owner_index(obs_ens_handle, int(i,i8), owner, owners_index)
 
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------
