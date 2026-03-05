@@ -1,11 +1,12 @@
 name: Build and run Lorenz 96 on CIRRUS Runners with NCAR HPC Containers for gfortran and nvhpc
 
 on:
-  workflow_dispatch:
-  
+  pull_request:
+    types: [ opened, reopened, synchronize, ready_for_review ]
   push:
     branches:
       - cirrus_actions
+  workflow_dispatch:
 
 jobs:
   # Job 1
