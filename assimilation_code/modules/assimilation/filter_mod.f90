@@ -908,12 +908,15 @@ AdvanceTime : do
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
       OBS_VAR_END, inflate_only = .false.)
 
+   call timestamp_message('After  observation assimilation')
+   call     trace_message('After  observation assimilation')
+
    ! JLA: Strongly coupled development note: At this point, copies 1:ens_size in 
    ! the obs_ens_handles%copies contains the sequential priors from the assimilation
    ! of these observations.  Output them to the observation sequence
-
-   call timestamp_message('After  observation assimilation')
-   call     trace_message('After  observation assimilation')
+   if(output_sequential_prior) &
+      call write_sequential_prior(obs_fwd_op_ens_handle, ens_size, seq, keys, in_obs_copy, &
+       num_obs_in_set, compute_posterior)
 
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -1760,6 +1763,67 @@ endif
 deallocate(obs_temp)
 
 end subroutine obs_space_diagnostics
+
+!-------------------------------------------------------------------------
+
+subroutine write_sequential_prior(obs_fwd_op_ens_handle, ens_size, &
+   seq, keys, in_obs_copy, num_obs_in_set, do_post)
+
+! Write the sequential prior values to an obs_sequence file.
+! There is lots of overlap with obs_space_diagnostics.
+
+type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle
+integer,                 intent(in)    :: ens_size
+integer,                 intent(in)    :: num_obs_in_set
+integer,                 intent(in)    :: keys(num_obs_in_set)
+integer,                 intent(in)    :: in_obs_copy
+type(obs_sequence_type), intent(inout) :: seq
+logical,                 intent(in)    :: do_post
+
+integer               :: j, k, sequential_prior_offset
+integer               :: ivalue, io_task, my_task
+real(r8), allocatable :: obs_temp(:)
+real(r8)              :: rvalue(1)
+
+! this is a query routine to return which task has 
+! logical processing element 0 in this ensemble.
+io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
+my_task = my_task_id()
+
+! Make var complete for get_copy() calls below.
+! Optimize: Could we use a gather instead of a transpose and get copy?
+call all_copies_to_all_vars(obs_fwd_op_ens_handle)
+
+! allocate temp space for sending data only on the task that will
+! write the obs_seq.final file
+if (my_task == io_task) then
+   allocate(obs_temp(num_obs_in_set))
+else ! TJH: this change became necessary when using Intel 19.0.5 ...
+   allocate(obs_temp(1))
+endif
+
+! Compute the offset for where sequential prior copies start
+! in_obs_copy is number of copies in obs sequence that was read in
+! For prior, have ensemble mean and variance, plus the full ensemble
+sequential_prior_offset = in_obs_copy + 2 + ens_size
+! If posterior is being written, need space for those copies, too
+if(do_post) sequential_prior_offset = sequential_prior_offset + 2 + ens_size
+
+! Write the ensemble members
+do k = 1, ens_size
+   call get_copy(io_task, obs_fwd_op_ens_handle, k, obs_temp)
+   if(my_task == io_task) then
+      ivalue = sequential_prior_offset + k
+      do j = 1, obs_fwd_op_ens_handle%num_vars
+         rvalue(1) = obs_temp(j)
+         call replace_obs_values(seq, keys(j), rvalue, ivalue)
+      end do
+   endif
+end do
+
+deallocate(obs_temp)
+
+end subroutine write_sequential_prior
 
 !-------------------------------------------------------------------------
 
