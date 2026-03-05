@@ -618,7 +618,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------
-   if(ens_handle%my_pe == owner) then
+   if(obs_ens_handle%my_pe == owner) then
       ! each task has its own subset of all obs.  if they were converted in the
       ! vertical up above, then we need to broadcast the new values to all the other
       ! tasks so they're computing the right distances when applying the increments.
