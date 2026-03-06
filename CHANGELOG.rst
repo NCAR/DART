@@ -22,6 +22,21 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 6 2026 :: MOM6 clamping. Tag v11.21.1**
+
+MOM6:
+
+  - Add clamping options to model_nml for MOM6
+  - Sets vertical localization coordinate
+  - Bug-fixes:
+
+     - vertical interpolation for thickness was missing first layer thickness
+     - vertical interpolation lev_fract fixed for pseudo-depth
+
+Documentation:
+
+  - pytools documentation added for pyfortran and pyqceff
+
 **February 27 2026 :: pywatershed. Tag v11.21.0**
 
 New features:
