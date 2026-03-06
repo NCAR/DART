@@ -36,7 +36,7 @@
    suppress_grid_info_in_output        = .false.
    custom_routine_to_generate_ensemble = .true.
    fields_to_perturb                   = ''
-   perturbation_amplitude              = 0.0_r8
+   perturbation_amplitude              = 0.0
    using_chemistry                     = .false.
    use_variable_mean_mass              = .false.
    debug_level                         = 0
