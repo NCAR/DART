@@ -1,3 +1,6 @@
+
+.. _ncep_ascii:
+
 PROGRAM create_real_obs
 =======================
 

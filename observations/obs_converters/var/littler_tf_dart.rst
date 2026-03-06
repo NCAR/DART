@@ -1,3 +1,5 @@
+.. _littler_tf_dart:
+
 PROGRAM ``littler_tf_dart``
 ===========================
 

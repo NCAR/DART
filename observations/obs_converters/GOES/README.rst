@@ -1,3 +1,5 @@
+.. _goes:
+
 NOAA GOES-R Series Advanced Baseline Imager (ABI) Level 1b Radiances
 ====================================================================
 

@@ -1,3 +1,6 @@
+
+.. _midas:
+
 PROGRAM ``MIDAS_to_obs``
 ========================
 

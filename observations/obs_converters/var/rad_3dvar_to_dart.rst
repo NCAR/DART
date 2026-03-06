@@ -1,3 +1,5 @@
+.. _rad_3dvar_to_dart:
+
 PROGRAM ``rad_3dvar_to_dart``
 =============================
 

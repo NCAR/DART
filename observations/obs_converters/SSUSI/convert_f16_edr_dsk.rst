@@ -1,3 +1,5 @@
+.. _ssusi:
+
 SSUSI F16 EDR-DSK format to observation sequence converters
 ===========================================================
 

@@ -1,3 +1,5 @@
+.. _tropical_cyclone:
+
 PROGRAM ``tc_to_obs``
 =====================
 
