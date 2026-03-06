@@ -3,14 +3,20 @@
 .. _pytools:
 
 =========================
-DART Python tools
+DART Python Tools
 =========================
-
-Installation
-------------
 
 DART provides a set of Python tools that can be used to work with DART data and models.
 These tools are located in the DART/pytools directory.
+
+Available tools:
+
+* :ref:`ioda2obsq`
+* :ref:`pyqceff`
+* :ref:`pyfortran`
+
+Installation
+------------
 
 We recommend creating a `virtual environment <https://docs.python.org/3/library/venv.html>`__ 
 to install DART Python tools. This helps to keep the DART Python tools and their dependencies 
@@ -152,3 +158,56 @@ The purpose of the ``metadata:`` spec is to have flexibility with the configurat
     The ``ioda2obsq`` tool is under active development and has limited functionality at this time.
     It is expected that more features will be added soon, including support for additional satellite radiance observation types.
     In its current state, it is primarily intended for use with radiosonde and similar conventional observation types, as well as infrared and microwave radiance instruments.
+
+.. _pyqceff:
+
+pyqceff
+^^^^^^^
+
+The `pyqceff` package provides utilities for working with DART's Quantile-Conserving Ensemble Filter Framework (QCEFF) table, which controls
+the QCEFF options.
+
+This python package provides display-qceff-table, a program that prints a summary and details for the QCEFF table CSV files. For more
+information on the QCEFF table, refer to the :ref:`QCEFF` documentation page.
+
+It can be run as follows:
+
+.. code-block:: bash
+
+    display-qceff-table <path_to_csv_file>
+
+To print detailed information for a specific quantity QTY:
+
+.. code-block:: bash
+
+    display-qceff-table --details [QTY] <path_to_csv_file>
+
+To view the help, run:
+
+.. code-block:: bash
+
+    display-qceff-table --help
+
+.. _pyfortran:
+
+pyfortran
+^^^^^^^^^
+
+The `pyfortran` package provides utilities for working with DART's Fortran codebase.
+
+`pyfortran` includes a program called ``check_fortran_module_usage.py`` that can be used to determine which routines in a Fortran module
+are not being used by any other part of the codebase. It displays:
+* Routines that are in the module but neither called in the file nor marked as public
+* Routines from other modules that are declared in the use statements but not actually called in the file.
+
+It can be run as follows:
+
+.. code-block:: bash
+
+    check_fortran_module_usage <path_to_fortran_file>
+
+To view the help, run:
+
+.. code-block:: bash
+
+    check_fortran_module_usage --help

@@ -255,7 +255,6 @@ References
    guide/verifying-installation
 
 .. toctree::
-   :hidden:
    :caption: DART Python tools
 
    guide/pytools
