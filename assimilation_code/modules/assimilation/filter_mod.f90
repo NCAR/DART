@@ -216,6 +216,9 @@ logical :: compute_posterior   = .true. ! set to false to not compute posterior 
 ! Output the sequential observation priors from assim_tools for stongly coupled DA
 logical :: output_sequential_prior = .false.
 
+! Observation sequence file contains sequential prior, do DA without forward operators or increments
+logical :: use_sequential_prior    = .false.
+
 ! Stages to write.  Valid values are:
 ! multi-file:    input, forecast, preassim, postassim, analysis, output
 ! single-file:          forecast, preassim, postassim, analysis, output
@@ -302,6 +305,7 @@ namelist /filter_nml/ async,     &
    perturbation_amplitude,       &
    compute_posterior,            &
    output_sequential_prior,      &
+   use_sequential_prior,         &
    stages_to_write,              &
    input_state_files,            &
    output_state_files,           &
@@ -493,7 +497,10 @@ OBS_MEAN_END         = OBS_MEAN_START + num_groups - 1
 OBS_VAR_START        = OBS_MEAN_START + num_groups
 OBS_VAR_END          = OBS_VAR_START + num_groups - 1
 
+! Get total number of copies in the obs_fwd_op_ens_handle
 TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
+! If using a sequential prior ensemble, need storage for that 
+if(use_sequential_prior) TOTAL_OBS_COPIES = TOTAL_OBS_COPIES + ens_size
 
 !>@todo FIXME turn trace/timestamp calls into:  
 !>
@@ -514,8 +521,13 @@ TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
 call     trace_message('Before setting up space for observations')
 call timestamp_message('Before setting up space for observations')
 
-! Initialize the obs_sequence; every pe gets a copy for now
-call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index, compute_posterior)
+if(use_sequential_prior) then
+   ! Read in the obs_sequence with the prior and sequential prior ensembles
+   call read_sequential_prior(seq, in_obs_copy, obs_val_index, DART_qc_index)
+else
+   ! Initialize the obs_sequence; every pe gets a copy for now
+   call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index, compute_posterior)
+endif
 
 call timestamp_message('After  setting up space for observations')
 call     trace_message('After  setting up space for observations')
@@ -606,7 +618,7 @@ call     trace_message('Before initializing output files')
 call timestamp_message('Before initializing output files')
 
 ! Initialize the output sequences and state files and set their meta data
-call filter_generate_copy_meta_data(seq, in_obs_copy, &
+if(.not. use_sequential_prior) call filter_generate_copy_meta_data(seq, in_obs_copy, &
       prior_obs_mean_index, posterior_obs_mean_index, &
       prior_obs_spread_index, posterior_obs_spread_index, &
       compute_posterior)
@@ -783,6 +795,7 @@ AdvanceTime : do
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
    ! Also need a qc field for copy of each observation
+   !JLA is this needed at all with use_sequential_prior???
    call init_ensemble_manager(qc_ens_handle, ens_size, &
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
@@ -847,13 +860,20 @@ AdvanceTime : do
    ! not the number of copies
 
    ! allocate() space for the prior qc copy
+   ! JLA, is this allocation for prior_qc_copy needed???
    call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
 
-   call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
+   if(use_sequential_prior) then
+      call fill_obs_ens_sequential_prior(obs_fwd_op_ens_handle, seq, ens_size, &
+         num_obs_in_set, keys, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, &
+         OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_VAR_END)
+   else
+      call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
            qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
            OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
            OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
            isprior=.true., prior_qc_copy=prior_qc_copy)
+   endif
 
    call timestamp_message('After  computing prior observation values')
    call     trace_message('After  computing prior observation values')
@@ -886,7 +906,7 @@ AdvanceTime : do
    ! copy ( + others ) is moved to task 0 so task 0 can update seq.
    ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
    ! Do prior observation space diagnostics and associated quality control
-   call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
+   if(.not. use_sequential_prior) call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
            seq, keys, PRIOR_DIAG, num_output_obs_members, in_obs_copy+1, &
            obs_val_index, OBS_KEY_COPY, &
            prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
@@ -982,6 +1002,7 @@ AdvanceTime : do
 
    ! this block recomputes the expected obs values for the obs_seq.final file
 
+   !JLA NEED TO MAKE SURE THIS DOESN"T HAPPEN WHEN USING SEQUENTIAL_PRIOR_OBS
    if (compute_posterior) then
       call     trace_message('Before computing posterior observation values')
       call timestamp_message('Before computing posterior observation values')
@@ -1425,6 +1446,45 @@ endif
 obs_val_index = get_obs_copy_index(seq)
 
 end subroutine filter_setup_obs_sequence
+!-------------------------------------------------------------------------
+
+subroutine read_sequential_prior(seq, num_copies, obs_val_index, DART_qc_index)
+
+! Reads in an observation sequence that includes prior and sequential prior ensembles
+
+type(obs_sequence_type), intent(inout) :: seq
+integer,                 intent(out)   :: num_copies, obs_val_index
+integer,                 intent(out)   :: DART_qc_index
+
+character(len=129) :: obs_seq_read_format
+integer :: obs_seq_file_id
+integer :: num_qc, num_obs, max_num_obs
+integer :: my_task, io_task
+logical :: pre_I_format
+
+
+call read_obs_seq_header(obs_sequence_in_name, num_copies, num_qc, num_obs, max_num_obs, &
+   obs_seq_file_id, obs_seq_read_format, pre_I_format, close_the_file = .true.)
+
+write(*, *) 'copies, qc copies, obs ', num_copies, num_qc, num_obs
+
+! Assume task 0 == pe 0 which is currently true but someday we might want to change.
+io_task = 0
+my_task = my_task_id()
+
+! Read in with enough space for diagnostic output values and add'l qc field(s)
+! ONLY ADD SPACE ON TASK 0.  everyone else just read in the original obs_seq file.
+call read_obs_seq(obs_sequence_in_name, 0, 0, 0, seq)
+
+! Check to be sure we either find an existing dart qc field; fail without
+DART_qc_index = get_obs_dartqc_index(seq)
+
+write(*, *) 'DART qc index is ', DART_qc_index
+
+! Determine which copy has actual obs value and return it.
+obs_val_index = get_obs_copy_index(seq)
+
+end subroutine read_sequential_prior
 
 !-------------------------------------------------------------------------
 
@@ -1824,6 +1884,133 @@ end do
 deallocate(obs_temp)
 
 end subroutine write_sequential_prior
+
+!-------------------------------------------------------------------------
+
+subroutine fill_obs_ens_sequential_prior(obs_fwd_op_ens_handle, seq, ens_size, &
+   num_obs_in_set, keys, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, &
+   OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_VAR_END)
+
+! Moves information from obs_sequence into the obs_fwd_op_ens_handle
+
+type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle
+type(obs_sequence_type), intent(in)    :: seq
+integer,                 intent(in)    :: ens_size
+integer,                 intent(in)    :: num_obs_in_set
+integer,                 intent(in)    :: keys(num_obs_in_set)
+integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
+integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
+integer,                 intent(in)    :: OBS_EXTRA_QC_COPY, OBS_VAR_END
+
+type(obs_type) :: obs
+type(obs_def_type)     :: obs_def
+integer                :: j, k, ivalue, io_task, my_task
+real(r8)               :: real_keys(num_obs_in_set)
+real(r8)               :: rvalue(1)
+real(r8), allocatable  :: obs_temp(:)
+
+! ALSO NEED INDICES FOR THINGS IN THE OBS_SEQ_FILE
+! Cheat for now, but need to automate this
+integer, parameter :: OBS_SEQ_VAL_COPY = 1 
+integer, parameter :: OBS_SEQ_GLOBAL_QC_COPY = 2
+integer, parameter :: OBS_SEQ_ENS_START = 5
+integer            :: OBS_SEQ_SEQUENTIAL_ENS_START
+OBS_SEQ_SEQUENTIAL_ENS_START = ens_size + 5
+
+! This could be done without communication since every task has this obs_sequence
+! It is a quick solution to do it with put_copy sorting out the indexing 
+
+! Which task has logical processing element 0 in this ensemble.
+io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
+my_task = my_task_id()
+
+! Make var complete for put_copy() calls below.
+call all_copies_to_all_vars(obs_fwd_op_ens_handle)
+
+! Allocate temp space for sending data only on task that will
+! write the obs_seq.final file
+if (my_task == io_task) then
+   allocate(obs_temp(num_obs_in_set))
+else ! TJH: this change became necessary when using Intel 19.0.5 ...
+   allocate(obs_temp(1))
+endif
+
+! Copying observation error variance 
+if(my_task == io_task) then
+   do j = 1, obs_fwd_op_ens_handle%num_vars
+      call get_obs_from_key(seq, keys(j), obs)
+      call get_obs_def(obs, obs_def)
+      obs_temp(j) = get_obs_def_error_variance(obs_def) 
+   end do
+endif
+call put_copy(io_task, obs_fwd_op_ens_handle, OBS_ERR_VAR_COPY, obs_temp)
+
+! Copying observation value
+if(my_task == io_task) then
+   do j = 1, obs_fwd_op_ens_handle%num_vars
+      call get_obs_from_key(seq, keys(j), obs)
+      call get_obs_values(obs, rvalue, OBS_SEQ_VAL_COPY)
+      obs_temp(j) = rvalue(1)
+   end do
+endif
+call put_copy(io_task, obs_fwd_op_ens_handle, OBS_VAL_COPY, obs_temp)
+
+! Copying keys; the storage in the type is real
+real_keys = keys
+call put_copy(io_task, obs_fwd_op_ens_handle, OBS_KEY_COPY, real_keys)
+
+! Copying global QC value
+if(my_task == io_task) then
+   do j = 1, obs_fwd_op_ens_handle%num_vars
+      call get_obs_from_key(seq, keys(j), obs)
+      call get_qc(obs, rvalue, OBS_SEQ_GLOBAL_QC_COPY)
+      obs_temp(j) = rvalue(1)
+   end do
+endif
+call put_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
+
+! Extra QC value not currently used
+obs_temp = missing_r8
+call put_copy(io_task, obs_fwd_op_ens_handle, OBS_EXTRA_QC_COPY, obs_temp)
+
+! Getting the prior ensemble
+do k = 1, ens_size
+   ! Copy the regular prior copies, these go at the start of the obs_ens_handle
+   ! JLA: If posteriors are in obs_sequence, indexing is more complex
+   if(my_task == io_task) then
+      do j = 1, obs_fwd_op_ens_handle%num_vars
+         ! Get this observation from sequence
+         call get_obs_from_key(seq, keys(j), obs)
+         call get_obs_values(obs, rvalue, OBS_SEQ_ENS_START - 1 + k)
+         obs_temp(j) = rvalue(1)
+      end do
+   endif
+   ! Implicit assumption that prior ensemble starts at copy 1 in the ens_handle
+   call put_copy(io_task, obs_fwd_op_ens_handle, k, obs_temp)
+end do
+
+! Getting the sequential prior ensemble
+do k = 1, ens_size
+   ! Copy the sequential prior copies, these go at the end of the obs_ens_handle
+   ! CHEATING for now, know that these start at position ens_size + 5 in obs_sequence file
+   ! BUT NOT IF THERE ARE POSTERIORS
+   if(my_task == io_task) then
+      do j = 1, obs_fwd_op_ens_handle%num_vars
+         ! Get this observation from sequence
+         call get_obs_from_key(seq, keys(j), obs)
+         call get_obs_values(obs, rvalue, OBS_SEQ_SEQUENTIAL_ENS_START - 1 + k)
+         obs_temp(j) = rvalue(1)
+      end do
+   endif
+   call put_copy(io_task, obs_fwd_op_ens_handle, OBS_VAR_END + k, obs_temp)
+end do
+
+! Have to go var complete to copy complete
+call all_vars_to_all_copies(obs_fwd_op_ens_handle)
+
+deallocate(obs_temp)
+
+end subroutine fill_obs_ens_sequential_prior
 
 !-------------------------------------------------------------------------
 
