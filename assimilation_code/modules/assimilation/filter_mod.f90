@@ -1532,6 +1532,49 @@ end function get_obs_prior_index
 
 !-------------------------------------------------------------------------
 
+function get_obs_seq_ens_member_index(seq, field, n)
+
+! Finds copy number for field ensemble copy n in observation sequence
+! Field could be 'prior ensemble member', 'sequential prior ensemble member'
+! of 'posterior ensemble member'
+
+type(obs_sequence_type), intent(in) :: seq
+character(len = *),      intent(in) :: field
+integer,                 intent(in) :: n
+integer                             :: get_obs_seq_ens_member_index
+
+integer :: i, ens_num, st_len
+character(len = :), allocatable :: s, st
+character(len = 5) :: s_num
+
+! Determine which copy in sequence has prior ensemble member n
+do i = 1, get_num_copies(seq)
+   get_obs_seq_ens_member_index = i
+   s = get_copy_meta_data(seq, i)
+
+   ! Need to look for field
+   if(index(s, trim(field)) > 0) then
+      st = trim(s)
+      st_len = len(st)
+      s_num = st(st_len -4:st_len)
+      read(s_num, *) ens_num
+      if(n == ens_num) then
+         deallocate(s, st)
+         return 
+      endif
+   endif
+end do
+
+! Falling of end means 'prior mean' not found; not fatal!
+if(allocated(s)) deallocate(s)
+if(allocated(st)) deallocate(st)
+
+get_obs_seq_ens_member_index = -1
+
+end function get_obs_seq_ens_member_index
+
+!-------------------------------------------------------------------------
+
 function get_obs_qc_index(seq)
 
 type(obs_sequence_type), intent(in) :: seq
@@ -1904,18 +1947,10 @@ integer,                 intent(in)    :: OBS_EXTRA_QC_COPY, OBS_VAR_END
 
 type(obs_type) :: obs
 type(obs_def_type)     :: obs_def
-integer                :: j, k, ivalue, io_task, my_task
+integer                :: j, k, ivalue, io_task, my_task, ens_index
 real(r8)               :: real_keys(num_obs_in_set)
 real(r8)               :: rvalue(1)
 real(r8), allocatable  :: obs_temp(:)
-
-! ALSO NEED INDICES FOR THINGS IN THE OBS_SEQ_FILE
-! Cheat for now, but need to automate this
-integer, parameter :: OBS_SEQ_VAL_COPY = 1 
-integer, parameter :: OBS_SEQ_GLOBAL_QC_COPY = 2
-integer, parameter :: OBS_SEQ_ENS_START = 5
-integer            :: OBS_SEQ_SEQUENTIAL_ENS_START
-OBS_SEQ_SEQUENTIAL_ENS_START = ens_size + 5
 
 ! This could be done without communication since every task has this obs_sequence
 ! It is a quick solution to do it with put_copy sorting out the indexing 
@@ -1949,7 +1984,7 @@ call put_copy(io_task, obs_fwd_op_ens_handle, OBS_ERR_VAR_COPY, obs_temp)
 if(my_task == io_task) then
    do j = 1, obs_fwd_op_ens_handle%num_vars
       call get_obs_from_key(seq, keys(j), obs)
-      call get_obs_values(obs, rvalue, OBS_SEQ_VAL_COPY)
+      call get_obs_values(obs, rvalue, get_obs_copy_index(seq))
       obs_temp(j) = rvalue(1)
    end do
 endif
@@ -1963,7 +1998,7 @@ call put_copy(io_task, obs_fwd_op_ens_handle, OBS_KEY_COPY, real_keys)
 if(my_task == io_task) then
    do j = 1, obs_fwd_op_ens_handle%num_vars
       call get_obs_from_key(seq, keys(j), obs)
-      call get_qc(obs, rvalue, OBS_SEQ_GLOBAL_QC_COPY)
+      call get_qc(obs, rvalue, get_obs_dartqc_index(seq))
       obs_temp(j) = rvalue(1)
    end do
 endif
@@ -1975,13 +2010,13 @@ call put_copy(io_task, obs_fwd_op_ens_handle, OBS_EXTRA_QC_COPY, obs_temp)
 
 ! Getting the prior ensemble
 do k = 1, ens_size
+   ens_index = get_obs_seq_ens_member_index(seq, 'prior ensemble member', k)
    ! Copy the regular prior copies, these go at the start of the obs_ens_handle
-   ! JLA: If posteriors are in obs_sequence, indexing is more complex
    if(my_task == io_task) then
       do j = 1, obs_fwd_op_ens_handle%num_vars
          ! Get this observation from sequence
          call get_obs_from_key(seq, keys(j), obs)
-         call get_obs_values(obs, rvalue, OBS_SEQ_ENS_START - 1 + k)
+         call get_obs_values(obs, rvalue, ens_index) 
          obs_temp(j) = rvalue(1)
       end do
    endif
@@ -1991,14 +2026,13 @@ end do
 
 ! Getting the sequential prior ensemble
 do k = 1, ens_size
+   ens_index = get_obs_seq_ens_member_index(seq, 'sequential prior ensemble', k)
    ! Copy the sequential prior copies, these go at the end of the obs_ens_handle
-   ! CHEATING for now, know that these start at position ens_size + 5 in obs_sequence file
-   ! BUT NOT IF THERE ARE POSTERIORS
    if(my_task == io_task) then
       do j = 1, obs_fwd_op_ens_handle%num_vars
          ! Get this observation from sequence
          call get_obs_from_key(seq, keys(j), obs)
-         call get_obs_values(obs, rvalue, OBS_SEQ_SEQUENTIAL_ENS_START - 1 + k)
+         call get_obs_values(obs, rvalue, ens_index)
          obs_temp(j) = rvalue(1)
       end do
    endif
