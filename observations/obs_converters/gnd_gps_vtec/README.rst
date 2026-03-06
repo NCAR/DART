@@ -1,3 +1,5 @@
+.. _gnd_gps_vtec:
+
 GND GPS VTEC
 ============
 

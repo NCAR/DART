@@ -18,8 +18,8 @@ or have values computed by running a model, possibly with a fixed amount
 of simulated noise added. These observations can be used for testing,
 determining the sensitivity of the model to assimilation, and for
 designing new observation systems. The DART system includes several ways
-to create synthetic observations. See the :ref:`programs <programs>`
-section below for more details.
+to create synthetic observations. See :ref:`synthetic_observations`
+for more details.
 
 The DART framework enforces a clean separation between observations and
 the models they are assimilated into. The same observations can be used
@@ -29,7 +29,7 @@ type of observation from its state space values.
 In many cases a single, self-contained program can convert directly from
 the observation location, time, value, and error into the DART format.
 In other cases, especially those linking with a complicated external
-library (e.g. BUFR), there is a two-step process with two programs and
+library (e.g. BUFR), there is a two-step process with two programs and
 an ASCII intermediate file. We are currently leaning towards single-step
 conversions but either approach can be used for new programs.
 
@@ -71,7 +71,7 @@ adapt one of the existing converters here for your own use. Formats read
 by the existing converters include NetCDF, HDF, little-r, text,
 Prepbufr, amongst others.
 
-**See the**  :ref:`programs <programs>` **section below for a list of the
+**See**  :ref:`available_observation_converters` **for a list of the
 current converter programs. It might save you from reinventing the
 wheel.**
 
@@ -166,8 +166,7 @@ single value.
 The instrument error is generally supplied by the instrument maker.
 Sadly, it is frequently surprisingly difficult to find these values. For
 the representativeness error, a set of artificial observations could be
-generated with the
-`perfect_model_obs <../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__
+generated with :ref:`pmo`
 program and an assimilation experiment could be run to generate an
 estimate of the error in the model. In practice however most people make
 an educated guess on the values of the error and then start with a
@@ -304,7 +303,7 @@ that can be generated with the ``advance_time`` program makes this easier to do.
 
 The ``obs_sequence_tool`` can read the input filenames from a separate ascii file.
 This makes generating the filenames easy from a script; it can
-simply concatinate the input filenames echo'd to an ascii file and
+simply concatenate the input filenames echo'd to an ascii file and
 then run the obs_sequence_tool.  The output file can either be set
 by using ``sed`` on the namelist, or a fixed output filename can be used
 and then the file renamed after the tool has run.
@@ -332,7 +331,7 @@ it is easy to find truncated data files.
 
 If converting a large number of files it is also common for computer system
 failures to occur at random times.  File systems fill up, batch jobs exit early,
-power glitches stop programs before they finish.  Look for anomolous observation
+power glitches stop programs before they finish.  Look for anomalous observation
 counts, unexpected first and last times of obs in a file, missing files, files
 with many fewer bytes than others, and anything else you can think of.
 
@@ -345,107 +344,3 @@ half the size of ascii files.  However it greatly increases the effort to
 examine the contents of a file for problems.  Generally we have used the ascii
 format. It is portable between systems of different "endians" (order of bytes
 in a multi-byte number) and can be browsed much more easily.
-
-
-.. _programs:
-
-Converter programs
-==================
-
-The *DART/observations/obs_converters* directory contains a variety of
-converter programs to read various external formats and convert the
-observations into the format required by DART.
-
-The current list of converters (some directories contain multiple
-converters) include:
-
--  ``AIRS``: :doc:`./AIRS/README`
--  ``ARVOR``: :doc:`./ARVOR/readme`
--  ``AURA``: See ``./AURA``
--  ``Aviso+/CMEMS``: :doc:`./AVISO/AVISO`
--  ``Ameriflux``: :doc:`./Ameriflux/level4_to_obs`
--  ``BATS``: :doc:`./BATS/readme`
--  ``CHAMP``: :doc:`./CHAMP/work/README`
--  ``cice``: :doc:`./cice/cice_to_obs`
--  ``CNOFS``: See ``./CNOFS``
--  ``CONAGUA``: :doc:`./CONAGUA/README`
--  ``COSMOS``: :doc:`./COSMOS/COSMOS_to_obs`
--  ``CrocoLake``: :doc:`./CrocoLake/readme`
--  ``DWL``: :doc:`./DWL/dwl_to_obs`
--  ``GMI``: :doc:`./GMI/README`
--  ``GOES``: :doc:`./GOES/README`
--  ``GPSPW``: :doc:`./GPSPW/README`
--  ``GRACE``: See ``./GRACE``
--  ``GSI2DART``: :doc:`./GSI2DART/readme`
--  ``GTSPP``: :doc:`./GTSPP/GTSPP`
--  ``HFradar``: :doc:`./HFradar/readme`
--  ``IODA``: :ref:`ioda2obsq <ioda2obsq>`
--  ``MADIS``: :doc:`./MADIS/MADIS`
--  ``MIDAS``: :doc:`./MIDAS/MIDAS_to_obs`
--  ``MODIS``: :doc:`./MODIS/MOD15A2_to_obs`
--  ``MODIS``: :doc:`./MODIS/MOD29E1D_to_obs`
--  ``MPD``: See ``./MPD``
--  ``NASA_Earthdata``:doc:`./NASA_Earthdata/README`
--  ``NCEP``: (prepbufr-> ascii) :doc:`./NCEP/prep_bufr/prep_bufr`
--  ``NCEP``: (ascii-> obs_seq) :doc:`./NCEP/ascii_to_obs/create_real_obs`
--  ``NSIDC``:doc:`./NSIDC/SMAP_L2_to_obs`
--  ``ROMS``: :doc:`./ROMS/ROMS`
--  ``SIF``: :doc:`./SIF/SIF_to_obs_netcdf`
--  ``SSEC``: :doc:`./SSEC/SSEC`
--  ``SST``: :doc:`./SST/SST`
--  ``ocean color``: :doc:`./ocean_color/README`
--  ``SSUSI``: :doc:`./SSUSI/convert_f16_edr_dsk`
--  ``WOD``: :doc:`./WOD/WOD`
--  ``gnd_gps_vtec``: :doc:`./gnd_gps_vtec/README`
--  ``GPS``: :doc:`./gps/gps`
--  ``ok_mesonet``: :doc:`./ok_mesonet/ok_mesonet`
--  ``QuikSCAT``: :doc:`./quikscat/QuikSCAT`
--  ``Radar``: :doc:`./radar/README`
--  ``snow``: :doc:`./snow/snow_to_obs`
--  ``SVP``: :doc:`./SVP/readme`
--  ``Text``: :doc:`./text/text_to_obs`
--  ``text_GITM``: See ``./text_GITM``
--  ``tpw``: :doc:`./tpw/tpw`
--  ``Tropical Cyclones``: :doc:`./tropical_cyclone/tc_to_obs`
--  ``3DVAR/4DVAR``: :doc:`./var/var`
--  ``Var (little-r)``: :doc:`./var/littler_tf_dart`
--  ``Var (radar)``: :doc:`./var/rad_3dvar_to_dart`
-
-In addition the following external program produces DART observation
-sequence files:
-
--  `Observation Processing And Wind Synthesis
-   (OPAWS) <http://code.google.com/p/opaws/>`__: OPAWS can process NSF NCAR
-   Dorade (sweep) and NSF NCAR EOL Foray (netcdf) radar data. It analyzes
-   (grids) data in either two-dimensions (on the conical surface of each
-   sweep) or three-dimensions (Cartesian). Analyses are output in
-   netcdf, Vis5d, and/or DART (Data Assimilation Research Testbed)
-   formats.
-
-For generating synthetic observations, see the
-`create_obs_sequence <../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html>`__
-program documentation. You can also generate observation files based on
-text input. See the `text_to_obs <text/text_to_obs.html>`__ program
-documentation and even_sphere. Or for simulating a large complex observing system, you
-can use the DART library routines in a Fortran program to compute the
-observation information and have the DART routines write the output
-file.
-
-There are a couple utilities of note:
-
--  `even_sphere <even_sphere/README.html>`__ - a utility for generating
-   a text file of evenly-spaced observation locations that can then be used in a
-   perfect model experiment.
--  `obs_error <obs_error/README.html>`__ - modules that specify observation
-   errors based on what is used by ECMWF and NCEP
-
-
-See the
-`perfect_model <../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html>`__
-program documentation on how to run a model with a set of observations
-that have only locations, types, and times, and have the forward
-operators compute the observation values.
-
-Contact the `DART development group <mailto:dart@ucar.edu>`__ if you
-have observations in a different format that you want to convert. We can
-give you advice and pointers on how to approach writing the code.

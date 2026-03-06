@@ -1,4 +1,4 @@
-.. _gps: 
+.. _gps:
 
 GPS Observations
 ================

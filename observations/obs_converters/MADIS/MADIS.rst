@@ -1,3 +1,5 @@
+.. _madis:
+
 MADIS Data Ingest System
 ========================
 

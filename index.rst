@@ -309,7 +309,6 @@ References
    guide/detailed-structure-obs-seq
    guide/creating-obs-seq-synthetic
    guide/creating-obs-seq-real
-   guide/available-observation-converters
    guide/manipulating-with-obs-sequence-tool
    guide/difference-between-type-and-quantity
    guide/adding-support-new-type
@@ -320,6 +319,7 @@ References
    :caption: Observation Converters
 
    observations/obs_converters/README
+   guide/available-observation-converters
 
 
 .. toctree::

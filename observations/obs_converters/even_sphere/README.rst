@@ -1,3 +1,5 @@
+.. _even_sphere:
+
 ===========
 Even Sphere
 ===========

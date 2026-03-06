@@ -1,3 +1,5 @@
+.. _airs:
+
 AIRS and AMSU
 =============
 

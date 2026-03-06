@@ -1,3 +1,5 @@
+.. _sif:
+
 PROGRAM ``SIF_to_obs_netcdf``
 =============================
 

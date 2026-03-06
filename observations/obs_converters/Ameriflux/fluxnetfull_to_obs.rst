@@ -1,3 +1,5 @@
+.. _fluxnetfull_to_obs:
+
 PROGRAM ``fluxnetfull_to_obs``
 ==============================
 

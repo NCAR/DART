@@ -1,3 +1,5 @@
+.. _pmo:
+
 program ``perfect_model_obs``
 =============================
 

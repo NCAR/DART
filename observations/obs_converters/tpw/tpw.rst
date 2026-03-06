@@ -1,3 +1,5 @@
+.. _tpw:
+
 Total Precipitable Water Observations
 =====================================
 
