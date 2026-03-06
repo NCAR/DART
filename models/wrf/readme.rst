@@ -57,12 +57,10 @@ searched first, then ``wrfinput_d03``, ``wrfinput_d02``, and finally
 
 .. Important::
    
-   Although the model interface code is compatible with multiple domains, the 
-   supporting `shell scripts <https://github.com/NCAR/DART/tree/main/models/wrf/shell_scripts>`__
-   and WRF-DART tutorial are currently  designed for a single domain and will
-   require some modifications for multiple (nested) domain functionality. If you
-   need help with these modifications please contact DART support.
-
+   The model interface code and ` bash shell scripting <https://github.com/NCAR/DART/tree/main/models/wrf/shell_scripts>`__ are compatible for both single and mutliple domains.
+   However, prior to DART release v11.20.*, the shell scripting was only compatible with a single
+   domain.  If you are working with multiple domains make sure you are using the proper
+   DART version.
 
 In summary, the forward operator is computed from the first domain grid (searching from
 finest grid to coarsest grid) that contains the lat/lon of the observation. During the
