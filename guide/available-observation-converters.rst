@@ -1,3 +1,5 @@
+.. _available_observation_converters:
+
 Available observation converter programs
 ========================================
 
@@ -81,6 +83,7 @@ Contact the `DART development group <mailto:dart@ucar.edu>`__ if you
 have observations in a different format that you want to convert. We can
 give you advice and pointers on how to approach writing the code.
 
+.. _synthetic_observations:
 
 Synthetic observations
 --------------------------
