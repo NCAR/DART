@@ -654,6 +654,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          obs_prior = obs_ens_handle%copies(1:ens_size, owners_index)
       endif IF_QC_IS_OKAY
 
+      ! Replace the obs_prior with the input sequetial_obs_prior at this point
+      siz = size(obs_ens_handle%copies, 1) 
+      if(use_sequential_prior) obs_prior = obs_ens_handle%copies(siz - ens_size + 1: siz, owners_index)
+
       !Broadcast the info from this obs to all other processes
       ! orig_obs_prior_mean and orig_obs_prior_var only used with adaptive inflation
       ! my_inflate and my_inflate_sd only used with single state space inflation
@@ -685,10 +689,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (is_doing_vertical_conversion) &
       call set_vertical(base_obs_loc, vertvalue_obs_in_localization_coord, whichvert_obs_in_localization_coord)
 
-   ! Replace the obs_prior with the input sequetial_obs_prior at this point
-   siz = size(obs_ens_handle%copies, 1) 
-   if(use_sequential_prior) obs_prior = obs_ens_handle%copies(siz - ens_size + 1: siz, i)
-
    ! Compute observation space increments for each group
    do group = 1, num_groups
       grp_bot = grp_beg(group); grp_top = grp_end(group)
@@ -696,14 +696,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          obs_err_var, base_obs_kind, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
          my_inflate_sd, net_a(group))
       obs_post(grp_bot:grp_top) = obs_prior(grp_bot:grp_top) + obs_inc(grp_bot:grp_top)
-
-
-! JLA TESTING VALUES OF SEQUENTIAL PRIOR WHICH ARE HOPED TO DUPLICATE obs_prior at this point
-!!!write(*, *) 'Sequential ', i
-!!!write(*, *) 'siz ', siz - ens_size + 1, siz, ens_size + 8, 2*ens_size + 7
-!!!write(*, *) 'obs_ens_handle', obs_ens_handle%copies(siz - ens_size + 1: siz, i) - obs_prior(1:ens_size)
-
-
 
       ! Convert both the prior and posterior to probit space (efficiency for prior???)
       ! Running probit space with groups needs to be studied more carefully
@@ -823,7 +815,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    end do STATE_UPDATE
 
    if(.not. inflate_only .or. .not. use_sequential_prior) then
-   !!!if(.not. inflate_only) then
       ! Now everybody updates their obs priors (only ones after this one)
       OBS_UPDATE: do j = 1, num_close_obs
          obs_index = close_obs_ind(j)
