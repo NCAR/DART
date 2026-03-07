@@ -310,7 +310,7 @@ subroutine filter_assim(ens_handle, obs_ens_handle, obs_seq, keys,           &
    ens_size, num_groups, obs_val_index, inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
    ENS_INF_COPY, ENS_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY,          &
    OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START,            &
-   OBS_PRIOR_VAR_END, inflate_only)
+   OBS_PRIOR_VAR_END, use_sequential_prior, inflate_only)
 
 type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
 type(obs_sequence_type),     intent(in)    :: obs_seq
@@ -326,6 +326,7 @@ integer,                     intent(in)    :: ENS_INF_SD_COPY
 integer,                     intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
 integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
+logical,                     intent(in)    :: use_sequential_prior
 logical,                     intent(in)    :: inflate_only
 
 ! changed the ensemble sized things here to allocatable
@@ -346,7 +347,7 @@ integer(i8) :: state_index
 integer(i8), allocatable :: my_state_indx(:)
 integer(i8), allocatable :: my_obs_indx(:)
 
-integer :: my_num_obs, i, j, owner, owners_index, my_num_state, ierr
+integer :: my_num_obs, i, j, owner, owners_index, my_num_state, ierr, siz
 integer :: obs_mean_index, obs_var_index
 integer :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
 integer :: num_close_obs, obs_index, num_close_states
@@ -477,18 +478,22 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 ! do the forward operator calculation
 call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, obs_time)
 
-if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
-   ! convert the vertical of all my observations to the localization coordinate
-   if (obs_ens_handle%my_num_vars > 0) then
-      call convert_vertical_obs(ens_handle, obs_ens_handle%my_num_vars, my_obs_loc, &
+! JLA; The conversion would have been done the first time around. But it has not been saved. 
+! It can't be repeated here because obs could be from a different model if use_sequential_prior
+if(.not. use_sequential_prior) then
+   if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
+      ! convert the vertical of all my observations to the localization coordinate
+      if (obs_ens_handle%my_num_vars > 0) then
+         call convert_vertical_obs(ens_handle, obs_ens_handle%my_num_vars, my_obs_loc, &
                                 my_obs_kind, my_obs_type, get_vertical_localization_coord(), vstatus)
-      do i = 1, obs_ens_handle%my_num_vars
-         if (good_dart_qc(nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)))) then
-            !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
-            if (vstatus(i) /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
-         endif
-      enddo
-   endif 
+         do i = 1, obs_ens_handle%my_num_vars
+            if (good_dart_qc(nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)))) then
+               !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
+               if (vstatus(i) /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
+            endif
+         enddo
+      endif 
+   endif
 endif
 
 ! Get info on my number and indices for state
@@ -622,7 +627,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! each task has its own subset of all obs.  if they were converted in the
       ! vertical up above, then we need to broadcast the new values to all the other
       ! tasks so they're computing the right distances when applying the increments.
-      if (is_doing_vertical_conversion) then
+      if (is_doing_vertical_conversion .and. .not. use_sequential_prior) then
          vertvalue_obs_in_localization_coord = query_location(my_obs_loc(owners_index), "VLOC")
          whichvert_obs_in_localization_coord = query_location(my_obs_loc(owners_index), "WHICH_VERT")
       else
@@ -680,6 +685,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (is_doing_vertical_conversion) &
       call set_vertical(base_obs_loc, vertvalue_obs_in_localization_coord, whichvert_obs_in_localization_coord)
 
+   ! Replace the obs_prior with the input sequetial_obs_prior at this point
+   siz = size(obs_ens_handle%copies, 1) 
+   if(use_sequential_prior) obs_prior = obs_ens_handle%copies(siz - ens_size + 1: siz, i)
+
    ! Compute observation space increments for each group
    do group = 1, num_groups
       grp_bot = grp_beg(group); grp_top = grp_end(group)
@@ -687,6 +696,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          obs_err_var, base_obs_kind, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
          my_inflate_sd, net_a(group))
       obs_post(grp_bot:grp_top) = obs_prior(grp_bot:grp_top) + obs_inc(grp_bot:grp_top)
+
+
+! JLA TESTING VALUES OF SEQUENTIAL PRIOR WHICH ARE HOPED TO DUPLICATE obs_prior at this point
+!!!write(*, *) 'Sequential ', i
+!!!write(*, *) 'siz ', siz - ens_size + 1, siz, ens_size + 8, 2*ens_size + 7
+!!!write(*, *) 'obs_ens_handle', obs_ens_handle%copies(siz - ens_size + 1: siz, i) - obs_prior(1:ens_size)
+
+
 
       ! Convert both the prior and posterior to probit space (efficiency for prior???)
       ! Running probit space with groups needs to be studied more carefully
@@ -805,7 +822,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
    end do STATE_UPDATE
 
-   if(.not. inflate_only) then
+   if(.not. inflate_only .or. .not. use_sequential_prior) then
+   !!!if(.not. inflate_only) then
       ! Now everybody updates their obs priors (only ones after this one)
       OBS_UPDATE: do j = 1, num_close_obs
          obs_index = close_obs_ind(j)
