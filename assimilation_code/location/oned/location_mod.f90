@@ -15,8 +15,7 @@ use ensemble_manager_mod, only : ensemble_type
 use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
                                  get_vertical_localization_coord, &
                                  set_vertical_localization_coord, &
-                                 do_strongly_coupled_localization, &
-                                 get_close_state_strongly_coupled
+                                 do_strongly_coupled_localization
 
 implicit none
 private
@@ -439,6 +438,26 @@ call get_close(gc, base_loc, base_type, locs, loc_qtys, &
                num_close, close_ind, dist, ensemble_handle)
 
 end subroutine get_close_state
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_state_strongly_coupled(gc, base_loc, base_type, &
+   locs, loc_qtys, loc_indx, num_close, close_ind, dist, ensemble_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)  :: loc_indx(:) 
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ensemble_handle
+
+write(errstring,*)'Call to get_close_state_stongly_coupled in oned/location_mod.f90 &
+   should never happen: Contact DAReS Team '
+call error_handler(E_ERR, 'get_close_state_strongly_coupled', errstring, source)
+
+
+end subroutine get_close_state_strongly_coupled
 
 !----------------------------------------------------------------------------
 

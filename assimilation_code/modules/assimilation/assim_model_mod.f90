@@ -106,7 +106,9 @@ call model_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, ens_handle)
 
 ! If strongly coupled localization is being applied, compute it
-if(do_strongly_coupled_localization()) call get_close_state_strongly_coupled()
+if(do_strongly_coupled_localization()) &
+   call get_close_state_strongly_coupled(gc, base_loc, base_type, locs, &
+      loc_qtys, loc_indx, num_close, close_ind, dist, ens_handle)
 
 ! Vertical localization MUST be off in threed-sphere when doing strongly-coupled localization
 ! Can force vertical localization to be off if doing two different components

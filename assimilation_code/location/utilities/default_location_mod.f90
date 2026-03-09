@@ -18,7 +18,7 @@ private
 
 public :: has_vertical_choice, vertical_localization_on, &
           get_vertical_localization_coord, set_vertical_localization_coord, &
-          do_strongly_coupled_localization, get_close_state_strongly_coupled
+          do_strongly_coupled_localization
 
 integer :: location_vertical_localization_coord = 0
 
@@ -93,12 +93,6 @@ logical :: do_strongly_coupled_localization
 do_strongly_coupled_localization = .false.
 
 end function do_strongly_coupled_localization
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_state_strongly_coupled()
-
-end subroutine get_close_state_strongly_coupled
 
 !----------------------------------------------------------------------------
 
