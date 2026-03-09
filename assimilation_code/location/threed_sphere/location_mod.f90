@@ -43,7 +43,8 @@ public :: location_type, get_location, set_location, &
           set_vertical, is_vertical, get_vertical_localization_coord, get_close, &
           set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
           VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
-          VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type
+          VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type, &
+          do_strongly_coupled_localization, get_close_state_strongly_coupled
 
 
 character(len=*), parameter :: source = 'threed_sphere/location_mod.f90'
@@ -212,6 +213,9 @@ real(r8) :: special_vert_normalization_heights(MAX_ITEMS)
 real(r8) :: special_vert_normalization_levels(MAX_ITEMS)
 real(r8) :: special_vert_normalization_scale_heights(MAX_ITEMS)
 
+! Turn on strongly coupled get_close computation
+logical :: strongly_coupled = .false.
+
 
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
    vert_normalization_height, vert_normalization_level,               &
@@ -219,7 +223,7 @@ namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
    output_box_info, print_box_level, &
    special_vert_normalization_obs_types, special_vert_normalization_pressures, &
    special_vert_normalization_heights, special_vert_normalization_levels, &
-   special_vert_normalization_scale_heights
+   special_vert_normalization_scale_heights, strongly_coupled
 
 
 !-----------------------------------------------------------------
@@ -1357,6 +1361,16 @@ end subroutine get_close_init
 
 !----------------------------------------------------------------------------
 
+function do_strongly_coupled_localization()
+
+logical do_strongly_coupled_localization
+
+do_strongly_coupled_localization = strongly_coupled
+
+end function do_strongly_coupled_localization
+
+!----------------------------------------------------------------------------
+
 subroutine get_close_destroy(gc)
 
 type(get_close_type), intent(inout) :: gc
@@ -1621,6 +1635,26 @@ endif
 !--------------------End of verify by comparing to exhaustive search --------------
 
 end subroutine get_close
+
+
+!--------------------------------------------------------------------------
+
+subroutine get_close_state_strongly_coupled(gc, base_loc, base_type, &
+   locs, loc_qtys, loc_indx, num_close, close_ind, dist, ensemble_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)  :: loc_indx(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ensemble_handle
+
+! Template for applying localization for strongly coupled 
+
+
+end subroutine get_close_state_strongly_coupled
+
 
 !--------------------------------------------------------------------------
 

@@ -94,7 +94,7 @@ subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
 ! strongly-coupled localization in threed_sphere models. 
    
 type(get_close_type),          intent(in)  :: gc
-type(location_type),           intent(in)  :: base_loc, locs(:)
+type(location_type),           intent(inout)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
 integer(i8),                   intent(in)  :: loc_indx(:)
 integer,                       intent(out) :: num_close, close_ind(:)
