@@ -229,6 +229,32 @@ test_kde_dist
 test_window
 test_force_bounds
 test_parse_variables
+correl_error
+full_error
+obs_sampling_err
+sampling_error
+sys_sim101
+sys_sim101a
+sys_sim102
+sys_sim102b
+sys_sim103
+sys_sim104
+sys_sim104b
+sys_sim105
+sys_sim2
+sys_sim201
+sys_sim202
+sys_sim203
+sys_sim3
+sys_sim301
+sys_sim302
+sys_sim4
+sys_sim401
+sys_sim402
+sys_sim5
+sys_sim501
+sys_sim502
+test_sampling_err_table
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables
