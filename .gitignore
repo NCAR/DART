@@ -102,6 +102,12 @@ aether_to_dart
 dart_to_aether
 test_aether_grid
 create_identity_streamflow_obs
+create_obs_grid
+obs_data_denial
+obs_info
+obs_remove_dups
+obs_sort
+obs_timejitter
 
 # Observation converter exectutables
 convert_aviso
