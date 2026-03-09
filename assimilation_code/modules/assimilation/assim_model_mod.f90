@@ -1,4 +1,3 @@
-! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
@@ -10,7 +9,7 @@
 
 module assim_model_mod
 
-use    types_mod, only : r8
+use    types_mod, only : r8, i8
 
 use time_manager_mod, only : time_type,                                            &
                              operator(<), operator(>), operator(+), operator(-),   &
@@ -23,10 +22,17 @@ use     model_mod, only : get_model_size, static_init_model, get_state_meta_data
                           get_model_time_step => shortest_time_between_assimilations, &
                           shortest_time_between_assimilations,                     &
                           init_conditions, init_time, adv_1step, end_model,        &
-                          pert_model_copies, get_close_obs, get_close_state,       &
+                          pert_model_copies, get_close_obs,                        &
+                          model_get_close_state => get_close_state,                &
                           convert_vertical_obs, convert_vertical_state,            &
                           interpolate => model_interpolate,                        &
                           read_model_time, write_model_time
+
+use ensemble_manager_mod, only : ensemble_type
+
+use location_mod, only  : get_close_type, location_type,    &
+                          do_strongly_coupled_localization, &
+                          get_close_state_strongly_coupled
 
 implicit none
 private
@@ -75,6 +81,39 @@ module_initialized = .true.
 call static_init_model()
 
 end subroutine static_init_assim_model
+
+
+
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, ens_handle)
+!---------------------------------------------------------------------
+!
+! Allows assim_model to handle get_close computations by modifying the results
+! of the model_mod get_close_state or by doing something completely independent.
+! Initially used for localization across Earth system components for 
+! strongly-coupled localization in threed_sphere models. 
+   
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)  :: loc_indx(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ens_handle
+
+! Call the model_mod get_close_state to get horizontal distance
+call model_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, ens_handle)
+
+! If strongly coupled localization is being applied, compute it
+if(do_strongly_coupled_localization()) call get_close_state_strongly_coupled()
+
+! Vertical localization MUST be off in threed-sphere when doing strongly-coupled localization
+! Can force vertical localization to be off if doing two different components
+! Will have to specify the different components in the threed-sphere localization
+! module. Intercept there.
+
+end subroutine get_close_state
 
 
 function get_closest_state_time_to(model_time, given_time)

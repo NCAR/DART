@@ -14,7 +14,9 @@ use       random_seq_mod, only : random_seq_type, init_random_seq, random_unifor
 use ensemble_manager_mod, only : ensemble_type
 use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
                                  get_vertical_localization_coord, &
-                                 set_vertical_localization_coord
+                                 set_vertical_localization_coord, &
+                                 do_strongly_coupled_localization, &
+                                 get_close_state_strongly_coupled
 
 implicit none
 private
@@ -26,7 +28,8 @@ public :: location_type, get_location, set_location, &
           get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
           operator(==), operator(/=), get_dist, has_vertical_choice, vertical_localization_on, &
           set_vertical, is_vertical, get_vertical_localization_coord, &
-          set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state
+          set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
+          do_strongly_coupled_localization, get_close_state_strongly_coupled
 
 character(len=*), parameter :: source = 'oned/location_mod.f90'
 
