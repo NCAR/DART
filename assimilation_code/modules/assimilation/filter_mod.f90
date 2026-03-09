@@ -926,7 +926,7 @@ AdvanceTime : do
       ENS_MEAN_COPY, ENS_SD_COPY, &
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
-      OBS_VAR_END, inflate_only = .false.)
+      OBS_VAR_END, use_sequential_prior, inflate_only = .false.)
 
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
@@ -1062,7 +1062,8 @@ AdvanceTime : do
                  ens_size, num_groups, obs_val_index, post_inflate, &
                  ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
                  OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, &
-                 OBS_VAR_START, OBS_VAR_END, inflate_only = .true.)
+                 OBS_VAR_START, OBS_VAR_END, use_sequential_prior = .false., &
+                 inflate_only = .true.)
 
          call timestamp_message('After  computing posterior state space inflation')
          call     trace_message('After  computing posterior state space inflation')
