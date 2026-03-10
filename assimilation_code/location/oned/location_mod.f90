@@ -9,13 +9,14 @@ module location_mod
 ! allowing an arbitrary real domain size at some point.
 
 use            types_mod, only : r8, MISSING_R8, i8
-use        utilities_mod, only : error_handler, E_ERR, ascii_file_format
+use        utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
+                                 nmlfileunit, find_namelist_in_file, &
+                                 check_namelist_read, do_nml_file, do_nml_term
 use       random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use ensemble_manager_mod, only : ensemble_type
 use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
                                  get_vertical_localization_coord, &
-                                 set_vertical_localization_coord, &
-                                 do_strongly_coupled_localization
+                                 set_vertical_localization_coord
 
 implicit none
 private
@@ -64,15 +65,33 @@ interface set_location
    module procedure set_location_array
 end interface set_location
 
+!-----------------------------------------------------------------
+! Namelist with default values
+! Turn on strongly coupled get_close_computation
+logical :: strongly_coupled = .false.
+
+namelist /location_nml/ strongly_coupled
+
 contains
 
 !----------------------------------------------------------------------------
 
 subroutine initialize_module
+
+integer :: iunit, io
  
 if (module_initialized) return
 
 module_initialized = .true.
+
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "location_nml", iunit)
+read(iunit, nml = location_nml, iostat = io)
+call check_namelist_read(iunit, io, "location_nml")
+
+! Write the namelist values to the log file
+if(do_nml_file()) write(nmlfileunit, nml=location_nml)
+if(do_nml_term()) write(     *     , nml=location_nml)
 
 end subroutine initialize_module
 
@@ -448,14 +467,17 @@ type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(in)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
 integer(i8),                   intent(in)  :: loc_indx(:) 
-integer,                       intent(out) :: num_close, close_ind(:)
-real(r8),            optional, intent(out) :: dist(:)
+integer,                       intent(inout) :: num_close, close_ind(:)
+real(r8),            optional, intent(inout) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ensemble_handle
 
-write(errstring,*)'Call to get_close_state_stongly_coupled in oned/location_mod.f90 &
-   should never happen: Contact DAReS Team '
-call error_handler(E_ERR, 'get_close_state_strongly_coupled', errstring, source)
+! The extra distance for 'crossing the model boundary'
+real(r8), parameter :: extra_distance = 0.5
 
+! Simple demonstration of low order model coupling
+! Make distance 'across the boundary' an extra addition
+! Could update num_close and close_ind for additional efficiency
+dist = dist + extra_distance
 
 end subroutine get_close_state_strongly_coupled
 
@@ -589,6 +611,18 @@ integer,             intent(out)   :: status
 status = 0
 
 end subroutine convert_vertical_state
+
+!----------------------------------------------------------------------------
+
+function do_strongly_coupled_localization()
+
+logical do_strongly_coupled_localization
+
+do_strongly_coupled_localization = strongly_coupled
+          
+end function do_strongly_coupled_localization
+          
+!----------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------
 ! end of location/oned/location_mod.f90
