@@ -215,6 +215,7 @@ logical :: compute_posterior   = .true. ! set to false to not compute posterior 
 
 ! Output the sequential observation priors from assim_tools for stongly coupled DA
 logical :: output_sequential_prior = .false.
+logical :: output_sequential_posterior = .false.
 
 ! Observation sequence file contains sequential prior, do DA without forward operators or increments
 logical :: use_sequential_prior    = .false.
@@ -305,6 +306,7 @@ namelist /filter_nml/ async,     &
    perturbation_amplitude,       &
    compute_posterior,            &
    output_sequential_prior,      &
+   output_sequential_posterior,  &
    use_sequential_prior,         &
    stages_to_write,              &
    input_state_files,            &
@@ -476,8 +478,8 @@ endif
 if(num_output_state_members > ens_size) num_output_state_members = ens_size
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
-! If outputting sequential priors, must output the whole ensemble
-if(output_sequential_prior) num_output_obs_members = ens_size
+! If outputting sequential priors and posteriors, must output the whole ensemble
+if(output_sequential_prior .or. output_sequential_posterior) num_output_obs_members = ens_size
 
 ! Set up stages to write : input, preassim, postassim, output
 call parse_stages_to_write(stages_to_write)
@@ -935,8 +937,8 @@ AdvanceTime : do
    ! the obs_ens_handles%copies contains the sequential priors from the assimilation
    ! of these observations.  Output them to the observation sequence
    if(output_sequential_prior) &
-      call write_sequential_prior(obs_fwd_op_ens_handle, ens_size, seq, keys, in_obs_copy, &
-       num_obs_in_set, compute_posterior)
+      call write_sequential_prior_post(obs_fwd_op_ens_handle, ens_size, seq, keys, in_obs_copy, &
+       num_obs_in_set, compute_posterior, this_is_posterior = .false.)
 
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -1068,9 +1070,15 @@ AdvanceTime : do
          call timestamp_message('After  computing posterior state space inflation')
          call     trace_message('After  computing posterior state space inflation')
 
+         ! JLA: Strongly coupled development note: At this point, copies 1:ens_size in 
+         ! the obs_ens_handles%copies contains the sequential posterriors from the assimilation
+         ! of these observations.  Output them to the observation sequence
+         if(output_sequential_posterior) &
+            call write_sequential_prior_post(obs_fwd_op_ens_handle, ens_size, seq, keys, in_obs_copy, &
+             num_obs_in_set, compute_posterior, this_is_posterior = .true.)
+
          ! recalculate standard deviation since this was overwritten in filter_assim
          call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-
 
       endif  ! sd >= 0 or sd from restart file
    endif  ! if doing state space posterior inflate
@@ -1296,7 +1304,7 @@ do i = 1, num_output_obs_members
    endif
 end do
 
-! Sequential prior ensemble members are currently all at the end to avoid changes to 
+! Sequential prior  and post ensemble members are currently all at the end to avoid changes to 
 ! existing diagnostic software that accesses the prior and posterior members by order rather than metadata
 ! Space for sequential prior ensemble needed for strongly coupled
 if (output_sequential_prior) then
@@ -1307,6 +1315,14 @@ if (output_sequential_prior) then
    end do
 endif
 
+! Space for sequential posterior ensemble needed for strongly coupled
+if (output_sequential_posterior) then
+   do i = 1, num_output_obs_members
+         num_obs_copies = num_obs_copies + 1
+         write(meta_data, '(a25, 1x, i6)') 'sequential posterior ensemble member', i
+         call set_copy_meta_data(seq, num_obs_copies, meta_data)
+   end do
+endif
 
 end subroutine filter_generate_copy_meta_data
 
@@ -1382,8 +1398,10 @@ if (my_task == io_task) then
       ! prior values for all requested members
       copies_num_inc = 2 + (1 * num_output_obs_members)
    endif
-   ! Also add in ens_size space if outputting the sequential prior values for strongly coupled
+   ! Add in ens_size space if outputting the sequential prior values for strongly coupled
    if(output_sequential_prior) copies_num_inc = copies_num_inc + num_output_obs_members
+   ! Add in ens_size space if outputting the sequential posterior values for strongly coupled
+   if(output_sequential_posterior) copies_num_inc = copies_num_inc + num_output_obs_members
 
 ! All other tasks don't need additional storage
 else
@@ -1870,8 +1888,8 @@ end subroutine obs_space_diagnostics
 
 !-------------------------------------------------------------------------
 
-subroutine write_sequential_prior(obs_fwd_op_ens_handle, ens_size, &
-   seq, keys, in_obs_copy, num_obs_in_set, do_post)
+subroutine write_sequential_prior_post(obs_fwd_op_ens_handle, ens_size, &
+   seq, keys, in_obs_copy, num_obs_in_set, do_post, this_is_posterior)
 
 ! Write the sequential prior values to an obs_sequence file.
 ! There is lots of overlap with obs_space_diagnostics.
@@ -1882,9 +1900,9 @@ integer,                 intent(in)    :: num_obs_in_set
 integer,                 intent(in)    :: keys(num_obs_in_set)
 integer,                 intent(in)    :: in_obs_copy
 type(obs_sequence_type), intent(inout) :: seq
-logical,                 intent(in)    :: do_post
+logical,                 intent(in)    :: do_post, this_is_posterior
 
-integer               :: j, k, sequential_prior_offset
+integer               :: j, k, sequential_offset
 integer               :: ivalue, io_task, my_task
 real(r8), allocatable :: obs_temp(:)
 real(r8)              :: rvalue(1)
@@ -1906,18 +1924,22 @@ else ! TJH: this change became necessary when using Intel 19.0.5 ...
    allocate(obs_temp(1))
 endif
 
-! Compute the offset for where sequential prior copies start
+! Compute the offset for where sequential prior/post copies start
 ! in_obs_copy is number of copies in obs sequence that was read in
 ! For prior, have ensemble mean and variance, plus the full ensemble
-sequential_prior_offset = in_obs_copy + 2 + ens_size
-! If posterior is being written, need space for those copies, too
-if(do_post) sequential_prior_offset = sequential_prior_offset + 2 + ens_size
+sequential_offset = in_obs_copy + 2 + ens_size
+! If regulare posterior is being written, need space for those copies, too
+if(do_post) sequential_offset = sequential_offset + 2 + ens_size
+
+! If this is sequential posterior being written, add in space used by sequential prior
+if(output_sequential_prior .and. this_is_posterior) &
+   sequential_offset = sequential_offset + ens_size
 
 ! Write the ensemble members
 do k = 1, ens_size
    call get_copy(io_task, obs_fwd_op_ens_handle, k, obs_temp)
    if(my_task == io_task) then
-      ivalue = sequential_prior_offset + k
+      ivalue = sequential_offset + k
       do j = 1, obs_fwd_op_ens_handle%num_vars
          rvalue(1) = obs_temp(j)
          call replace_obs_values(seq, keys(j), rvalue, ivalue)
@@ -1927,7 +1949,7 @@ end do
 
 deallocate(obs_temp)
 
-end subroutine write_sequential_prior
+end subroutine write_sequential_prior_post
 
 !-------------------------------------------------------------------------
 
