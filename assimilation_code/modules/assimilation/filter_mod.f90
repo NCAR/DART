@@ -213,9 +213,9 @@ logical  :: single_file_out = .false. ! all copies written to 1 file
 ! optimization option:
 logical :: compute_posterior   = .true. ! set to false to not compute posterior values
 
-! Output the sequential observation priors from assim_tools for stongly coupled DA
-logical :: output_sequential_prior = .false.
-logical :: output_sequential_posterior = .false.
+! Output the sequential observation priors and posteriors (if available)
+! from assim_tools for stongly coupled DA
+logical :: output_sequential_prior_post = .false.
 
 ! Observation sequence file contains sequential prior, do DA without forward operators or increments
 logical :: use_sequential_prior    = .false.
@@ -305,8 +305,7 @@ namelist /filter_nml/ async,     &
    perturb_from_single_instance, &
    perturbation_amplitude,       &
    compute_posterior,            &
-   output_sequential_prior,      &
-   output_sequential_posterior,  &
+   output_sequential_prior_post, &
    use_sequential_prior,         &
    stages_to_write,              &
    input_state_files,            &
@@ -364,7 +363,7 @@ type(file_info_type) :: file_info_analysis
 type(file_info_type) :: file_info_output
 type(file_info_type) :: file_info_all
 
-logical :: all_gone, allow_missing
+logical :: all_gone, allow_missing, do_adaptive_post_inflate
 
 real(r8), allocatable   :: prior_qc_copy(:)
 
@@ -434,6 +433,8 @@ call adaptive_inflate_init(post_inflate, &
                            inf_sd_lower_bound(POSTERIOR_INF), &
                            inf_sd_max_change(POSTERIOR_INF), &
                            allow_missing, 'Posterior')
+! Will an adaptive posterior inflation be done (not relaxation to prior spread)
+do_adaptive_post_inflate = do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate))
 
 if (do_output()) then
    if (inf_flavor(PRIOR_INF) > NO_INFLATION .and. &
@@ -479,7 +480,7 @@ if(num_output_state_members > ens_size) num_output_state_members = ens_size
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
 ! If outputting sequential priors and posteriors, must output the whole ensemble
-if(output_sequential_prior .or. output_sequential_posterior) num_output_obs_members = ens_size
+if(output_sequential_prior_post) num_output_obs_members = ens_size
 
 ! Set up stages to write : input, preassim, postassim, output
 call parse_stages_to_write(stages_to_write)
@@ -528,7 +529,8 @@ if(use_sequential_prior) then
    call read_sequential_prior(seq, in_obs_copy, obs_val_index, DART_qc_index)
 else
    ! Initialize the obs_sequence; every pe gets a copy for now
-   call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index, compute_posterior)
+   call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index, &
+      compute_posterior, do_adaptive_post_inflate)
 endif
 
 call timestamp_message('After  setting up space for observations')
@@ -623,7 +625,7 @@ call timestamp_message('Before initializing output files')
 if(.not. use_sequential_prior) call filter_generate_copy_meta_data(seq, in_obs_copy, &
       prior_obs_mean_index, posterior_obs_mean_index, &
       prior_obs_spread_index, posterior_obs_spread_index, &
-      compute_posterior)
+      compute_posterior, do_adaptive_post_inflate)
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
@@ -936,7 +938,7 @@ AdvanceTime : do
    ! JLA: Strongly coupled development note: At this point, copies 1:ens_size in 
    ! the obs_ens_handles%copies contains the sequential priors from the assimilation
    ! of these observations.  Output them to the observation sequence
-   if(output_sequential_prior) &
+   if(output_sequential_prior_post) &
       call write_sequential_prior_post(obs_fwd_op_ens_handle, ens_size, seq, keys, in_obs_copy, &
        num_obs_in_set, compute_posterior, this_is_posterior = .false.)
 
@@ -1050,7 +1052,7 @@ AdvanceTime : do
    ! the next cycle.)
 
    ! CSS added condition: Don't update posterior inflation if relaxing to prior spread
-   if(do_ss_inflate(post_inflate) .and. ( .not. do_rtps_inflate(post_inflate)) ) then
+   if(do_adaptive_post_inflate) then
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
@@ -1073,7 +1075,7 @@ AdvanceTime : do
          ! JLA: Strongly coupled development note: At this point, copies 1:ens_size in 
          ! the obs_ens_handles%copies contains the sequential posterriors from the assimilation
          ! of these observations.  Output them to the observation sequence
-         if(output_sequential_posterior) &
+         if(output_sequential_prior_post) &
             call write_sequential_prior_post(obs_fwd_op_ens_handle, ens_size, seq, keys, in_obs_copy, &
              num_obs_in_set, compute_posterior, this_is_posterior = .true.)
 
@@ -1223,7 +1225,7 @@ end subroutine filter_main
 subroutine filter_generate_copy_meta_data(seq, in_obs_copy, &
    prior_obs_mean_index, posterior_obs_mean_index, &
    prior_obs_spread_index, posterior_obs_spread_index, &
-   do_post)
+   do_post, do_adaptive_post_inflate)
 
 type(obs_sequence_type),     intent(inout) :: seq
 integer,                     intent(in)    :: in_obs_copy
@@ -1231,7 +1233,7 @@ integer,                     intent(out)   :: prior_obs_mean_index
 integer,                     intent(out)   :: posterior_obs_mean_index
 integer,                     intent(out)   :: prior_obs_spread_index
 integer,                     intent(out)   :: posterior_obs_spread_index
-logical,                     intent(in)    :: do_post
+logical,                     intent(in)    :: do_post, do_adaptive_post_inflate
 
 ! Figures out the strings describing the output copies for the three output files.
 ! THese are the prior and posterior state output files and the observation sequence
@@ -1307,7 +1309,7 @@ end do
 ! Sequential prior  and post ensemble members are currently all at the end to avoid changes to 
 ! existing diagnostic software that accesses the prior and posterior members by order rather than metadata
 ! Space for sequential prior ensemble needed for strongly coupled
-if (output_sequential_prior) then
+if (output_sequential_prior_post) then
    do i = 1, num_output_obs_members
          num_obs_copies = num_obs_copies + 1
          write(meta_data, '(a25, 1x, i6)') 'sequential prior ensemble member', i
@@ -1316,7 +1318,7 @@ if (output_sequential_prior) then
 endif
 
 ! Space for sequential posterior ensemble needed for strongly coupled
-if (output_sequential_posterior) then
+if (output_sequential_prior_post .and. do_adaptive_post_inflate) then
    do i = 1, num_output_obs_members
          num_obs_copies = num_obs_copies + 1
          write(meta_data, '(a25, 1x, i6)') 'sequential posterior ensemble member', i
@@ -1350,12 +1352,12 @@ end subroutine filter_initialize_modules_used
 !-------------------------------------------------------------------------
 
 subroutine filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, &
-   input_qc_index, DART_qc_index, do_post)
+   input_qc_index, DART_qc_index, do_post, do_adaptive_post_inflate)
 
 type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(out)   :: in_obs_copy, obs_val_index
 integer,                 intent(out)   :: input_qc_index, DART_qc_index
-logical,                 intent(in)    :: do_post
+logical,                 intent(in)    :: do_post, do_adaptive_post_inflate
 
 character(len=metadatalength) :: no_qc_meta_data = 'No incoming data QC'
 character(len=metadatalength) :: dqc_meta_data   = 'DART quality control'
@@ -1399,9 +1401,10 @@ if (my_task == io_task) then
       copies_num_inc = 2 + (1 * num_output_obs_members)
    endif
    ! Add in ens_size space if outputting the sequential prior values for strongly coupled
-   if(output_sequential_prior) copies_num_inc = copies_num_inc + num_output_obs_members
+   if(output_sequential_prior_post) copies_num_inc = copies_num_inc + num_output_obs_members
    ! Add in ens_size space if outputting the sequential posterior values for strongly coupled
-   if(output_sequential_posterior) copies_num_inc = copies_num_inc + num_output_obs_members
+   if(output_sequential_prior_post .and. do_adaptive_post_inflate) &
+      copies_num_inc = copies_num_inc + num_output_obs_members
 
 ! All other tasks don't need additional storage
 else
@@ -1928,12 +1931,12 @@ endif
 ! in_obs_copy is number of copies in obs sequence that was read in
 ! For prior, have ensemble mean and variance, plus the full ensemble
 sequential_offset = in_obs_copy + 2 + ens_size
+
 ! If regulare posterior is being written, need space for those copies, too
 if(do_post) sequential_offset = sequential_offset + 2 + ens_size
 
 ! If this is sequential posterior being written, add in space used by sequential prior
-if(output_sequential_prior .and. this_is_posterior) &
-   sequential_offset = sequential_offset + ens_size
+if(this_is_posterior) sequential_offset = sequential_offset + ens_size
 
 ! Write the ensemble members
 do k = 1, ens_size
