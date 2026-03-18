@@ -871,9 +871,9 @@ AdvanceTime : do
    call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
 
    if(use_sequential_prior_post) then
-      call fill_obs_ens_sequential_prior(obs_fwd_op_ens_handle, seq, ens_size, &
+      call fill_obs_ens_sequential_prior_post(obs_fwd_op_ens_handle, seq, ens_size, &
          num_obs_in_set, keys, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, &
-         OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_VAR_END)
+         OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_VAR_END, is_posterior = .false.)
    else
       call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
            qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
@@ -1964,9 +1964,9 @@ end subroutine write_sequential_prior_post
 
 !-------------------------------------------------------------------------
 
-subroutine fill_obs_ens_sequential_prior(obs_fwd_op_ens_handle, seq, ens_size, &
+subroutine fill_obs_ens_sequential_prior_post(obs_fwd_op_ens_handle, seq, ens_size, &
    num_obs_in_set, keys, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, &
-   OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_VAR_END)
+   OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_VAR_END, is_posterior)
 
 ! Moves information from obs_sequence into the obs_fwd_op_ens_handle
 
@@ -1978,6 +1978,7 @@ integer,                 intent(in)    :: keys(num_obs_in_set)
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 integer,                 intent(in)    :: OBS_EXTRA_QC_COPY, OBS_VAR_END
+logical,                 intent(in)    :: is_posterior
 
 type(obs_type) :: obs
 type(obs_def_type)     :: obs_def
@@ -2042,10 +2043,14 @@ call put_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
 obs_temp = missing_r8
 call put_copy(io_task, obs_fwd_op_ens_handle, OBS_EXTRA_QC_COPY, obs_temp)
 
-! Getting the prior ensemble
+! Getting the base prior/post ensemble
 do k = 1, ens_size
-   ens_index = get_obs_seq_ens_member_index(seq, 'prior ensemble member', k)
-   ! Copy the regular prior copies, these go at the start of the obs_ens_handle
+   if(is_posterior) then
+      ens_index = get_obs_seq_ens_member_index(seq, 'posterior ensemble member', k)
+   else
+      ens_index = get_obs_seq_ens_member_index(seq, 'prior ensemble member', k)
+   endif
+   ! Copy the regular prior/post copies, these go at the start of the obs_ens_handle
    if(my_task == io_task) then
       do j = 1, obs_fwd_op_ens_handle%num_vars
          ! Get this observation from sequence
@@ -2054,13 +2059,17 @@ do k = 1, ens_size
          obs_temp(j) = rvalue(1)
       end do
    endif
-   ! Implicit assumption that prior ensemble starts at copy 1 in the ens_handle
+   ! Implicit assumption that prior/post ensemble starts at copy 1 in the ens_handle
    call put_copy(io_task, obs_fwd_op_ens_handle, k, obs_temp)
 end do
 
-! Getting the sequential prior ensemble
+! Getting the sequential prior/post ensemble
 do k = 1, ens_size
-   ens_index = get_obs_seq_ens_member_index(seq, 'sequential prior ensemble', k)
+   if(is_posterior) then
+      ens_index = get_obs_seq_ens_member_index(seq, 'sequential posterior ensemble member', k)
+   else
+      ens_index = get_obs_seq_ens_member_index(seq, 'sequential prior ensemble member', k)
+   endif
    ! Copy the sequential prior copies, these go at the end of the obs_ens_handle
    if(my_task == io_task) then
       do j = 1, obs_fwd_op_ens_handle%num_vars
@@ -2078,7 +2087,7 @@ call all_vars_to_all_copies(obs_fwd_op_ens_handle)
 
 deallocate(obs_temp)
 
-end subroutine fill_obs_ens_sequential_prior
+end subroutine fill_obs_ens_sequential_prior_post
 
 !-------------------------------------------------------------------------
 
