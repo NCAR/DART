@@ -478,6 +478,8 @@ real(r8), parameter :: extra_distance = 0.5
 ! Make distance 'across the boundary' an extra addition
 ! Could update num_close and close_ind for additional efficiency
 dist = dist + extra_distance
+write(*, *) 'SHOULD NOT GET HERE'
+stop
 
 end subroutine get_close_state_strongly_coupled
 

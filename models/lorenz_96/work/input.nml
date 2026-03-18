@@ -1,5 +1,5 @@
 &probit_transform_nml
-   /
+ /
 
 &algorithm_info_nml
    qceff_table_filename = 'eakf_qceff_table.csv'
@@ -40,8 +40,8 @@
    input_state_file_list        = 'filter_input_list.txt'
 
    compute_posterior             = .false.
-   output_sequential_prior       = .false.
-   use_sequential_prior          = .false.
+   output_sequential_prior_post  = .false.
+   use_sequential_prior_post     = .false.
 
    stages_to_write  = 'preassim', 'analysis', 'output'
 
@@ -118,6 +118,10 @@
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
    reg_diagnostics_file = "reg_diagnostics",
+   /
+
+&location_nml
+   strongly_coupled = .false.
    /
 
 &obs_sequence_nml

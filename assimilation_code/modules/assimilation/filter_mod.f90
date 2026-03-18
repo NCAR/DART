@@ -218,7 +218,7 @@ logical :: compute_posterior   = .true. ! set to false to not compute posterior 
 logical :: output_sequential_prior_post = .false.
 
 ! Observation sequence file contains sequential prior, do DA without forward operators or increments
-logical :: use_sequential_prior    = .false.
+logical :: use_sequential_prior_post    = .false.
 
 ! Stages to write.  Valid values are:
 ! multi-file:    input, forecast, preassim, postassim, analysis, output
@@ -306,7 +306,7 @@ namelist /filter_nml/ async,     &
    perturbation_amplitude,       &
    compute_posterior,            &
    output_sequential_prior_post, &
-   use_sequential_prior,         &
+   use_sequential_prior_post,    &
    stages_to_write,              &
    input_state_files,            &
    output_state_files,           &
@@ -503,7 +503,10 @@ OBS_VAR_END          = OBS_VAR_START + num_groups - 1
 ! Get total number of copies in the obs_fwd_op_ens_handle
 TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
 ! If using a sequential prior ensemble, need storage for that 
-if(use_sequential_prior) TOTAL_OBS_COPIES = TOTAL_OBS_COPIES + ens_size
+if(use_sequential_prior_post) TOTAL_OBS_COPIES = TOTAL_OBS_COPIES + ens_size
+! Assume use of sequential_posterior if adaptive posterior inflation is on
+if(use_sequential_prior_post .and. do_adaptive_post_inflate) TOTAL_OBS_COPIES = TOTAL_OBS_COPIES + ens_size
+
 
 !>@todo FIXME turn trace/timestamp calls into:  
 !>
@@ -524,7 +527,7 @@ if(use_sequential_prior) TOTAL_OBS_COPIES = TOTAL_OBS_COPIES + ens_size
 call     trace_message('Before setting up space for observations')
 call timestamp_message('Before setting up space for observations')
 
-if(use_sequential_prior) then
+if(use_sequential_prior_post) then
    ! Read in the obs_sequence with the prior and sequential prior ensembles
    call read_sequential_prior(seq, in_obs_copy, obs_val_index, DART_qc_index)
 else
@@ -622,7 +625,7 @@ call     trace_message('Before initializing output files')
 call timestamp_message('Before initializing output files')
 
 ! Initialize the output sequences and state files and set their meta data
-if(.not. use_sequential_prior) call filter_generate_copy_meta_data(seq, in_obs_copy, &
+if(.not. use_sequential_prior_post) call filter_generate_copy_meta_data(seq, in_obs_copy, &
       prior_obs_mean_index, posterior_obs_mean_index, &
       prior_obs_spread_index, posterior_obs_spread_index, &
       compute_posterior, do_adaptive_post_inflate)
@@ -799,7 +802,7 @@ AdvanceTime : do
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
    ! Also need a qc field for copy of each observation
-   !JLA is this needed at all with use_sequential_prior???
+   !JLA is this needed at all with use_sequential_prior_post???
    call init_ensemble_manager(qc_ens_handle, ens_size, &
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
@@ -867,7 +870,7 @@ AdvanceTime : do
    ! JLA, is this allocation for prior_qc_copy needed???
    call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
 
-   if(use_sequential_prior) then
+   if(use_sequential_prior_post) then
       call fill_obs_ens_sequential_prior(obs_fwd_op_ens_handle, seq, ens_size, &
          num_obs_in_set, keys, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, &
          OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_VAR_END)
@@ -910,7 +913,7 @@ AdvanceTime : do
    ! copy ( + others ) is moved to task 0 so task 0 can update seq.
    ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
    ! Do prior observation space diagnostics and associated quality control
-   if(.not. use_sequential_prior) call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
+   if(.not. use_sequential_prior_post) call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
            seq, keys, PRIOR_DIAG, num_output_obs_members, in_obs_copy+1, &
            obs_val_index, OBS_KEY_COPY, &
            prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
@@ -930,7 +933,7 @@ AdvanceTime : do
       ENS_MEAN_COPY, ENS_SD_COPY, &
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
-      OBS_VAR_END, use_sequential_prior, inflate_only = .false.)
+      OBS_VAR_END, use_sequential_prior_post, inflate_only = .false.)
 
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
@@ -1312,7 +1315,7 @@ end do
 if (output_sequential_prior_post) then
    do i = 1, num_output_obs_members
          num_obs_copies = num_obs_copies + 1
-         write(meta_data, '(a25, 1x, i6)') 'sequential prior ensemble member', i
+         write(meta_data, '(a32, 1x, i6)') 'sequential prior ensemble member', i
          call set_copy_meta_data(seq, num_obs_copies, meta_data)
    end do
 endif
@@ -1321,7 +1324,7 @@ endif
 if (output_sequential_prior_post .and. do_adaptive_post_inflate) then
    do i = 1, num_output_obs_members
          num_obs_copies = num_obs_copies + 1
-         write(meta_data, '(a25, 1x, i6)') 'sequential posterior ensemble member', i
+         write(meta_data, '(a36, 1x, i6)') 'sequential posterior ensemble member', i
          call set_copy_meta_data(seq, num_obs_copies, meta_data)
    end do
 endif
@@ -1582,16 +1585,21 @@ do i = 1, get_num_copies(seq)
       read(s_num, *) ens_num
       if(n == ens_num) then
          deallocate(s, st)
+write(*, *) 'field, n, out ', field, n, get_obs_seq_ens_member_index
          return 
       endif
    endif
 end do
 
+! JLA Falling off the end now that this has been generalized should be fatal in some cases;
 ! Falling of end means 'prior mean' not found; not fatal!
 if(allocated(s)) deallocate(s)
 if(allocated(st)) deallocate(st)
 
 get_obs_seq_ens_member_index = -1
+
+write(*, *) 'falling off the end in get_obs_seq_ens_member_index;'
+stop
 
 end function get_obs_seq_ens_member_index
 
