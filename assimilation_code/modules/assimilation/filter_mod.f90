@@ -504,9 +504,6 @@ OBS_VAR_END          = OBS_VAR_START + num_groups - 1
 TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
 ! If using a sequential prior ensemble, need storage for that 
 if(use_sequential_prior_post) TOTAL_OBS_COPIES = TOTAL_OBS_COPIES + ens_size
-! Assume use of sequential_posterior if adaptive posterior inflation is on
-if(use_sequential_prior_post .and. do_adaptive_post_inflate) TOTAL_OBS_COPIES = TOTAL_OBS_COPIES + ens_size
-
 
 !>@todo FIXME turn trace/timestamp calls into:  
 !>
@@ -1007,48 +1004,54 @@ AdvanceTime : do
 
    endif
 
-   ! this block recomputes the expected obs values for the obs_seq.final file
+   ! JLA, need to confirm that this is working with failed posterior qcs, looks transparent for now
+   if(use_sequential_prior_post .and. do_adaptive_post_inflate) &
+      call fill_obs_ens_sequential_prior_post(obs_fwd_op_ens_handle, seq, ens_size, &
+         num_obs_in_set, keys, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, &
+         OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_VAR_END, is_posterior = .true.)
 
-   !JLA NEED TO MAKE SURE THIS DOESN"T HAPPEN WHEN USING SEQUENTIAL_PRIOR_OBS
-   if (compute_posterior) then
-      call     trace_message('Before computing posterior observation values')
-      call timestamp_message('Before computing posterior observation values')
+   ! this block recomputes the expected obs values for the obs_seq.final file
+   if(.not. use_sequential_prior_post) then
+      if (compute_posterior) then
+         call     trace_message('Before computing posterior observation values')
+         call timestamp_message('Before computing posterior observation values')
    
-      ! Compute the ensemble of posterior observations, load up the obs_err_var
-      ! and obs_values.  ens_size is the number of regular ensemble members,
-      ! not the number of copies
+         ! Compute the ensemble of posterior observations, load up the obs_err_var
+         ! and obs_values.  ens_size is the number of regular ensemble members,
+         ! not the number of copies
    
-       call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
+          call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
                 qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
                 OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
                 OBS_EXTRA_QC_COPY, OBS_MEAN_START, OBS_VAR_START, &
                 isprior=.false., prior_qc_copy=prior_qc_copy)
    
-      call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
-   
-      call timestamp_message('After  computing posterior observation values')
-      call     trace_message('After  computing posterior observation values')
+         call timestamp_message('After  computing posterior observation values')
+         call     trace_message('After  computing posterior observation values')
    
    
-      call trace_message('Before posterior obs space diagnostics')
+         call trace_message('Before posterior obs space diagnostics')
    
-      ! Write posterior observation space diagnostics
-      ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
-      call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
+         ! Write posterior observation space diagnostics
+         ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
+         call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
               seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
               obs_val_index, OBS_KEY_COPY, &
               posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
               OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
               OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)
    
-      call trace_message('After  posterior obs space diagnostics')
-   else
-      ! call this alternate routine to collect any updated QC values that may
-      ! have been set in the assimilation loop and copy them to the outgoing obs seq
-      call obs_space_sync_QCs(obs_fwd_op_ens_handle, seq, keys, num_obs_in_set, &
+         call trace_message('After  posterior obs space diagnostics')
+      else
+         ! call this alternate routine to collect any updated QC values that may
+         ! have been set in the assimilation loop and copy them to the outgoing obs seq
+         call obs_space_sync_QCs(obs_fwd_op_ens_handle, seq, keys, num_obs_in_set, &
                               OBS_GLOBAL_QC_COPY, DART_qc_index)
-      call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
+      endif
    endif
+
+   ! Free up the qc storage if it was allocated
+   call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
 
    ! this block computes the adaptive state space posterior inflation
    ! (it was applied earlier, this is computing the updated values for
@@ -1069,14 +1072,14 @@ AdvanceTime : do
                  ens_size, num_groups, obs_val_index, post_inflate, &
                  ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY, &
                  OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_MEAN_END, &
-                 OBS_VAR_START, OBS_VAR_END, use_sequential_prior = .false., &
+                 OBS_VAR_START, OBS_VAR_END, use_sequential_prior_post, &
                  inflate_only = .true.)
 
          call timestamp_message('After  computing posterior state space inflation')
          call     trace_message('After  computing posterior state space inflation')
 
          ! JLA: Strongly coupled development note: At this point, copies 1:ens_size in 
-         ! the obs_ens_handles%copies contains the sequential posterriors from the assimilation
+         ! the obs_ens_handles%copies contains the sequential posteriors from the assimilation
          ! of these observations.  Output them to the observation sequence
          if(output_sequential_prior_post) &
             call write_sequential_prior_post(obs_fwd_op_ens_handle, ens_size, seq, keys, in_obs_copy, &
