@@ -799,7 +799,6 @@ AdvanceTime : do
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
    ! Also need a qc field for copy of each observation
-   !JLA is this needed at all with use_sequential_prior_post???
    call init_ensemble_manager(qc_ens_handle, ens_size, &
                               int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
@@ -864,7 +863,6 @@ AdvanceTime : do
    ! not the number of copies
 
    ! allocate() space for the prior qc copy
-   ! JLA, is this allocation for prior_qc_copy needed???
    call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
 
    if(use_sequential_prior_post) then
@@ -935,12 +933,11 @@ AdvanceTime : do
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
 
-   ! JLA: Strongly coupled development note: At this point, copies 1:ens_size in 
-   ! the obs_ens_handles%copies contains the sequential priors from the assimilation
-   ! of these observations.  Output them to the observation sequence
+   ! At this point, copies 1:ens_size in obs_ens_handles%copies contain the sequential priors 
+   ! from DA of these observations. Output them to the obs_sequence if requested
    if(output_sequential_prior_post) &
       call write_sequential_prior_post(obs_fwd_op_ens_handle, ens_size, seq, keys, in_obs_copy, &
-       num_obs_in_set, compute_posterior, this_is_posterior = .false.)
+         num_obs_in_set, compute_posterior, this_is_posterior = .false.)
 
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -1004,7 +1001,7 @@ AdvanceTime : do
 
    endif
 
-   ! JLA, need to confirm that this is working with failed posterior qcs, looks transparent for now
+   ! If using sequential_posterior, load the obs ensemble_handle 
    if(use_sequential_prior_post .and. do_adaptive_post_inflate) &
       call fill_obs_ens_sequential_prior_post(obs_fwd_op_ens_handle, seq, ens_size, &
          num_obs_in_set, keys, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, &
@@ -1078,12 +1075,11 @@ AdvanceTime : do
          call timestamp_message('After  computing posterior state space inflation')
          call     trace_message('After  computing posterior state space inflation')
 
-         ! JLA: Strongly coupled development note: At this point, copies 1:ens_size in 
-         ! the obs_ens_handles%copies contains the sequential posteriors from the assimilation
-         ! of these observations.  Output them to the observation sequence
+         ! At this point, copies 1:ens_size in obs_ens_handles%copies contain sequential posteriors 
+         ! from DA of these observations.  Output them to the obs_sequence if requested
          if(output_sequential_prior_post) &
             call write_sequential_prior_post(obs_fwd_op_ens_handle, ens_size, seq, keys, in_obs_copy, &
-             num_obs_in_set, compute_posterior, this_is_posterior = .true.)
+               num_obs_in_set, compute_posterior, this_is_posterior = .true.)
 
          ! recalculate standard deviation since this was overwritten in filter_assim
          call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -1594,15 +1590,12 @@ write(*, *) 'field, n, out ', field, n, get_obs_seq_ens_member_index
    endif
 end do
 
-! JLA Falling off the end now that this has been generalized should be fatal in some cases;
-! Falling of end means 'prior mean' not found; not fatal!
 if(allocated(s)) deallocate(s)
 if(allocated(st)) deallocate(st)
 
-get_obs_seq_ens_member_index = -1
-
-write(*, *) 'falling off the end in get_obs_seq_ens_member_index;'
-stop
+! Falling off the end means required field for using sequential_prior or post not found
+write(msgstring, *) 'Did not find metadata "', trim(field), n, '" in input obs_sequence file'
+call error_handler(E_ERR,'get_obs_seq_ens_member_index', msgstring, source)
 
 end function get_obs_seq_ens_member_index
 
