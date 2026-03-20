@@ -401,6 +401,13 @@ allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
+! Cannot both use and write sequential prior post
+if(use_sequential_prior_post .and. output_sequential_prior_post) then
+   write(msgstring, *) 'output_sequential_prior_post and use_sequential_prior_post &
+      cannot both be true in filter_nml'
+   call error_handler(E_ERR,'filter_main', msgstring, source)
+endif
+
 call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
    do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
@@ -1016,7 +1023,7 @@ AdvanceTime : do
          ! Compute the ensemble of posterior observations, load up the obs_err_var
          ! and obs_values.  ens_size is the number of regular ensemble members,
          ! not the number of copies
-   
+
           call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, &
                 qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
                 OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
@@ -1559,8 +1566,9 @@ end function get_obs_prior_index
 function get_obs_seq_ens_member_index(seq, field, n)
 
 ! Finds copy number for field ensemble copy n in observation sequence
-! Field could be 'prior ensemble member', 'sequential prior ensemble member'
-! of 'posterior ensemble member'
+! Field could be 'prior ensemble member', 'sequential prior ensemble member', 
+! 'posterior ensemble member', or sequential posterior ensemble member'
+! Returns -1 if ensemble n is not found in the obs sequence for this field
 
 type(obs_sequence_type), intent(in) :: seq
 character(len = *),      intent(in) :: field
@@ -1584,18 +1592,15 @@ do i = 1, get_num_copies(seq)
       read(s_num, *) ens_num
       if(n == ens_num) then
          deallocate(s, st)
-write(*, *) 'field, n, out ', field, n, get_obs_seq_ens_member_index
          return 
       endif
    endif
 end do
 
+! Falling off the end means ensemble member n was not found in file for this field
 if(allocated(s)) deallocate(s)
 if(allocated(st)) deallocate(st)
-
-! Falling off the end means required field for using sequential_prior or post not found
-write(msgstring, *) 'Did not find metadata "', trim(field), n, '" in input obs_sequence file'
-call error_handler(E_ERR,'get_obs_seq_ens_member_index', msgstring, source)
+get_obs_seq_ens_member_index = -1
 
 end function get_obs_seq_ens_member_index
 
@@ -2039,13 +2044,30 @@ call put_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
 obs_temp = missing_r8
 call put_copy(io_task, obs_fwd_op_ens_handle, OBS_EXTRA_QC_COPY, obs_temp)
 
+! Ensemble size in obs_seq file should not be bigger than ensemble size for current DA
+ens_index = get_obs_seq_ens_member_index(seq, 'sequential prior ensemble member', ens_size + 1)
+if(ens_index > 0) then
+   write(msgstring, *) 'Input obs_sequence file should not have more sequential prior &
+      ensemble members than the ensemble_size in filter_nml'
+   call error_handler(E_ERR,'fill_obs_sequential_prior_post', msgstring, source)
+endif
+
 ! Getting the base prior/post ensemble
 do k = 1, ens_size
    if(is_posterior) then
       ens_index = get_obs_seq_ens_member_index(seq, 'posterior ensemble member', k)
+      if(ens_index < 1) then
+         write(msgstring, *) 'posterior ensemble member ', k, 'not found in input obs_sequence'
+         call error_handler(E_ERR,'fill_obs_sequential_prior_post', msgstring, source)
+      endif
    else
       ens_index = get_obs_seq_ens_member_index(seq, 'prior ensemble member', k)
+      if(ens_index < 1) then
+         write(msgstring, *) 'prior ensemble member ', k, 'not found in input obs_sequence'
+         call error_handler(E_ERR,'fill_obs_sequential_prior_post', msgstring, source)
+      endif
    endif
+
    ! Copy the regular prior/post copies, these go at the start of the obs_ens_handle
    if(my_task == io_task) then
       do j = 1, obs_fwd_op_ens_handle%num_vars
@@ -2063,9 +2085,18 @@ end do
 do k = 1, ens_size
    if(is_posterior) then
       ens_index = get_obs_seq_ens_member_index(seq, 'sequential posterior ensemble member', k)
+      if(ens_index < 1) then
+         write(msgstring, *) 'sequential posterior ensemble member ', k, 'not found in input obs_sequence'
+         call error_handler(E_ERR,'fill_obs_sequential_prior_post', msgstring, source)
+      endif
    else
       ens_index = get_obs_seq_ens_member_index(seq, 'sequential prior ensemble member', k)
+      if(ens_index < 1) then
+         write(msgstring, *) 'sequential prior ensemble member ', k, 'not found in input obs_sequence'
+         call error_handler(E_ERR,'fill_obs_sequential_prior_post', msgstring, source)
+      endif
    endif
+
    ! Copy the sequential prior copies, these go at the end of the obs_ens_handle
    if(my_task == io_task) then
       do j = 1, obs_fwd_op_ens_handle%num_vars
