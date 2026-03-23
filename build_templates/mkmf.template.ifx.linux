@@ -20,6 +20,9 @@ FFLAGS  = -O -assume buffered_io $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
-# FFLAGS = -g -C -check noarg_temp_created -fpe0 \
-#          -fp-model precise  -ftrapuv -traceback \
+# FFLAGS = -g -C -check noarg_temp_created -check nouninit \
+#          -fpe0 -fp-model precise  -ftrapuv -traceback \
 #          -warn declarations,uncalled,unused $(INCS)
+#
+# "-check nouninit" needed for newer versions of ifx, removable
+# if compatible with libc

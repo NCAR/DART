@@ -360,6 +360,7 @@ The current list of converters (some directories contain multiple
 converters) include:
 
 -  ``AIRS``: :doc:`./AIRS/README`
+-  ``ARVOR``: :doc:`./ARVOR/readme`
 -  ``AURA``: See ``./AURA``
 -  ``Aviso+/CMEMS``: :doc:`./AVISO/AVISO`
 -  ``Ameriflux``: :doc:`./Ameriflux/level4_to_obs`
@@ -369,6 +370,7 @@ converters) include:
 -  ``CNOFS``: See ``./CNOFS``
 -  ``CONAGUA``: :doc:`./CONAGUA/README`
 -  ``COSMOS``: :doc:`./COSMOS/COSMOS_to_obs`
+-  ``CrocoLake``: :doc:`./CrocoLake/readme`
 -  ``DWL``: :doc:`./DWL/dwl_to_obs`
 -  ``GMI``: :doc:`./GMI/README`
 -  ``GOES``: :doc:`./GOES/README`
@@ -376,6 +378,8 @@ converters) include:
 -  ``GRACE``: See ``./GRACE``
 -  ``GSI2DART``: :doc:`./GSI2DART/readme`
 -  ``GTSPP``: :doc:`./GTSPP/GTSPP`
+-  ``HFradar``: :doc:`./HFradar/readme`
+-  ``IODA``: :ref:`ioda2obsq <ioda2obsq>`
 -  ``MADIS``: :doc:`./MADIS/MADIS`
 -  ``MIDAS``: :doc:`./MIDAS/MIDAS_to_obs`
 -  ``MODIS``: :doc:`./MODIS/MOD15A2_to_obs`
@@ -398,6 +402,7 @@ converters) include:
 -  ``QuikSCAT``: :doc:`./quikscat/QuikSCAT`
 -  ``Radar``: :doc:`./radar/README`
 -  ``snow``: :doc:`./snow/snow_to_obs`
+-  ``SVP``: :doc:`./SVP/readme`
 -  ``Text``: :doc:`./text/text_to_obs`
 -  ``text_GITM``: See ``./text_GITM``
 -  ``tpw``: :doc:`./tpw/tpw`

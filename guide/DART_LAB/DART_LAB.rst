@@ -1,33 +1,34 @@
+.. _DART_LAB:
+
 DART_LAB Tutorial
 =================
 
-Overview
---------
+DART_LAB is a MATLAB®-based tutorial that introduces the fundamental concepts of 
+ensemble data assimilation through a combination of PDF slides and hands-on MATLAB® 
+exercises. The full tutorial is designed to take about 1.5 days in a workshop setting.
 
-The files in this directory contain PDF tutorial materials on DART, and Matlab exercises. See below for links to the PDF
-files and a list of the corresponding matlab scripts.
+If you are already familiar with ensemble DA, you can skip straight to the :ref:`DART-tutorial`.
 
-This tutorial begins at a more introductory level than the materials in the tutorial directory, and includes hands-on
-exercises at several points. In a workshop setting, these materials and exercises took about 1.5 days to complete.
+DART_LAB tutorial slides
+------------------------
 
-DART tutorial presentations
----------------------------
+1. `Ensemble Data Assimilation Concepts in 1D. <https://ncar.github.io/dart-tutorial/DART_LAB_Section01.pdf>`_
 
-Here are the PDF files for the presentation part of the tutorial:
+2. `How Should Observations Impact an Unobserved State Variable? Multivariate Assimilation. <https://ncar.github.io/dart-tutorial/DART_LAB_Section02.pdf>`_
 
-- :download:`Section 1: <presentation/DART_LAB_Section01.pdf>` Ensemble Data Assimilation Concepts in 1D.
-- :download:`Section 2: <presentation/DART_LAB_Section02.pdf>` How Should Observations Impact an Unobserved 
-  State Variable? Multivariate Assimilation.
-- :download:`Section 3: <presentation/DART_LAB_Section03.pdf>` Inflation and Localization to Improve Performance.
-- :download:`Section 4: <presentation/DART_LAB_Section04.pdf>` Nonlinear and Non-Gaussian Extensions.
-- :download:`Section 5: <presentation/DART_LAB_Section05.pdf>` Adaptive Inflation.
+3. `Inflation and Localization to Improve Performance. <https://ncar.github.io/dart-tutorial/DART_LAB_Section03.pdf>`_
 
-Matlab hands-on exercises
+4. `Nonlinear and Non-Gaussian Extensions. <https://ncar.github.io/dart-tutorial/DART_LAB_Section04.pdf>`_
+
+5. `Adaptive Inflation. <https://ncar.github.io/dart-tutorial/DART_LAB_Section05.pdf>`_
+
+
+MATLAB hands-on exercises
 -------------------------
 
-In the ``matlab`` subdirectory are a set of Matlab scripts and GUI (graphical user interface) programs which are
+In the ``guide/DART_LAB/matlab`` directory are a set of MATLAB scripts and GUI (graphical user interface) programs which are
 exercises that go with the tutorial. Each is interactive with settings that can be changed and rerun to explore various
-options. A valid `Matlab <http://www.mathworks.com/products/matlab/>`__ license is needed to run these scripts.
+options. A valid `MATLAB <http://www.mathworks.com/products/matlab/>`__ license is needed to run these scripts.
 
 The exercises use the following functions:
 
@@ -43,4 +44,4 @@ The exercises use the following functions:
 -  twod_ensemble
 -  twod_ppi_ensemble
 
-To run these, cd into the DART_LAB/matlab directory, start matlab, and type the names at the prompt.
+To run these, cd into the ``guide/DART_LAB/matlab`` directory, start MATLAB, and type the names at the prompt.

@@ -2,7 +2,7 @@
    /
 
 &algorithm_info_nml
-   qceff_table_filename = ''
+   qceff_table_filename = 'eakf_qceff_table.csv'
    /
 
 &perfect_model_obs_nml
@@ -46,7 +46,7 @@
    output_state_file_list       = 'filter_output_list.txt'
    output_interval              = 1,
    output_members               = .true.
-   num_output_state_members     = 20,
+   num_output_state_members     = 80,
    output_mean                  = .true.
    output_sd                    = .true.
 
@@ -61,7 +61,7 @@
 
    obs_sequence_in_name         = "obs_seq.out",
    obs_sequence_out_name        = "obs_seq.final",
-   num_output_obs_members       = 20,
+   num_output_obs_members       = 80,
    init_time_days               = 0,
    init_time_seconds            = 0,
    first_obs_days               = -1,
@@ -69,7 +69,7 @@
    last_obs_days                = -1,
    last_obs_seconds             = -1,
 
-   inf_flavor                  = 2,                       0,
+   inf_flavor                  = 0,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
@@ -93,7 +93,7 @@
    /
 
 &assim_tools_nml
-   cutoff                          = 0.02,
+   cutoff                          = 0.2,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,

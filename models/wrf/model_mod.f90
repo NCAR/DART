@@ -1832,7 +1832,7 @@ else
                iur = get_dart_vector_index(ur(1), ur(2), uniquek(uk)+1, domain_id(id), wrf%dom(id)%type_t)
 
                x_ill = get_state(ill, state_handle)
-               x_ill = get_state(ill, state_handle)
+               x_iul = get_state(iul, state_handle)
                x_ilr = get_state(ilr, state_handle)
                x_iur = get_state(iur, state_handle)
 
@@ -7821,14 +7821,14 @@ subroutine get_variable_bounds(bounds_table,wrf_var_name,lb,ub,instructions)
  
         bound_trim = trim(bounds_table(2,ivar))
         if ( bound_trim  /= 'NULL' ) then
-           read(bound_trim,'(d16.8)') lb 
+           read(bound_trim, *) lb 
         else
            lb = missing_r8
         endif
 
         bound_trim = trim(bounds_table(3,ivar))
         if ( bound_trim  /= 'NULL' ) then
-           read(bound_trim,'(d16.8)') ub 
+           read(bound_trim, *) ub 
         else
            ub = missing_r8
         endif

@@ -47,6 +47,7 @@
 ! GPS_PROFILE,                     QTY_ELECTRON_DENSITY,           COMMON_CODE
 ! COSMIC_ELECTRON_DENSITY,         QTY_ELECTRON_DENSITY
 ! GND_GPS_VTEC,		           QTY_GND_GPS_VTEC
+! SLANT_GPS_VTEC,		   QTY_SLANT_GPS_VTEC
 ! CHAMP_DENSITY,                   QTY_DENSITY
 ! MIDAS_TEC,                       QTY_VERTICAL_TEC,               COMMON_CODE
 ! SSUSI_O_N2_RATIO,                QTY_O_N2_COLUMN_DENSITY_RATIO
@@ -58,6 +59,8 @@
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !  use obs_def_upper_atm_mod, only : get_expected_upper_atm_density
 !  use obs_def_upper_atm_mod, only : get_expected_gnd_gps_vtec
+!  use obs_def_upper_atm_mod, only : get_expected_slant_gps_vtec, write_slant_gps_vtec, &
+!                                    read_slant_gps_vtec, interactive_slant_gps_vtec
 !  use obs_def_upper_atm_mod, only : get_expected_O_N2_ratio
 !  use obs_def_upper_atm_mod, only : get_expected_electron_density
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -69,6 +72,8 @@
 !      call get_expected_upper_atm_density(state_handle, ens_size, location, expected_obs, istatus)
 ! case(GND_GPS_VTEC)
 !      call get_expected_gnd_gps_vtec(state_handle, ens_size, location, expected_obs, istatus)
+! case(SLANT_GPS_VTEC)
+!      call get_expected_slant_gps_vtec(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
 ! case(SSUSI_O_N2_RATIO)
 !      call get_expected_O_N2_ratio(state_handle, ens_size, location, expected_obs, istatus)
 ! case(COSMIC_ELECTRON_DENSITY)
@@ -82,6 +87,8 @@
 !      continue
 ! case(GND_GPS_VTEC)
 !      continue
+! case(SLANT_GPS_VTEC)
+!      call read_slant_gps_vtec(obs_def%key, ifile, fform)
 ! case(SSUSI_O_N2_RATIO)
 !      continue
 ! case(COSMIC_ELECTRON_DENSITY)
@@ -95,6 +102,8 @@
 !      continue
 ! case(GND_GPS_VTEC)
 !      continue
+! case(SLANT_GPS_VTEC)
+!      call write_slant_gps_vtec(obs_def%key, ifile, fform)
 ! case(SSUSI_O_N2_RATIO)
 !      continue
 ! case(COSMIC_ELECTRON_DENSITY)
@@ -108,6 +117,8 @@
 !      continue
 ! case(GND_GPS_VTEC)
 !      continue
+! case(SLANT_GPS_VTEC)
+!      call interactive_slant_gps_vtec(obs_def%key)
 ! case(SSUSI_O_N2_RATIO)
 !      continue
 ! case(COSMIC_ELECTRON_DENSITY)
@@ -118,7 +129,7 @@
 module obs_def_upper_atm_mod
 
 use        types_mod, only : r8, MISSING_R8
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, ascii_file_format
 use     location_mod, only : location_type, get_location, set_location, &
                              VERTISHEIGHT, VERTISLEVEL
 use  assim_model_mod, only : interpolate
@@ -132,6 +143,7 @@ use     obs_kind_mod, only : QTY_ATOMIC_OXYGEN_MIXING_RATIO, &
                              QTY_DENSITY_ION_E, &
                              QTY_ELECTRON_DENSITY, &
                              QTY_GND_GPS_VTEC, &
+                             QTY_SLANT_GPS_VTEC, &
                              QTY_GEOPOTENTIAL_HEIGHT, &
                              QTY_GEOMETRIC_HEIGHT, &
                              QTY_O_N2_COLUMN_DENSITY_RATIO
@@ -142,6 +154,8 @@ implicit none
 private
 public :: get_expected_upper_atm_density, &
           get_expected_gnd_gps_vtec, &
+          get_expected_slant_gps_vtec, read_slant_gps_vtec, &
+          write_slant_gps_vtec, interactive_slant_gps_vtec, &
           get_expected_O_N2_ratio, &
           get_expected_electron_density
 
@@ -165,6 +179,12 @@ real(r8), parameter :: molar_mass_dry_air = 28.9644_r8
 integer,  parameter :: MAXLEVELS = 300 ! more than max levels expected in the model (waccm-x has 126)
 character(len=512) :: string1, string2, string3
 
+! Storage for special information needed for slant gps vtec observations
+integer               :: num_slant_gps_vtec_obs = 0       ! current count of obs
+integer               :: max_slant_gps_vtec_obs = 100000  ! allocation size limit
+real(r8), allocatable :: sat_position(:, :)               ! Satellite lat, lon, heights
+real(r8), allocatable :: ground_position(:, :)            ! Ground point lat, lon, heightd
+
 contains
 
 !-----------------------------------------------------------------------------
@@ -173,6 +193,10 @@ subroutine initialize_module
 
 call register_module(source, revision, revdate)
 module_initialized = .true.
+
+! Allocate space for the metadata for the slant gps vtec observations
+allocate(sat_position(3, max_slant_gps_vtec_obs), &
+      ground_position(3, max_slant_gps_vtec_obs))
 
 end subroutine initialize_module
 
@@ -242,12 +266,10 @@ end subroutine get_expected_upper_atm_density
 
 !-----------------------------------------------------------------------------
 
-! Given DART state vector and a location, 
-! it computes ground GPS vertical total electron content
-! The istatus variable should be returned as 0 unless there is a problem
-!>@todo Is the logic correct in this code on the Trunk
-!>  Should you return from the subroutine instead of exiting 
-!> the loop at exit LEVELS
+! THIS SUBROUTINE NEEDS ADDITIONAL INPUT FROM AETHER SCIENTISTS
+! This routine is legacy and it is unclear that the method for getting the total
+! electon content by summing the ions concentrations is scientifically correct.
+
 subroutine get_expected_gnd_gps_vtec(state_handle, ens_size, location, obs_val, istatus)
 
 type(ensemble_type), intent(in) :: state_handle
@@ -261,7 +283,6 @@ integer,            intent(out) :: istatus(ens_size)
 ! integrated column from an instrument looking straight down at the tangent point.
 ! 'istatus' is the return code.  0 is success; any positive value signals an
 ! error (different values can be used to indicate different error types).
-! Negative istatus values are reserved for internal use only by DART.
 
 integer  :: nAlts, iAlt, this_istatus(ens_size)
 real(r8), dimension(ens_size, MAXLEVELS) :: ALT, IDensityS_ie  ! num_ens by num levels
@@ -308,12 +329,13 @@ LEVELS: do iAlt=1, size(ALT,2)+1
    nAlts = nAlts+1
 enddo LEVELS
 
-! failed first time through loop - no values to return.
+! failed first time through loop - no values to return. istatus was set to non-zero in loop.
 if (nAlts == 0) then
    obs_val(:) = MISSING_R8
    return
 endif
 
+! This is redundant but makes it clear that there are no errors at this point
 istatus(:) = 0
 
 do i=1,ens_size
@@ -323,8 +345,8 @@ do i=1,ens_size
    end if
 end do
 
-! clear the error from the last level and start again?
-tec=0.0_r8 !start with zero for the summation
+! Set all ensemble members tec to zero for summation
+tec=0.0_r8
 
 do iAlt = 1, nAlts-1 !approximate the integral over the altitude as a sum of trapezoids
    !area of a trapezoid: A = (h2-h1) * (f2+f1)/2
@@ -339,6 +361,222 @@ elsewhere
 end where
 
 end subroutine get_expected_gnd_gps_vtec
+
+!-----------------------------------------------------------------------------
+
+! THIS SUBROUTINE NEEDS ADDITIONAL INPUT FROM AETHER SCIENTISTS
+! The current version has access to two additional triples of numbers that are a lon/lat/height,
+! but makes no use of those. Need to decide what the appropriate additional metadata is to 
+! describe a slant tec obs and then implement ray-tracing given that. For now, this just duplicates
+! the plain vtec forward operator above.
+
+subroutine get_expected_slant_gps_vtec(state_handle, ens_size, location, igrkey, obs_val, istatus)
+
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
+type(location_type), intent(in) :: location
+integer,             intent(in) :: igrkey
+real(r8),           intent(out) :: obs_val(ens_size)
+integer,            intent(out) :: istatus(ens_size)
+
+! For now, this is just the same as vtec.
+! Given a location and the state vector from one of the ensemble members, 
+! compute the model-predicted total electron content that would be in the
+! integrated column from an instrument looking straight down at the tangent point.
+! 'istatus' is the return code.  0 is success; any positive value signals an
+! error (different values can be used to indicate different error types).
+
+integer  :: nAlts, iAlt, this_istatus(ens_size)
+real(r8), dimension(ens_size, MAXLEVELS) :: ALT, IDensityS_ie  ! num_ens by num levels
+real(r8) :: loc_vals(3)
+real(r8) :: tec(ens_size)
+real(r8) :: sat_pos(3), ground_pos(3)
+type(location_type) :: probe
+logical  :: return_now
+integer  :: i
+
+if ( .not. module_initialized ) call initialize_module
+
+istatus = 0     ! must be 0 to use track_status()
+
+loc_vals = get_location(location)
+
+! Get the information about the satellite and ground point
+! The interactive input defines these as longitude in degrees, latitude in degrees, and height in meters
+sat_pos = sat_position(1:3, igrkey)
+ground_pos = ground_position(1:3, igrkey)
+
+! Until slant gps operator is written, just default to regular vtec
+call get_expected_gnd_gps_vtec(state_handle, ens_size, location, obs_val, istatus)
+
+end subroutine get_expected_slant_gps_vtec
+
+!-----------------------------------------------------------------------------
+
+subroutine write_slant_gps_vtec(igrkey, ifile, fform)
+
+integer,          intent(in)           :: igrkey, ifile
+character(len=*), intent(in), optional :: fform
+
+! Write out the additional data associated with this observation.
+! The obs is identified by the incoming 'key' argument.
+
+logical :: is_ascii
+
+if ( .not. module_initialized ) call initialize_module
+
+! Make sure key value is within valid range -- it will be used as an index below.
+call check_valid_key(igrkey, 'GIVEN', 'write_slant_gps_vtec')
+
+is_ascii = ascii_file_format(fform)
+
+! Write out the half_width, num_points, and localization_type for each  
+! observation embedded in the observation.  The old key is written out
+! for tracking/debug use if needed.
+
+if (is_ascii) then
+   write(ifile, *) sat_position(1:3, igrkey)
+   write(ifile, *) ground_position(1:3, igrkey)
+   write(ifile, *) igrkey
+else
+   write(ifile)    sat_position(1:3, igrkey)
+   write(ifile)    ground_position(1:3, igrkey)
+   write(ifile)    igrkey
+endif
+
+end subroutine write_slant_gps_vtec
+
+!----------------------------------------------------------------------
+
+subroutine read_slant_gps_vtec(igrkey, ifile, fform)
+integer,          intent(out)          :: igrkey
+integer,          intent(in)           :: ifile
+character(len=*), intent(in), optional :: fform
+
+! Read in the additional data associated with this observation.
+! The key value in the file will be read and then discarded, and a new key
+! will be generated based on the next available index in the metadata arrays.
+! Notice that key is intent(out) here, not (in) as in some other routines.
+
+logical            :: is_ascii
+integer            :: ignored_igrkey
+
+if ( .not. module_initialized ) call initialize_module
+
+! Increment the counter so all key values are unique
+num_slant_gps_vtec_obs = num_slant_gps_vtec_obs + 1
+
+! Set the return value for the key, and use it as the index below
+igrkey = num_slant_gps_vtec_obs
+
+! Make sure key is within valid range
+call check_valid_key(igrkey, 'GENERATED', 'read_slant_gps_vtec')
+
+is_ascii = ascii_file_format(fform)
+
+! Read in the additional metadata for this observation, and discard the old key.
+if (is_ascii) then
+   read(ifile, *) sat_position(1:3, igrkey)
+   read(ifile, *) ground_position(1:3, igrkey)
+   read(ifile, *) ignored_igrkey
+else
+   read(ifile)    sat_position(1:3, igrkey)
+   read(ifile)    ground_position(1:3, igrkey)
+   read(ifile)    ignored_igrkey
+endif
+
+end subroutine read_slant_gps_vtec
+
+!----------------------------------------------------------------------
+
+subroutine interactive_slant_gps_vtec(igrkey)
+ integer, intent(out) :: igrkey
+
+! Initializes the specialized part of a slant gps vtec observation
+! A new key will be generated based on the next available index
+! in the metadata arrays.
+
+if ( .not. module_initialized ) call initialize_module
+
+! Increment the counter so all key values are unique
+num_slant_gps_vtec_obs = num_slant_gps_vtec_obs + 1
+   
+! Set the return value for the key, and use it as the index below
+igrkey = num_slant_gps_vtec_obs
+   
+! Make sure key is within valid range
+call check_valid_key(igrkey, 'GENERATED', 'interactive_slant_gps_vtec')
+
+! Prompt for input for the three required metadata items
+write(*, *) 'Creating an interactive_slant_gps_vtec observation'
+
+! Get the longitude of satellite
+do
+   write(*, *) 'Input the longitude of the satellite in degrees from 0 to 360'
+   read(*, *) sat_position(1, igrkey)  
+   if(sat_position(1, igrkey) < 0 .or. sat_position(1, igrkey) > 360) then
+      write(*, *) 'Value must be from 0 to 360'
+   else
+      exit
+   endif
+enddo
+
+! Get latitude of satellite
+do
+   write(*, *) 'Input the latitude of the satellite in degrees from -90 to 90'
+   read(*, *) sat_position(2, igrkey)  
+   if(sat_position(2, igrkey) < -90 .or. sat_position(2, igrkey) > 90) then
+      write(*, *) 'Value must be from -90 to 90'
+   else
+      exit
+   endif
+enddo
+
+! Get height of satellite
+do
+   write(*, *) 'Input the height of the satellite in meters'
+   read(*, *) sat_position(3, igrkey)  
+   if(sat_position(3, igrkey) < 0) then
+      write(*, *) 'Value must be non-negative'
+   else
+      exit
+   endif
+enddo
+
+! Get the longitude of ground point
+do
+   write(*, *) 'Input the longitude of the ground point in degrees from 0 to 360'
+   read(*, *) ground_position(1, igrkey)  
+   if(ground_position(1, igrkey) < 0 .or. ground_position(1, igrkey) > 360) then
+      write(*, *) 'Value must be from 0 to 360'
+   else
+      exit
+   endif
+enddo
+
+! Get latitude of ground point
+do
+   write(*, *) 'Input the latitude of the ground point in degrees from -90 to 90'
+   read(*, *) ground_position(2, igrkey)  
+   if(ground_position(2, igrkey) < -90 .or. ground_position(2, igrkey) > 90) then
+      write(*, *) 'Value must be from -90 to 90'
+   else
+      exit
+   endif
+enddo
+
+! Get height of ground point
+do
+   write(*, *) 'Input the height of the ground point in meters'
+   read(*, *) ground_position(3, igrkey)  
+   if(ground_position(3, igrkey) < 0) then
+      write(*, *) 'Value must be non-negative'
+   else
+      exit
+   endif
+enddo
+
+end subroutine interactive_slant_gps_vtec
 
 !-----------------------------------------------------------------------------
 
@@ -639,6 +877,42 @@ where (istatus == 0)
 end where
 
 end subroutine get_expected_oxygen_ion_density
+
+
+!----------------------------------------------------------------------
+
+subroutine check_valid_key(igrkey, what, fromwhere)
+ integer, intent(in)          :: igrkey
+ character(len=*), intent(in) :: what, fromwhere
+
+! Internal subroutine that verifies that we haven't incremented the key value
+! past the size of the allocated space, or that a routine hasn't been called
+! with a out-of-range key (which would indicate an internal error of some kind).
+! If an error is found, a fatal message is printed and this routine doesn't return.
+! The 'what' argument is either 'GIVEN' for a key value that's passed in from
+! another routine; or 'GENERATED' for one we have just made and are planning to
+! return to the caller.  The 'fromwhere' argument is the name of the calling 
+! subroutine so the error message can report where it was called from.
+
+character(len=128) :: msgstring
+
+if (igrkey <= 0 .or. igrkey > max_slant_gps_vtec_obs) then
+   if (what == 'GENERATED' .and. igrkey > max_slant_gps_vtec_obs) then
+      ! generating a new key and ran out of space
+      write(msgstring, *)'Out of space, max_slant_gps_vtec_obs limit ',max_slant_gps_vtec_obs
+      call error_handler(E_ERR,trim(fromwhere),msgstring,source,revision,revdate, &
+                         text2='Increase value of max_slant_gps_vtec_obs in obs_def_1d_state_mod')
+   else
+      ! called with a bad key or a negative key generated somehow. "shouldn't happen".
+      write(msgstring, *)'Key is ',igrkey,' must be between 1 and ',max_slant_gps_vtec_obs
+      call error_handler(E_ERR,trim(fromwhere),msgstring,source,revision,revdate, &
+                         text2='Internal error: Invalid key value in RAW_STATE_1D_INTEGRAL obs')
+   endif
+endif
+
+end subroutine check_valid_key
+!----------------------------------------------------------------------
+
 
 end module obs_def_upper_atm_mod
 ! END DART PREPROCESS MODULE CODE      

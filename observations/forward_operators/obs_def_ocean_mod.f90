@@ -448,7 +448,7 @@ else
 endif
 
 ! Check for illegal values 
-if (beam_angle <= 0.0_r8 .or. beam_angle >= 360.0_r8 ) then
+if (beam_angle < 0.0_r8 .or. beam_angle >= 360.0_r8 ) then
    write(msgstring,*) "beam_angle value must be between 0 and 360, got: ", &
                        beam_angle
    call error_handler(E_ERR, 'read_beam_angle', msgstring, &

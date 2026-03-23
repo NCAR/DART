@@ -255,7 +255,7 @@ bash  ``export BASE_DIR=<path_to_your_working_directory>``
    ::
 
        cd $BASE_DIR
-       wget http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_29Apr2024.tar.gz
+       wget data.dart.ucar.edu/WRF/wrf_dart_tutorial_29Apr2024.tar.gz
        tar -xzvf wrf_dart_tutorial_29Apr2024.tar.gz
 
    After untarring the file you should see the following directories:

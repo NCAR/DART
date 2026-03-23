@@ -8,6 +8,7 @@ into the format required by DART.
 Each directory has at least one converter:
 
 -  ``AIRS``: :doc:`/observations/obs_converters/AIRS/README`
+-  ``ARVOR``: :doc:`../observations/obs_converters/ARVOR/readme`
 -  ``AURA``: See ``DART/observations/obs_converters/AURA``
 -  ``Aviso+/CMEMS``: :doc:`../observations/obs_converters/AVISO/AVISO`
 -  ``Ameriflux``: :doc:`../observations/obs_converters/Ameriflux/level4_to_obs`
@@ -17,6 +18,7 @@ Each directory has at least one converter:
 -  ``CNOFS``: See ``DART/observations/obs_converters/CNOFS``
 -  ``CONAGUA``: :doc:`../observations/obs_converters/CONAGUA/README`
 -  ``COSMOS``: :doc:`../observations/obs_converters/COSMOS/COSMOS_to_obs`
+-  ``CrocoLake``: :doc:`../observations/obs_converters/CrocoLake/readme`
 -  ``DWL``: :doc:`../observations/obs_converters/DWL/dwl_to_obs`
 -  ``GMI``: :doc:`../observations/obs_converters/GMI/README`
 -  ``GOES``: :doc:`../observations/obs_converters/GOES/README`
@@ -24,6 +26,8 @@ Each directory has at least one converter:
 -  ``GRACE``: See ``DART/observations/obs_converters/GRACE``
 -  ``GSI2DART``: :doc:`../observations/obs_converters/GSI2DART/readme`
 -  ``GTSPP``: :doc:`../observations/obs_converters/GTSPP/GTSPP`
+-  ``HFradar``: :doc:`../observations/obs_converters/HFradar/readme`
+-  ``IODA``: :ref:`ioda2obsq <ioda2obsq>`
 -  ``MADIS``: :doc:`../observations/obs_converters/MADIS/MADIS`
 -  ``MIDAS``: :doc:`../observations/obs_converters/MIDAS/MIDAS_to_obs`
 -  ``MODIS``: :doc:`../observations/obs_converters/MODIS/MOD15A2_to_obs`
@@ -43,6 +47,7 @@ Each directory has at least one converter:
 -  ``QuikSCAT``: :doc:`../observations/obs_converters/quikscat/QuikSCAT`
 -  ``Radar``: :doc:`../observations/obs_converters/radar/README`
 -  ``snow``: :doc:`../observations/obs_converters/snow/snow_to_obs`
+-  ``SVP``: :doc:`../observations/obs_converters/SVP/readme`
 -  ``Text``: :doc:`../observations/obs_converters/text/text_to_obs`
 -  ``text_GITM``: See ``DART/observations/obs_converters/text_GITM``
 -  ``tpw``: :doc:`../observations/obs_converters/tpw/tpw`
