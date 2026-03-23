@@ -68,9 +68,15 @@ end interface set_location
 !-----------------------------------------------------------------
 ! Namelist with default values
 ! Turn on strongly coupled get_close_computation
-logical :: strongly_coupled = .false.
+logical            :: strongly_coupled = .false.
+! State_model and obs_model are only used if strongly_coupled is true
+! Value must be 'Lorenz-96' or 'Lorenz-63'
+! Model that is currently doing the DA
+character(len=256) :: state_model = 'none'
+! Model that generated the observations
+character(len=256) :: obs_model = 'none'
 
-namelist /location_nml/ strongly_coupled
+namelist /location_nml/ strongly_coupled, state_model, obs_model
 
 contains
 
@@ -472,14 +478,43 @@ real(r8),            optional, intent(inout) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ensemble_handle
 
 ! The extra distance for 'crossing the model boundary'
-real(r8), parameter :: extra_distance = 0.5
+real(r8), parameter :: same_extra_distance = 0.1
+real(r8), parameter :: different_extra_distance = 0.2
 
-! Simple demonstration of low order model coupling
+integer :: s_model, o_model
+
+! Simple demonstration of low order model strongly coupled DA
 ! Make distance 'across the boundary' an extra addition
 ! Could update num_close and close_ind for additional efficiency
-dist = dist + extra_distance
-write(*, *) 'SHOULD NOT GET HERE'
-stop
+
+! Only cases supported are Lorenz_96 with Lorenz_63
+! Specify one for obs and one for state
+
+if(index('Lorenz-96', trim(state_model)) > 0) then
+   s_model = 96
+else if(index('Lorenz-63', trim(state_model)) > 0) then
+   s_model = 63
+else
+   write(errstring,*) 'state_model in location_nml must be Lorenz-96 or Lorenz-63'
+   call error_handler(E_ERR, 'get_close_state_strongly_coupled', errstring, source)
+endif
+
+if(index('Lorenz-96', trim(obs_model)) > 0) then
+   o_model = 96
+else if(index('Lorenz-63', trim(obs_model)) > 0) then
+   o_model = 63
+else
+   write(errstring,*) 'obs_model in location_nml must be Lorenz-96 or Lorenz-63'
+   call error_handler(E_ERR, 'get_close_state_strongly_coupled', errstring, source)
+endif
+
+if(s_model == o_model) then
+   ! If they are both the same model (but different instances) increase distance
+   dist = dist + same_extra_distance
+else
+   ! If they are different models increase distance
+   dist = dist + different_extra_distance
+endif
 
 end subroutine get_close_state_strongly_coupled
 
