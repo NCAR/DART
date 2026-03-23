@@ -22,14 +22,61 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**February 4 2026 :: IODA2obsq. Tag v11.21.1**
+**March 23 2026 :: CCE compiler flags. Tag v11.21.2**
+
+- Updated mkmf.template for CCE compiler 
+- Default qtys updated with land qtys
+
+Documentation updates:
+
+  - Removed duplicate list of observation converters
+  - Anchors for observation converter docs
+
+Bug-fix:
+
+  - Removed _r8 from .nml files
+
+**March 6 2026 :: MOM6 clamping. Tag v11.21.1**
+
+MOM6:
+
+  - Add clamping options to model_nml for MOM6
+  - Sets vertical localization coordinate
+  - Bug-fixes:
+
+     - vertical interpolation for thickness was missing first layer thickness
+     - vertical interpolation lev_fract fixed for pseudo-depth
+
+Documentation:
+
+  - pytools documentation added for pyfortran and pyqceff
+
+**February 27 2026 :: pywatershed. Tag v11.21.0**
+
+New features:
+
+  - Interface to hydrologic model pywatershed
+  - GitHub actions for pytools
+
+Bug-fix:
+
+  - Removed check on initialized variables in mkmf.template.ifx
+    due to ifx problems
+
+Documentation updates:
+
+  - NSF NCAR branding update 
+
+**February 4 2026 :: IODA2obsq. Tag v11.20.1**
 
 New feature:
+
   - Radiances added to pyjedi ioda2obsq tool for DART JEDI interoperability
  
     *contributed by Stephen Herbener, as part of DART collaboration with JCSDA*
 
 Bug-fix:
+
   - WRF model_mod bug-fix for 3D potential temperature interpolation
 
 **January 8 2026 :: ARVOR Float and SVP Drifters. Tag v11.20.0**

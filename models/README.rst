@@ -41,6 +41,7 @@ DART supported models:
 - :doc:`PBL_1d/readme`
 - :doc:`pe2lyr/readme`
 - :doc:`POP/readme`
+- :doc:`pywatershed/readme`
 - :doc:`ROMS_rutgers/readme`
 - :doc:`ROMS_ucla/readme`
 - :doc:`rose/readme`

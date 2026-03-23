@@ -21,3 +21,5 @@ LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 FFLAGS  = -O2 -hfp0 $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
+# For development or debugging, use the following flags.
+# FFLAGS  = -g -O0 -m2 -rl -Rbcdsp -Ktrap=inv,divz,ovf -hbounds $(INCS)

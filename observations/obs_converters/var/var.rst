@@ -1,3 +1,5 @@
+.. _var:
+
 3DVAR/4DVAR Observation Converters
 ==================================
 

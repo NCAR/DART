@@ -1,3 +1,5 @@
+.. _roms:
+
 ROMS observations to DART observation sequences
 ===============================================
 

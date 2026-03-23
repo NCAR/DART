@@ -1,3 +1,5 @@
+.. _ssec:
+
 SSEC Data Center
 ================
 

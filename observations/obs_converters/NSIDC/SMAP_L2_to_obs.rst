@@ -1,3 +1,5 @@
+.. _nsidc_smap_l2:
+
 PROGRAM ``SMAP_L2_to_obs``
 ==========================
 

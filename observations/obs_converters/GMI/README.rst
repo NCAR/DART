@@ -1,3 +1,5 @@
+.. _gmi:
+
 GMI Brightness Temperatures
 ============================
 

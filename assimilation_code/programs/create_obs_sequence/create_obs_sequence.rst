@@ -1,3 +1,5 @@
+.. _create_obs_sequence:
+
 program ``create_obs_sequence``
 ===============================
 
