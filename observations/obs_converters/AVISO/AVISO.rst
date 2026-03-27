@@ -1,3 +1,5 @@
+.. _aviso:
+
 Aviso+/CMEMS Observations
 =========================
 

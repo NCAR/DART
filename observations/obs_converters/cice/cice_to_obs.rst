@@ -1,3 +1,5 @@
+.. _cice_to_obs:
+
 PROGRAM ``cice_to_obs``
 =======================
 

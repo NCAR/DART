@@ -1,3 +1,5 @@
+.. _arvor:
+
 ARVOR (Profiling Floats)
 ========================
 

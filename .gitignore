@@ -3,6 +3,7 @@
 *.mod
 *.o
 *.swp
+*.lst
 *__pycache__*
 *obscount.txt
 *region?.ps

@@ -309,7 +309,6 @@ References
    guide/detailed-structure-obs-seq
    guide/creating-obs-seq-synthetic
    guide/creating-obs-seq-real
-   guide/available-observation-converters
    guide/manipulating-with-obs-sequence-tool
    guide/difference-between-type-and-quantity
    guide/adding-support-new-type
@@ -320,6 +319,7 @@ References
    :caption: Observation Converters
 
    observations/obs_converters/README
+   guide/available-observation-converters
 
 
 .. toctree::
@@ -332,7 +332,7 @@ References
    observations/obs_converters/AVISO/AVISO
    observations/obs_converters/Ameriflux/fluxnetfull_to_obs
    observations/obs_converters/Ameriflux/level4_to_obs
-   observations/obs_converters/CHAMP/work/README
+   observations/obs_converters/CHAMP/README
    observations/obs_converters/BATS/readme
    observations/obs_converters/cice/cice_to_obs
    observations/obs_converters/CONAGUA/README

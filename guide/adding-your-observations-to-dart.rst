@@ -9,9 +9,8 @@ converted from its native format to the DART observation sequence format and
 that the observation forward operator is already implemented. Keep in mind that
 forward operators are not specific to any one model.
 
-The observation converters are in the *observations/obs_converter* directory and
-you should look there for the documentation describing which converters are
-available.
+The observation converters are in the *observations/obs_converter* directory,
+and are documented in :ref:`available_observation_converters`. 
 
 The forward operators are functionally or logically grouped into Fortran modules
 in the *observations/forward_operator* directory. DART employs a ‘contractual’

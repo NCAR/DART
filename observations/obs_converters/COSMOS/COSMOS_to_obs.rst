@@ -1,3 +1,5 @@
+.. _cosmos:
+
 PROGRAM ``COSMOS_to_obs``
 =========================
 

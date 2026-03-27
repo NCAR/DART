@@ -3,6 +3,8 @@
    pair: MOD29E1D_to_obs; MODIS
    sea ice temperature
 
+.. _modis29:
+
 PROGRAM ``MOD29E1D_to_obs``
 ===========================
 

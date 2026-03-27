@@ -22,6 +22,20 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**March 23 2026 :: CCE compiler flags. Tag v11.21.2**
+
+- Updated mkmf.template for CCE compiler 
+- Default qtys updated with land qtys
+
+Documentation updates:
+
+  - Removed duplicate list of observation converters
+  - Anchors for observation converter docs
+
+Bug-fix:
+
+  - Removed _r8 from .nml files
+
 **March 6 2026 :: MOM6 clamping. Tag v11.21.1**
 
 MOM6:
