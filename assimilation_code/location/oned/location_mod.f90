@@ -510,10 +510,10 @@ endif
 
 if(s_model == o_model) then
    ! If they are both the same model (but different instances) increase distance
-   dist = dist + same_extra_distance
+   dist(1:num_close) = dist(1:num_close) + same_extra_distance
 else
    ! If they are different models increase distance
-   dist = dist + different_extra_distance
+   dist(1:num_close) = dist(1:num_close) + different_extra_distance
 endif
 
 end subroutine get_close_state_strongly_coupled

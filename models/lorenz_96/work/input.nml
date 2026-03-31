@@ -122,8 +122,6 @@
 
 &location_nml
    strongly_coupled = .false.
-   state_model      = 'Lorenz-96'
-   obs_model        = 'Lorenz-63'
    /
 
 &obs_sequence_nml
