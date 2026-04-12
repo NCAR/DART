@@ -1286,7 +1286,7 @@ select case( obs_kind )
 
       where (istatus == 0) expected_obs = interp_val_liq + interp_val_ice
 
-   case ( QTY_SOIL_TEMPERATURE, QTY_SOIL_LIQUID_WATER, QTY_SOIL_ICE, QTY_SOIL_CARBON )
+   case ( QTY_SOIL_TEMPERATURE, QTY_SOIL_LIQUID_WATER, QTY_SOIL_ICE)
 
       call get_grid_vertval(state_handle, ens_size, location, obs_kind, &
                             expected_obs, istatus)
@@ -1297,7 +1297,7 @@ select case( obs_kind )
           QTY_WATER_TABLE_DEPTH, QTY_VEGETATION_TEMPERATURE, &
           QTY_FRACTION_ABSORBED_PAR, QTY_NET_CARBON_PRODUCTION, &
           QTY_PAR_DIRECT, QTY_PAR_DIFFUSE, QTY_ABSORBED_PAR, &
-          QTY_SOLAR_INDUCED_FLUORESCENCE, QTY_LATENT_HEAT_FLUX)
+          QTY_SOLAR_INDUCED_FLUORESCENCE, QTY_LATENT_HEAT_FLUX, QTY_SOIL_CARBON)
 
       call compute_gridcell_value(state_handle, ens_size, location, obs_kind, &
                                   expected_obs, istatus)
