@@ -29,10 +29,7 @@ use time_manager_mod, only : time_type, set_time
 ! We build on case-insensitive systems so we cannot reliably
 ! count on having the build system run the fortran preprocessor
 ! since the usual distinction is between bob.F90 and bob.f90
-! to decide what needs preprocessing.  instead we utilize a
-! script we provide called 'fixsystem' which looks for the
-! special XXX_BLOCK_EDIT comment lines and comments the blocks
-! in and out depending on the target compiler.
+! to decide what needs preprocessing.
 
 ! the NAG compiler needs these special definitions enabled.
 ! the #ifdef lines are only there in case someday we can use
@@ -65,27 +62,6 @@ use time_manager_mod, only : time_type, set_time
 
 implicit none
 private
-
-
-! BUILD TIP 
-! Some compilers require an interface block for the system() function;
-! some fail if you define one.  If you get an error at link time (something
-! like 'undefined symbol _system_') try running the fixsystem script in
-! this directory.  It is a sed script that comments in and out the interface
-! block below.  Please leave the BLOCK comment lines unchanged.
-
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !#endif
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 
 ! allow global sum to be computed for integers, r4, and r8s
@@ -475,14 +451,16 @@ end subroutine restart_task
 
 
 !-----------------------------------------------------------------------------
-! general system util wrappers.
+! general execute_command_line util wrappers.
 !-----------------------------------------------------------------------------
 
-!> Use the system() command to execute a command string.
-!> Will wait for the command to complete and returns an
-!> error code unless you end the command with & to put
-!> it into background.   Function which returns the rc
-!> of the command, 0 being all is ok.
+!> Use the execute_command_line() intrinsic subroutine
+!> to execute a command string. 
+
+!> Will wait for the
+!> command to complete and returns an error code unless
+!> you end the command with & to put it into background.
+!> Function which returns the rc of the command, 0 being all is ok.
 
 function shell_execute(execute_string, serialize)
  character(len=*), intent(in) :: execute_string
@@ -491,7 +469,7 @@ function shell_execute(execute_string, serialize)
 
 !DEBUG: print *, "in-string is: ", trim(execute_string)
 
-call do_system(execute_string, shell_execute)
+call do_execute_command_line(execute_string, shell_execute)
 
 !DEBUG: print *, "execution returns, rc = ", shell_execute
     
@@ -504,19 +482,23 @@ end function shell_execute
 !> on at least on cray system, the compute nodes only had one type
 !> of shell and you had to specify it.
 
-subroutine do_system(execute, rc)
+subroutine do_execute_command_line(execute, rc)
 
 character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
+character(len=300) :: full_command
+integer :: exit_code
+
 ! !!NAG_BLOCK_EDIT START COMMENTED_OUT
 !  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
 ! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-! !!OTHER_BLOCK_EDIT START COMMENTED_IN
-    rc = system(trim(shell_name)//' '//trim(execute)//' '//char(0))
-! !!OTHER_BLOCK_EDIT END COMMENTED_IN
 
-end subroutine do_system
+    full_command = (trim(shell_name)//' '//trim(execute))
+    call execute_command_line(trim(full_command), exitstat=exit_code)
+    rc = exit_code
+
+end subroutine do_execute_command_line
 
 !-----------------------------------------------------------------------------
 
