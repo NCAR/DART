@@ -22,6 +22,27 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**April 14 2026 :: WRF nested tutorial. Tag v11.22.0**
+
+New features:
+
+  - New WRF Tutorial with severe storm nested domain example
+  - Automatic downscaling for WRF nested domains
+  - Perturbation step (WRFDA CV3) within tutorial
+  - Assimilation and forecast modes in tutorial
+  - WRF shell scripting converted to function-based bash scripts
+
+Bug-fix:
+
+  - Imposes mandatory terrain-following coordinates to 
+    eliminate boundary condition bug during WRF perturbation step.
+
+Documentation updates:
+
+  - WRF tutorial rewritten for nested Kansas 2024 severe storm example
+
+
+
 **March 23 2026 :: CCE compiler flags. Tag v11.21.2**
 
 - Updated mkmf.template for CCE compiler 
