@@ -143,6 +143,10 @@ The table below describes the configurable variables in this namelist:
      - `character(len=vtablenamelength), dimension(MAX_STATE_VARIABLES * table_columns)`
      - `' '` 
      - Specifies the list of ROMS variables to be assimilated. The variable table is parsed as flat strings with metadata.
+   * - ``convert_salinity_to_kgkg``
+     - `logical`
+     - `.true.`
+     - If true, module_interpolate salinity output is converted to kg/kg, otherwise PSU (g/g) is used. Be sure to match observation units.
 
 
 Variables Table Format
