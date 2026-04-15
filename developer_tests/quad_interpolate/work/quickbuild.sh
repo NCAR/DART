@@ -17,6 +17,7 @@ programs=(
 serial_programs=(
 test_quad_irreg_interp
 test_quad_reg_interp
+test_gauss_elim_pivot
 )
 
 arguments "$@"
