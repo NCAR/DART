@@ -13,34 +13,51 @@
 # 	list of perturbed variables
 # 	wrfda executable and be.dat
 
-set datea = 2017042700  # need to start from a known valid date matching the wrfinput_d01 date
+
+set datea = 2024051900  # need to start from a known valid date matching the wrfinput_d01 date
+set paramfile = /glade/derecho/scratch/bmraczka/WRFv4.5_nested/scripts/param.csh
+
+echo "Sourcing parameter file"
+source $paramfile
+mkdir -p ${PERTS_DIR}/work/boundary_perts
 
 # this has all wrf and wrfda executables and support files
-set wrfda_dir = /glade/scratch/romine/pert_hrrr/wrfda # set this appropriately #%%%#
+# /glade/work/bmraczka/WRF/WRFDAv4.5_git
+set wrfda_dir = ${RUN_DIR}/WRF_RUN # set this appropriately #%%%#
 
-set work_dir  = /glade/scratch/romine/pert_hwt2018 # set this appropriately #%%%#
+set work_dir  = ${PERTS_DIR}/work # set this appropriately #%%%#
 
 # put the final eperturbation files here for later use
-set save_dir  = /glade/p/nmmm0001/romine/hwt2018/boundary_perts # set this appropriately #%%%#
+set save_dir  = ${PERTS_DIR}/work/boundary_perts # set this appropriately #%%%#
 
-set DART_DIR = /glade/p/work/romine/c_codes/DART_manhattan # set this appropriately #%%%#
+#This is set already in param.csh
+# set DART_DIR = /glade/p/work/romine/c_codes/DART_manhattan # set this appropriately #%%%#
 
 # where the template namelist is for wrfvar
-set template_dir =  /glade/scratch/romine/pert_hwt2018/template     # set this appropriately #%%%#
-set IC_PERT_SCALE      = 0.009
+# This is set already in param.csh
+#set template_dir =  /glade/scratch/romine/pert_hwt2018/template     # set this appropriately #%%%#
+
+
+# BMR --> Need to optimize for new domain
+# These scale variables are not passed in -- hard coded to template file
+set IC_PERT_SCALE      = 0.1
 set IC_HORIZ_SCALE     = 0.8
 set IC_VERT_SCALE      = 0.8
-set num_ens =  150  # number of perturbations to generate, must be at least ensemble size, suggest 3-4X. SUGGEST testing
+
+set num_ens = 150
+#set num_ens =  150  # number of perturbations to generate, must be at least ensemble size, suggest 3-4X. SUGGEST testing
                     # a single member until you are sure the script works, and are happy with the settings.
-set wrfin_dir = ${work_dir}/wrfin
+
+
+# Get wrfinput_d01 file directly from the 'mean' file generated from real.exe
+# set wrfin_dir = ${work_dir}/wrfin
 set ASSIM_INT_HOURS = 6
 
 
 module load nco
 
-#  mkdir ${work_dir}
 cd ${work_dir}
-cp ${template_dir}/input.nml.template input.nml
+cp ${TEMPLATE_DIR}/input.nml.template input.nml
 
 # get a wrfdate and parse
 set gdate  = (`echo $datea 0h -g | ${DART_DIR}/models/wrf/work/advance_time`)
@@ -57,7 +74,15 @@ while ( $n <= $num_ens )
    mkdir ${work_dir}/mem_${n}
    cd ${work_dir}/mem_${n}
    cp ${wrfda_dir}/* ${work_dir}/mem_${n}/.
-   ln -sf ${wrfin_dir}/wrfinput_d01 ${work_dir}/mem_${n}/fg
+   
+   # Use the wrfinput_d01 file generated from real.exe during gen_retro_icbc.csh
+   
+
+   ln -sf ${OUTPUT_DIR}/${datea}/wrfinput_d01_${gdate[1]}_${gdate[2]}_mean ${work_dir}/mem_${n}/fg
+   
+   # Old method
+   #ln -sf ${wrfin_dir}/wrfinput_d01 ${work_dir}/mem_${n}/fg
+   
    # prep the namelist to run wrfvar
    @ seed_array2 = $n * 10
    cat >! script.sed << EOF
@@ -101,7 +126,9 @@ while ( $n <= $num_ens )
    /seed_array2/c\
    seed_array2 = $seed_array2 /
 EOF
-   sed -f script.sed ${template_dir}/namelist.input.3dvar >! ${work_dir}/mem_${n}/namelist.input
+
+   # namelist.input.3dvar --> single parent domain only, contains all & wrfvar1-14
+   sed -f script.sed ${TEMPLATE_DIR}/namelist.input.3dvar >! ${work_dir}/mem_${n}/namelist.input
    # make a run file for wrfvar
 
    cat >> ${work_dir}/mem_${n}/gen_pert_${n}.csh << EOF
@@ -109,24 +136,26 @@ EOF
 #=================================================================
 #PBS -N gen_pert_bank_mem${n}
 #PBS -j oe
-#PBS -A COMPUTER_CHARGE_ACCOUNT
+#PBS -A ${COMPUTER_CHARGE_ACCOUNT}
 #PBS -l walltime=0:05:00
-#PBS -q regular
-#PBS -m a
-#PBS -M USERNAME@X.X             # set this appropriately #%%%#
-#PBS -l select=4:ncpus=32:mpiprocs=16
+#PBS -q ${ADVANCE_QUEUE}
+#PBS -l job_priority=${ADVANCE_PRIORITY}
+#PBS -o gen_pert_bank_mem${n}.out
+#PBS -l select=1:ncpus=4:mpiprocs=4
 #PBS -k eod
+#PBS -V
 #=================================================================
 
 cd ${work_dir}/mem_${n}
 
-mpiexec_mpt dplace -s 1 ./da_wrfvar.exe >& output.wrfvar
+mpiexec -n 1 -ppn 1 ./da_wrfvar.exe >& output.wrfvar
 mv wrfvar_output wrfinput_d01
 
 # extract only the fields that are updated by wrfvar, then diff to generate the pert file for this member
 
-ncks -h -F -A -a -v U,V,T,QVAPOR,MU fg orig_data.nc
-ncks -h -F -A -a -v U,V,T,QVAPOR,MU wrfinput_d01 pert_data.nc
+
+ncks -h -F -A -a -v U,V,THM,QVAPOR,MU fg orig_data.nc
+ncks -h -F -A -a -v U,V,THM,QVAPOR,MU wrfinput_d01 pert_data.nc
 ncdiff pert_data.nc orig_data.nc pert_bank_mem_${n}.nc
 mv pert_bank_mem_${n}.nc ${save_dir}/pert_bank_mem_${n}.nc
 EOF
