@@ -177,9 +177,9 @@ fileloop: do        ! until out of files
  
         call uv_field_cell_to_edges(ucell_dart, vcell_dart, u)
 
-        call nc_put_variable(ncBckID, 'u', variable)
-        call nc_put_variable(ncBckID, 'uReconstructZonal', variable)
-        call nc_put_variable(ncBckID, 'uReconstructMeridional', variable)
+        call nc_put_variable(ncBckID, 'u', u)
+        call nc_put_variable(ncBckID, 'uReconstructZonal', ucell_dart)
+        call nc_put_variable(ncBckID, 'uReconstructMeridional', vcell_dart)
 
         deallocate(u, ucell_dart, vcell_dart)
 
@@ -188,9 +188,9 @@ fileloop: do        ! until out of files
   else
      ! copy u from analysis to background
     allocate(variable(get_variable_size(dom_id, get_varid_from_varname(dom_id, 'u'))))
-    call nc_get_variable_size(ncAnlId, get_variable_name(dom_id,i), dimlens)
-    call nc_get_variable(ncAnlID, 'u', variable, nc_count=dimlens)
-    call nc_put_variable(ncBckID, 'u', variable, nc_count=dimlens)  
+    call nc_get_variable_size(ncAnlId, 'u', file_dimlens)
+    call nc_get_variable(ncAnlID, 'u', variable, nc_count=file_dimlens)
+    call nc_put_variable(ncBckID, 'u', variable, nc_count=file_dimlens)  
 
     deallocate(variable)
 
