@@ -24,7 +24,7 @@ use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              logfileunit, open_file, close_file, &
-                             get_next_filename, E_ERR, E_MSG, error_handler
+                             get_next_filename, E_ERR, error_handler
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date, operator(/=)
 use        model_mod, only : static_init_model, &
@@ -111,6 +111,7 @@ call check_namelist_read(iunit, io, "update_bc_nml")
 call static_init_model()
 call get_grid_dims(nCells, nVertices, nEdges, nVertLevels, vertexDegree, nSoilLevels)
 
+! HK @todo why are these hard coded?
 lbc_file_has_reconstructed_winds = .false.
 lbc_variables(1) = 'lbc_qc'
 lbc_variables(2) = 'lbc_qr'
@@ -174,7 +175,7 @@ fileloop: do        ! until out of files
       if (.not. lbc_file_has_reconstructed_winds) then
          write(string1, *) 'Cannot update edge winds from increments because the boundary file does not contain the reconstructed winds (lbc_ur, lbc_vr)'
          write(string2, *) 'lbc_update_winds_from_increments should be .false.'
-         call error_handler(E_MSG,'statevector_to_boundary_file',string1,&
+         call error_handler(E_ERR,'update_bc',string1,&
                             source, text2=string2)
       endif
 
