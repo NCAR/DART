@@ -180,10 +180,10 @@ fileloop: do        ! until out of files
 
       allocate(old_lbc_ucell(nVertLevels, nCells))
       allocate(old_lbc_vcell(nVertLevels, nCells))
-      allocate(      delta_u(nVertLevels, nEdges))
 
-      call nc_get_variable(ncBdyID, 'uReconstructMeridional', old_lbc_ucell)
-      call nc_get_variable(ncBdyID, 'uReconstructZonal', old_lbc_vcell)
+
+      call nc_get_variable(ncBdyID, 'uReconstructZonal', old_lbc_ucell)
+      call nc_get_variable(ncBdyID, 'uReconstructMeridional', old_lbc_vcell)
 
    endif
 
@@ -198,7 +198,7 @@ fileloop: do        ! until out of files
       avarname = trim(bvarname(5:)) !corresponding field in analysis domain
 
       ! skip edge normal winds
-      if (bvarname == 'u') cycle VARLOOP
+      if (bvarname == 'lbc_u') cycle VARLOOP
 
       ! reconstructed cell-center winds have different names in the lbc file.
       if (bvarname == 'lbc_ur') avarname = 'uReconstructZonal'
@@ -253,8 +253,8 @@ fileloop: do        ! until out of files
       allocate(    lbc_ucell(nVertLevels, nCells))
       allocate(    lbc_vcell(nVertLevels, nCells))
   
-      call nc_get_variable(ncBdyID, 'lbc_ur', lbc_vcell)  ! already blended in VARLOOP
-      call nc_get_variable(ncBdyID, 'lbc_vr', lbc_ucell)  ! already blended in VALOOP
+      call nc_get_variable(ncBdyID, 'lbc_ur', lbc_ucell)  ! already blended in VARLOOP
+      call nc_get_variable(ncBdyID, 'lbc_vr', lbc_vcell)  ! already blended in VARLOOP
   
       if (lbc_update_winds_from_increments) then
   
@@ -291,7 +291,7 @@ fileloop: do        ! until out of files
       else ! just replace, no increments
 
         call uv_field_cell_to_edges(lbc_ucell, lbc_vcell, lbc_u)
-        call nc_put_variable(ncBdyID, 'lbc_u', var_data) 
+        call nc_put_variable(ncBdyID, 'lbc_u', lbc_u) 
 
       endif
 
