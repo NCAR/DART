@@ -99,6 +99,10 @@ logical  :: do_rotate = .false.     ! rotate edge from pts 1,2 to horizontal bef
 
 namelist /quad_interpolate_nml/ do_rotate, debug
 
+! Two-pass CSR build: target this many candidate quads per coarse box on average.
+! num_reg ≈ sqrt(nx*ny / TARGET_CANDIDATES), clamped to [10, min(nx,ny)].
+integer, parameter :: TARGET_CANDIDATES = 8
+
 !> @todo FIXME internal routines could use h for the handle; externally callable
 !> routines should use interp_handle for clarity in the interface.
 
@@ -206,7 +210,6 @@ type quad_irreg_grid_coords
    ! the sizes of these depend on the grid size.  these are good defaults for ?
    integer  :: num_reg_x = 180
    integer  :: num_reg_y = 180
-   integer  :: max_reg_list_num = 800
    real(r8) :: min_lon =     0.0_r8
    real(r8) :: max_lon =   360.0_r8
    real(r8) :: lon_width = 360.0_r8
@@ -404,42 +407,17 @@ select case (grid_type)
       interp_handle%ii%lats_2D(num_lons, num_lats) = MISSING_R8
       interp_handle%ii%lons_2D(num_lons, num_lats) = MISSING_R8
 
-      ! tx0.1v2 num_reg_x = num_reg_y = 900
-      ! tx0.5v1 num_reg_x = num_reg_y = 180
-      ! gx1v6   num_reg_x = num_reg_y = 90
-      ! max_reg_list_num = 800
+      ! Dynamic coarse grid sizing: target ~TARGET_CANDIDATES quads per coarse box.
+      ! num_reg ≈ sqrt(nx*ny / TARGET_CANDIDATES), clamped to [10, min(nx,ny)].
+      interp_handle%ii%num_reg_x = max(10, min(num_lons, &
+            int(sqrt(real(num_lons * num_lats, r8) / real(TARGET_CANDIDATES, r8)))))
+      interp_handle%ii%num_reg_y = max(10, min(num_lats, &
+            int(sqrt(real(num_lons * num_lats, r8) / real(TARGET_CANDIDATES, r8)))))
 
-      ! adjust num_regs here based on numlons, numlats
-      if (num_lats * num_lons > 6 * 1000 * 1000) then  ! ~1/10th degree
-         interp_handle%ii%num_reg_x = 900
-         interp_handle%ii%num_reg_y = 900
-         interp_handle%ii%max_reg_list_num = 800   !todo  what is good val?
-         if(debug > 10) then
-            write(string1, *) 'case 1: ', interp_handle%ii%num_reg_x, interp_handle%ii%num_reg_y, &
-                               interp_handle%ii%max_reg_list_num
-            call log_it(string1)
-         endif
-
-      else if (num_lats * num_lons > 250 * 1000) then  ! ~1/2th degree
-         interp_handle%ii%num_reg_x = 180
-         interp_handle%ii%num_reg_y = 180
-         interp_handle%ii%max_reg_list_num = 800
-         if(debug > 10) then
-            write(string1, *) 'case 2: ', interp_handle%ii%num_reg_x, interp_handle%ii%num_reg_y, &
-                               interp_handle%ii%max_reg_list_num
-            call log_it(string1)
-         endif
-
-      else
-         interp_handle%ii%num_reg_x = 90
-         interp_handle%ii%num_reg_y = 90
-         interp_handle%ii%max_reg_list_num = 800
-         if(debug > 10) then
-            write(string1, *) 'case 3: ', interp_handle%ii%num_reg_x, interp_handle%ii%num_reg_y, &
-                               interp_handle%ii%max_reg_list_num
-            call log_it(string1)
-         endif
-
+      if (debug > 0) then
+         write(string1, *) 'two-pass num_reg_x, num_reg_y: ', &
+               interp_handle%ii%num_reg_x, interp_handle%ii%num_reg_y
+         call log_it(string1)
       endif
 
       allocate(interp_handle%ii%grid_start(interp_handle%ii%num_reg_x, &
@@ -727,7 +705,9 @@ endif
 end subroutine shapecheck
 
 !------------------------------------------------------------
-!> Build the data structure for interpolation for an irregular quad grid
+!> Build the data structure for interpolation for an irregular quad grid.
+!> Two-pass CSR build: pass 1 counts, prefix sum allocates exact flat lists,
+!> pass 2 fills.  No 3-D temporary arrays, no max_reg_list_num cap.
 
 subroutine init_irreg_interp(h)
 
@@ -735,20 +715,13 @@ type(quad_interp_handle), intent(inout) :: h
 
 character(len=*), parameter :: routine = 'init_irreg_interp'
 
-! Need a temporary data structure to build this.
-! These arrays keep a list of the x and y indices of dipole quads
-! that potentially overlap the regular boxes.
-integer, allocatable :: reg_list_lon(:,:,:)
-integer, allocatable :: reg_list_lat(:,:,:)
+integer, allocatable :: fill_pos(:,:)
 
 real(r8) :: u_c_lons(4), u_c_lats(4), pole_row_lon
-integer  :: i, j, k, pindex, nx, ny, nrx, nry, istatus
-integer  :: reg_lon_ind(2), reg_lat_ind(2), u_total, u_index
+integer  :: i, j, pindex, nx, ny, nrx, nry, istatus
+integer  :: reg_lon_ind(2), reg_lat_ind(2), u_total
 logical  :: cyclic, pole
 integer  :: xlim
-
-allocate(reg_list_lon(h%ii%num_reg_x, h%ii%num_reg_y, h%ii%max_reg_list_num))
-allocate(reg_list_lat(h%ii%num_reg_x, h%ii%num_reg_y, h%ii%max_reg_list_num))
 
 ! poles?  span?
 cyclic = h%opt%spans_lon_zero
@@ -757,9 +730,6 @@ nx  = h%nlon
 ny  = h%nlat
 nrx = h%ii%num_reg_x
 nry = h%ii%num_reg_y
-
-reg_list_lon(:, :, :) = 0
-reg_list_lat(:, :, :) = 0
 
 ! for a global grid, the initial values have already been set in
 ! the derived type.  otherwise, find the min/max of lons and lats.
@@ -818,73 +788,69 @@ else
    xlim = nx - 1
 endif
 
+! ---------------------------------------------------------------
+! PASS 1: count how many quads overlap each coarse box.
+! No storage of quad indices — just increment grid_num.
+! ---------------------------------------------------------------
+h%ii%grid_num = 0
+
 do i = 1, xlim
-   ! There's no wraparound in y, one box less than grid boundaries
    do j = 1, ny - 1
-
-      if( all_corners_valid(h%opt, i,j, nx) ) then
-
- !>@todo is istatus /= 0 a failure condition
-
-         ! Set up array of lons and lats for the corners of these u quads
+      if( all_corners_valid(h%opt, i, j, nx) ) then
          call get_quad_corners(h%ii%lons_2d, i, j, cyclic, pole, nx, ny, u_c_lons, istatus)
          if (istatus /= 0) print *, 'get_quad_corners for lons returns failure'
-
          call get_quad_corners(h%ii%lats_2d, i, j, cyclic, pole, nx, ny, u_c_lats, istatus)
          if (istatus /= 0) print *, 'get_quad_corners for lats returns failure'
-
-         !print *, 'get_quad_corners returns ', u_c_lons, u_c_lats, ' for ', &
-         !          h%ii%lons_2d(i,j), h%ii%lats_2d(i,j), ' index ', i, j
-
-         ! Get list of regular boxes that cover this u dipole quad
-         ! false indicates that for the u grid there's nothing special about pole
          call reg_box_overlap(h, u_c_lons, u_c_lats, .false., reg_lon_ind, reg_lat_ind)
-         ! Update the temporary data structures for the u quad
-         call update_reg_list(h%ii%grid_num, reg_list_lon, reg_list_lat, &
-                    reg_lon_ind, reg_lat_ind, nrx, nry, h%ii%max_reg_list_num, i, j)
+         call count_reg_overlaps(h%ii%grid_num, reg_lon_ind, reg_lat_ind, nrx, nry)
       endif
-
    enddo
 enddo
 
-write(string1,*)'to determine (minimum) max_reg_list_num values for new grids ...'
-write(string2,*)'interp_handle%ii%grid_num is ',maxval(h%ii%grid_num)
-call error_handler(E_MSG, routine, string1, text2=string2)
+write(string1,*)'two-pass: max candidates per coarse box = ', maxval(h%ii%grid_num)
+call error_handler(E_MSG, routine, string1)
 
-! Invert the temporary data structure. The total number of entries will be
-! the sum of the number of dipole cells for each regular cell.
-u_total = sum(h%ii%grid_num)
+! ---------------------------------------------------------------
+! Prefix sum: build grid_start from grid_num; get u_total.
+! Iteration order matches the original (lon outer, lat inner).
+! ---------------------------------------------------------------
+u_total = 0
+do i = 1, nrx
+   do j = 1, nry
+      h%ii%grid_start(i, j) = u_total + 1
+      u_total = u_total + h%ii%grid_num(i, j)
+   enddo
+enddo
 
-! Allocate storage for the final structures in module storage
+write(string1,*)'two-pass: total coarse-index entries = ', u_total
+call error_handler(E_MSG, routine, string1)
+
+! Allocate exact-sized flat lists (no waste, no cap).
 allocate(h%ii%grid_lon_list(u_total), h%ii%grid_lat_list(u_total))
 
-! Fill up the long list by traversing the temporary structure. Need indices
-! to keep track of where to put the next entry.
-u_index = 1
-! Loop through each regular grid box
-do i = 1, h%ii%num_reg_x
-   do j = 1, h%ii%num_reg_y
+! ---------------------------------------------------------------
+! PASS 2: fill flat lists.
+! fill_pos(i,j) is a cursor that starts at grid_start(i,j) and
+! advances by 1 each time a quad is stored for box (i,j).
+! ---------------------------------------------------------------
+allocate(fill_pos(nrx, nry))
+fill_pos = h%ii%grid_start
 
-      ! The list for this regular box starts at the current indices.
-      h%ii%grid_start(i, j) = u_index
-
-      ! Copy all the close dipole quads for regular u box(i, j)
-      do k = 1, h%ii%grid_num(i, j)
-         h%ii%grid_lon_list(u_index) = reg_list_lon(i, j, k)
-         h%ii%grid_lat_list(u_index) = reg_list_lat(i, j, k)
-         u_index = u_index + 1
-      enddo
-
+do i = 1, xlim
+   do j = 1, ny - 1
+      if( all_corners_valid(h%opt, i, j, nx) ) then
+         call get_quad_corners(h%ii%lons_2d, i, j, cyclic, pole, nx, ny, u_c_lons, istatus)
+         if (istatus /= 0) print *, 'get_quad_corners for lons returns failure'
+         call get_quad_corners(h%ii%lats_2d, i, j, cyclic, pole, nx, ny, u_c_lats, istatus)
+         if (istatus /= 0) print *, 'get_quad_corners for lats returns failure'
+         call reg_box_overlap(h, u_c_lons, u_c_lats, .false., reg_lon_ind, reg_lat_ind)
+         call fill_reg_lists(fill_pos, h%ii%grid_lon_list, h%ii%grid_lat_list, &
+                             reg_lon_ind, reg_lat_ind, nrx, nry, i, j)
+      endif
    enddo
 enddo
 
-! Confirm that the indices come out okay as debug
-if(u_index /= u_total + 1) then
-   string1 = 'Storage indices did not balance for U grid: : contact DART developers'
-   call error_handler(E_ERR, routine, string1, source, revision, revdate)
-endif
-
-deallocate(reg_list_lon, reg_list_lat)
+deallocate(fill_pos)
 
 end subroutine init_irreg_interp
 
@@ -1287,68 +1253,72 @@ end subroutine quad_index_neighbors
 
 
 !------------------------------------------------------------
-!> Updates the data structure listing dipole quads that are in a given regular box
+!> Pass 1 of the two-pass CSR build.
+!> For each coarse box overlapped by the quad with corners described by
+!> reg_lon_ind / reg_lat_ind, increment grid_num by 1.
+!> No storage of quad indices, no cap on list size.
 
-subroutine update_reg_list(reg_list_num, reg_list_lon, reg_list_lat, &
-                           reg_lon_ind, reg_lat_ind, nrx, nry, maxlist, &
-                           grid_lon_index, grid_lat_index)
+subroutine count_reg_overlaps(grid_num, reg_lon_ind, reg_lat_ind, nrx, nry)
 
-integer, intent(inout) :: reg_list_num(:, :)
-integer, intent(inout) :: reg_list_lon(:, :, :)
-integer, intent(inout) :: reg_list_lat(:, :, :)
+integer, intent(inout) :: grid_num(:, :)
 integer, intent(inout) :: reg_lon_ind(2)
 integer, intent(inout) :: reg_lat_ind(2)
-integer, intent(in)    :: nrx, nry, maxlist
-integer, intent(in)    :: grid_lon_index, grid_lat_index
+integer, intent(in)    :: nrx, nry
 
 integer :: ind_x, index_x, ind_y, index_y
 
-!print *, 'update_reg_list called for ', grid_lon_index, grid_lat_index
-!print *, 'update_reg_list bins: ', reg_lon_ind(1), reg_lon_ind(2), reg_lat_ind(1), reg_lat_ind(2)
-
-! Loop through indices for each possible regular cell
-! Have to watch for wraparound in longitude
+! Handle longitude wraparound: ensure second index >= first.
 if(reg_lon_ind(2) < reg_lon_ind(1)) reg_lon_ind(2) = reg_lon_ind(2) + nrx
 
 do ind_x = reg_lon_ind(1), reg_lon_ind(2)
-   ! Inside loop, need to go back to wraparound indices to find right box
    index_x = ind_x
    if(index_x > nrx) index_x = index_x - nrx
-
    do ind_y = reg_lat_ind(1), reg_lat_ind(2)
       index_y = ind_y
       if(index_y > nry) index_y = index_y - nry
-
-      if ((index_x < 1 .or. index_x > nrx) .or. (index_y < 1 .or. index_y > nry)) then
-         string1 = 'unable to find right box'
-         write(string2,*) 'index_x may be out-of-range: ', 1, index_x, nrx
-         write(string3,*) 'index_y may be out-of-range: ', 1, index_y, nry
-         call error_handler(E_ERR,'update_reg_list',string1, &
-                 source, revision, revdate, text2=string2, text3=string3)
-      endif
-
-      ! Make sure the list storage isn't full
-!print *, 'reg_list_num, x, y = ', reg_list_num, index_x, index_y
-      if(reg_list_num(index_x, index_y) >= maxlist) then
-         write(string1,*) 'max_reg_list_num (',maxlist,') is too small ... increase'
-         write(string2,*) 'adding 1 to bin ', index_x, index_y
-         write(string3,*) 'bins: ', reg_lon_ind(1), reg_lon_ind(2), &
-                                    reg_lat_ind(1), reg_lat_ind(2)
-         call error_handler(E_ERR, 'update_reg_list', string1, &
-                            source, revision, revdate, text2=string2, text3=string3)
-      endif
-
-      ! Increment the count
-      reg_list_num(index_x, index_y) = reg_list_num(index_x, index_y) + 1
-      ! Store this quad in the list for this regular box
-      reg_list_lon(index_x, index_y, reg_list_num(index_x, index_y)) = grid_lon_index
-      reg_list_lat(index_x, index_y, reg_list_num(index_x, index_y)) = grid_lat_index
-      !print *, 'adding 1 to bin ', index_x, index_y, ' for ', grid_lon_index, grid_lat_index, &
-      !          ' now entries = ', reg_list_num(index_x, index_y)
+      grid_num(index_x, index_y) = grid_num(index_x, index_y) + 1
    enddo
 enddo
 
-end subroutine update_reg_list
+end subroutine count_reg_overlaps
+
+!------------------------------------------------------------
+!> Pass 2 of the two-pass CSR build.
+!> For each coarse box overlapped by quad (grid_lon_index, grid_lat_index),
+!> write the quad's i/j into the flat lists at fill_pos(ix,iy) and advance
+!> the cursor.  fill_pos must be initialised to grid_start before the pass.
+
+subroutine fill_reg_lists(fill_pos, grid_lon_list, grid_lat_list, &
+                          reg_lon_ind, reg_lat_ind, nrx, nry, &
+                          grid_lon_index, grid_lat_index)
+
+integer, intent(inout) :: fill_pos(:, :)
+integer, intent(inout) :: grid_lon_list(:)
+integer, intent(inout) :: grid_lat_list(:)
+integer, intent(inout) :: reg_lon_ind(2)
+integer, intent(inout) :: reg_lat_ind(2)
+integer, intent(in)    :: nrx, nry
+integer, intent(in)    :: grid_lon_index, grid_lat_index
+
+integer :: ind_x, index_x, ind_y, index_y, pos
+
+! Handle longitude wraparound: ensure second index >= first.
+if(reg_lon_ind(2) < reg_lon_ind(1)) reg_lon_ind(2) = reg_lon_ind(2) + nrx
+
+do ind_x = reg_lon_ind(1), reg_lon_ind(2)
+   index_x = ind_x
+   if(index_x > nrx) index_x = index_x - nrx
+   do ind_y = reg_lat_ind(1), reg_lat_ind(2)
+      index_y = ind_y
+      if(index_y > nry) index_y = index_y - nry
+      pos = fill_pos(index_x, index_y)
+      grid_lon_list(pos) = grid_lon_index
+      grid_lat_list(pos) = grid_lat_index
+      fill_pos(index_x, index_y) = pos + 1
+   enddo
+enddo
+
+end subroutine fill_reg_lists
 
 !------------------------------------------------------------------
 !> Subroutine to locate the given lon lat location and return the
