@@ -55,6 +55,7 @@ html_theme_options = {
     'logo_only': True,
     'includehidden': False
 }
+html_use_index = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['guide/_templates']
