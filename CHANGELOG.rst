@@ -22,6 +22,12 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**April 29 2026 :: Quad Utilities Enhanced Stability & ROMS Memory Improvements. Tag v11.23.0**
+
+ - Improved numerical robustness of quadrilateral interpolation in quad_utils_mod
+ - User documentation for quad_utilities_mod
+ - ROMS_rutgers memory reduction for regular grids added as a quickdbuild.sh option
+
 **April 14 2026 :: WRF nested tutorial. Tag v11.22.0**
 
 New features:

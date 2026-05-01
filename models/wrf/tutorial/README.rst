@@ -563,8 +563,6 @@ date within the ``$BASE_DIR/output`` directory.
    ./gen_retro_icbc.sh
 
 
-.. note::
-
 Once the script completes, you should confirm the following files
 have been created within the ``$BASE_DIR/output/2024051900``
 directory:
@@ -606,7 +604,6 @@ application.  For more information please see the WRFDA documentation.
    cd $BASE_DIR/scripts
    ./gen_pert_bank.sh
 
-.. note::
 
 The script will generate a batch job for each perturbation (60 total).
 The rule of thumb is to generate 3-4X as many perturbations as the

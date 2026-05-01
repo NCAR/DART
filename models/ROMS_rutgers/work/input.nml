@@ -81,7 +81,7 @@
 # Example: For an effective localization radius
 # ++++++++ of 300 km. Set the cutoff to 0.0236
 #          such that loc: 0.0236*2*6371~300km 
-#          The factor 2 is to accoutn for the 
+#          The factor 2 is to account for the 
 #          entire distance (not only half-width)
 #          6371km is the radius of the Earth
 # 
@@ -101,7 +101,7 @@
    output_localization_diagnostics = .false.
    localization_diagnostics_file   = 'localization_diagnostics'
    print_every_nth_obs             = 1000
-   distribute_mean                 = .True.
+   distribute_mean                 = .true.
   /
 
 &quality_control_nml
@@ -110,13 +110,21 @@
    outlier_threshold           = 3.0
   /
 
+# Vertical Localization:
+# vert_normalization_height: distance (m) / cutoff (rad)
+# For instance: 250 m / 0.0627 ~ 4000.0
+&location_nml
+   horiz_dist_only           = .false.
+   vert_normalization_height = 4000.0  
+  /
+
 &obs_def_ocean_nml
    max_radial_vel_obs = 10000000
    debug              = .false.
   /
 
 &state_vector_io_nml
-   buffer_state_io = .false.
+   buffer_state_io         = .true.
    single_precision_output = .false.
   /
 
@@ -204,6 +212,11 @@
                                 'CTD_SALINITY',
                                 'ARGO_TEMPERATURE',
                                 'ARGO_SALINITY',
+                                'FLOAT_TEMPERATURE',
+                                'FLOAT_SALINITY', 
+                                'DRIFTER_TEMPERATURE', 
+                                'DRIFTER_U_CURRENT_COMPONENT', 
+                                'DRIFTER_V_CURRENT_COMPONENT',
                                 'GLIDER_TEMPERATURE',
                                 'GLIDER_SALINITY',
                                 'SATELLITE_BLENDED_SST',
@@ -212,10 +225,6 @@
                                 'HFRADAR_U_CURRENT_COMPONENT', 
                                 'HFRADAR_V_CURRENT_COMPONENT', 
                                 'HFRADAR_RADIAL_VELOCITY'
-  /
-
-&location_nml
-   horiz_dist_only = .false.
   /
 
 &utilities_nml
@@ -239,17 +248,19 @@
   /
 
 &obs_sequence_tool_nml
-   num_input_files   = 1
-   filename_seq      = 'obs_seqs/obs_seq.0Z.20140718'
-   filename_out      = 'obs_seqs/wod_T2.out'
+   num_input_files   = 3
+   filename_seq      = '../obs_seqs/obs_seq.arvor', '../obs_seqs/obs_seq.svp', '../obs_seqs/obs_seq.hf'
+   filename_out      = '../obs_seqs/obs_seq_all.out'
    first_obs_days    = -1
    first_obs_seconds = -1
    last_obs_days     = -1
    last_obs_seconds  = -1
    print_only        = .false.
-   obs_types         = 'FLOAT_TEMPERATURE', 'MOORING_TEMPERATURE', 'CTD_TEMPERATURE',  
+   obs_types         = 'FLOAT_TEMPERATURE', 'FLOAT_SALINITY', 'MOORING_TEMPERATURE', 'CTD_TEMPERATURE',  
                        'XBT_TEMPERATURE', 'GLIDER_TEMPERATURE', 'BOTTLE_TEMPERATURE', 
-                       'APB_TEMPERATURE' 
+                       'APB_TEMPERATURE', 'DRIFTER_TEMPERATURE', 'DRIFTER_U_CURRENT_COMPONENT',  
+                       'DRIFTER_V_CURRENT_COMPONENT', 'HFRADAR_U_CURRENT_COMPONENT', 
+                       'HFRADAR_V_CURRENT_COMPONENT', 'HFRADAR_RADIAL_VELOCITY' 
    min_lat           = -15.0
    max_lat           =  15.0
    min_lon           =  90.0

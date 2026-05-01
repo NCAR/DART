@@ -50,10 +50,10 @@ use        types_mod, only : r8, i8, MISSING_R8, PI, deg2rad
 
 use     location_mod, only : location_type, get_location
 
-use    utilities_mod, only : register_module, error_handler,         &
-                             E_ERR, E_WARN, E_MSG, nmlfileunit,      &
-                             do_output, do_nml_file, do_nml_term,    &
-                             find_namelist_in_file, check_namelist_read, &
+use    utilities_mod, only : register_module, error_handler,              &
+                             E_ERR, E_WARN, E_MSG, E_ALLMSG, nmlfileunit, &
+                             do_output, do_nml_file, do_nml_term,         &
+                             find_namelist_in_file, check_namelist_read,  &
                              log_it, array_dump
 
 use      options_mod, only : get_missing_ok_status
@@ -2111,16 +2111,15 @@ end subroutine line_intercept
 ! then evaluating this function at (lon, lat). The fit is done by
 ! solving the 4x4 system of equations for a, b, c, and d. The system
 ! is reduced to a 3x3 by eliminating a from the first three equations
-! and then solving the 3x3 before back substituting. There is concern
-! about the numerical stability of this implementation. Implementation
-! checks showed accuracy to seven decimal places on all tests.
+! and then solving the 3x3 before back substituting. 
 
 subroutine quad_bilinear_interp(lon_in, lat_in, x_corners_in, y_corners_in, cyclic, &
-                                p, expected_obs)
+                                p, expected_obs, gep_stat)
 
 real(r8),  intent(in) :: lon_in, lat_in, x_corners_in(4), y_corners_in(4), p(4)
 logical,   intent(in) :: cyclic
 real(r8), intent(out) :: expected_obs
+integer,  intent(out) :: gep_stat
 
 integer :: i
 real(r8) :: m(3, 3), v(3), r(3), a, b(2), c(2), d
@@ -2246,15 +2245,22 @@ do i = 1, 3
 if (debug > 10) write(*,'(A,I3,7F12.3)') 'i, m(3), p(2), v: ', i, m(i,:), p(i), p(i+1), v(i)
 enddo
 
-! look for degenerate matrix and rotate if needed
-! compute deter of m
-!d = deter3(m)
-
 ! Solve the matrix for b, c and d
-call mat3x3(m, v, r)
-if (debug > 10) print *, 'r ', r
-if (debug > 10) print *, 'p ', p
+call gauss_elim_pivot(m, v, r, gep_stat)
 
+if (gep_stat /= 0) then 
+   if (debug > 0) then 
+      write(string1, '(2A)') 'The Gaussian Elimination with Partial Pivoting Scheme ', &
+                             'failed. It could be a singularity or a very tiny pivot'
+      write(string2, '(2(A, F10.4))') 'Obs location -> lon: ', lon, ', lat: ', lat  
+      write(string3, '(2(A, 4F10.4))') 'Quad corners -> x: ', x_corners, ', y: ', y_corners
+      call error_handler(E_ALLMSG, 'quad_bilinear_interp', string1, &
+                         source, revision, revdate, text2 = string2, text3 = string3)
+    endif
+
+    expected_obs = MISSING_R8
+    return
+endif
 
 ! r contains b, c, and d; solve for a
 a = p(4) - r(1) * x_corners(4) - &
@@ -2300,48 +2306,115 @@ endif
 
 end subroutine quad_bilinear_interp
 
-!------------------------------------------------------------
-!> Solves rank 3 linear system mr = v for r using Cramer's rule.
 
-subroutine mat3x3(m, v, r)
+!----------------------------------------------------------------------
+subroutine gauss_elim_pivot(A, b, x, stat)
+! Solve A x = b for a 3x3 system using Gaussian elimination
+! with partial pivoting.
+!
+! Input:
+!   A(3,3)  coefficient matrix
+!   b(3)    right-hand side
+!
+! Output:
+!   x(3)    solution
+!   stat    0 = success
+!           1 = singular or nearly singular system
 
-real(r8),  intent(in) :: m(3, 3), v(3)
-real(r8), intent(out) :: r(3)
+real(r8), intent(in)  :: A(3,3)
+real(r8), intent(in)  :: b(3)
+real(r8), intent(out) :: x(3)
+integer,  intent(out) :: stat
 
-! Cramer's rule isn't the best choice
-! for speed or numerical stability so might want to replace
-! this at some point.
+integer  :: i, j, k, pivot
+real(r8) :: AA(3,3), bb(3)
+real(r8) :: pivot_max, factor, temp
+real(r8) :: scale, tiny
 
-real(r8) :: m_sub(3, 3), numer, denom
-integer  :: i
+AA = A
+bb = b
+x  = MISSING_R8
+stat = 0
 
-! Compute the denominator, det(m)
-denom = deter3(m)
+scale = maxval(abs(AA))
 
-! Loop to compute the numerator for each component of r
-do i = 1, 3
-   m_sub = m
-   m_sub(:, i) = v
-   numer = deter3(m_sub)
-   r(i) = numer / denom
-if (debug > 10) write(*,'(A,I3,7F12.3)') 'mat: i, numer, denom, r: ', i, numer, denom, r(i)
+! Can we compute a unique solution?
+if (scale == 0.0_r8) then
+   stat = 1
+   return
+endif
+
+! Need to know if the pivot is effectively zero
+! i.e., system is singular or so ill-conditioned 
+! that solving is unreliable. 
+! Choosing this so it scales with the magnitude of A
+! In a sense, larger matrix will have larger 
+! acceptable pivot threshold. Similarly, 
+! smaller matrix gets tighter tolerance.
+! Adding 100 as a safety buffer (not to be close 
+! to machine precision) 
+tiny = 100.0_r8 * epsilon(1.0_r8) * scale
+
+! Forward elimination with partial pivoting
+do k = 1, 2
+
+   pivot = k
+   pivot_max = abs(AA(k,k))
+   do i = k+1,3
+      if (abs(AA(i,k)) > pivot_max) then
+         pivot_max = abs(AA(i,k))
+         pivot     = i
+      endif
+   enddo
+
+   ! If pivot is so small, then we 
+   ! cannot divide by it
+   if (pivot_max < tiny) then
+      stat = 1
+      return
+   endif
+
+   if (pivot /= k) then
+      do j = 1,3
+         temp        = AA(k,j)
+         AA(k,j)     = AA(pivot,j)
+         AA(pivot,j) = temp
+      enddo
+      temp      = bb(k)
+      bb(k)     = bb(pivot)
+      bb(pivot) = temp
+   endif
+
+   do i = k+1,3
+      factor  = AA(i,k) / AA(k,k)
+      AA(i,k) = 0.0_r8
+      do j = k+1,3
+         AA(i,j) = AA(i,j) - factor * AA(k,j)
+      enddo
+      bb(i) = bb(i) - factor * bb(k)
+   enddo
+
 enddo
 
-end subroutine mat3x3
+! Check final pivot. All previous pivots 
+! have been checked during elimination
+if (abs(AA(3,3)) < tiny) then
+   stat = 1
+   return
+endif
 
-!------------------------------------------------------------
-!> Computes determinant of 3x3 matrix m
+! By now, we should have an upper triangular 
+! matrix:
+! a11 x1 + a12 x2 + a13 x3 = b1
+!          a22 x2 + a23 x3 = b2
+!                   a33 x3 = b3
+! We can solve by back substitution
+x(3) =  bb(3) / AA(3,3)
+x(2) = (bb(2) - AA(2,3)*x(3)) / AA(2,2)
+x(1) = (bb(1) - AA(1,2)*x(2)  - AA(1,3)*x(3)) / AA(1,1)
 
-function deter3(m)
+end subroutine gauss_elim_pivot
 
-real(r8), intent(in) :: m(3, 3)
-real(r8)             :: deter3
-
-deter3 = m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + &
-         m(1,3)*m(2,1)*m(3,2) - m(3,1)*m(2,2)*m(1,3) - &
-         m(1,1)*m(2,3)*m(3,2) - m(3,3)*m(2,1)*m(1,2)
-
-end function deter3
 
 !------------------------------------------------------------
 ! Computes dot product of two 2-vectors
@@ -2507,7 +2580,8 @@ if(interp_handle%grid_type == GRID_QUAD_FULLY_IRREGULAR) then
    if (debug > 10) write(*,'(A,8F12.3)') 'evaluate: invals ens1 = ', invals(:, 1)
    do e = 1, nitems
       call quad_bilinear_interp(lon, lat, x_corners, y_corners, &
-                        interp_handle%opt%spans_lon_zero, invals(:,e), outvals(e))
+                        interp_handle%opt%spans_lon_zero, invals(:,e), outvals(e), istatus)
+      if (istatus /= 0) return
    enddo
    if (debug > 10) write(*,'(A,8F12.3)') 'evaluate: outvals ens1 = ', outvals(1)
 else
