@@ -32,6 +32,13 @@ namelist. See below for the documentation on the &model_nml entries. The state
 vector should include all fields needed to restart a WRF run. There may be
 additional fields needed depending on the microphysics scheme selected. 
 
+.. note::
+  
+   PHB (base state geopotential) should be included in the state vector, 
+   but with the 'NO_COPY_BACK' option, which means that the values of PHB
+   are not written back to the WRF netcdf file after the assimilation. 
+   
+
 Namelist
 --------
 
@@ -43,11 +50,22 @@ prematurely terminating the namelist.
 .. code-block:: text
 
    &model_nml
-      wrf_state_variables = 'NULL'
-      wrf_state_bounds = 'NULL'
-      chemistry_separate_file = .false
-      chem_state_variables = 'NULL'
-      chem_state_bounds = 'NULL'
+      wrf_state_variables = 'U',     'QTY_U_WIND_COMPONENT',     'UPDATE','999',
+                            'V',     'QTY_V_WIND_COMPONENT',     'UPDATE','999',
+                            'W',     'QTY_VERTICAL_VELOCITY',    'UPDATE','999',
+                            'PH',    'QTY_GEOPOTENTIAL_HEIGHT',  'UPDATE','999',
+                            'T',     'QTY_POTENTIAL_TEMPERATURE','UPDATE','999',
+                            'MU',    'QTY_PRESSURE',             'UPDATE','999',
+                            'QVAPOR','QTY_VAPOR_MIXING_RATIO',   'UPDATE','999',
+                            'PSFC',  'QTY_SURFACE_PRESSURE',     'UPDATE','999',
+                            'PHB',   'QTY_BASE_STATE_GEOP',      'NO_COPY_BACK', '999',
+      wrf_state_bounds    = 'QVAPOR','0.0','NULL',
+                            'QRAIN', '0.0','NULL',
+                            'QCLOUD','0.0','NULL',
+      chem_state_variables = 'o3', 'QTY_O3', 'UPDATE', '999',
+                              'no', 'QTY_NO', 'UPDATE', '999'
+      chem_state_bounds = 'o3', '0.0', 'NULL'
+      chemistry_separate_file = .true.,
       num_domains = 1
       calendar_type = 3 # GREGORIAN
       assimilation_period_seconds = 216001600
@@ -92,13 +110,16 @@ Description of each namelist entry
 
     * - chemistry_separate_file
       - logical
-      - If .true., chemistry fields are stored in a separate file. If .false., chemistry fields are included in the main state file.
+      - If .false., chemistry fields are in the same netcdf file as meterological fields, and the chemistry state fields and bounds should
+        be specified in the wrf_state_variables and wrf_state_bounds arrays. 
+        If .true., chemistry fields are included in a separate netcdf file, and the chemistry fields and bounds should
+        be specified in the chem_state_variables and chem_state_bounds arrays.
     * - chem_state_variables
       - character(:,4)
-      - Chemistry state variables, same format as wrf_state_variables. 'NULL' disables chemistry variables.
+      - Chemistry state variables, same format as wrf_state_variables. Only used if chemistry_separate_file is .true.
     * - chem_state_bounds
       - character(:,3)
-      - Chemistry state bounds, same format as wrf_state_bounds. 'NULL' disables chemistry bounds.
+      - Chemistry state bounds, same format as wrf_state_bounds. Only used if `chemistry_separate_file` is .true.
     * - num_domains
       - integer
       - Total number of WRF domains, including nested domains.
@@ -114,6 +135,7 @@ Description of each namelist entry
     * - vert_localization_coord
       - integer
       - Vertical coordinate for vertical localization.
+
           -  1 = model level
           -  2 = pressure (in pascals)
           -  3 = height (in meters)
