@@ -15,16 +15,16 @@
 # depending on the window and the input file,
 # the data from outside these bounds may be needed.
 
-start_year=2005
-start_month=07
+start_year=1997
+start_month=01
 start_day=01
 
-end_year=2005
-end_month=07
+end_year=2014
+end_month=12
 end_day=31
 
-DATDIR=/glade/p/cisl/dares/Observations/land/pmo/input
-OUTDIR=/glade/p/cisl/dares/Observations/land/pmo/output
+DATDIR=/glade/work/bmraczka/DART/models/clm/work
+OUTDIR=/glade/work/bmraczka/calLMIP/observations_flux
 
 # end of things you should have to set in this script IFF you are
 # content to have 'daily' files with observations 
