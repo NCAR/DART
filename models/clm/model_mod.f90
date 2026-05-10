@@ -69,8 +69,8 @@ use     obs_kind_mod, only : QTY_SOIL_TEMPERATURE,       &
                              QTY_LEAF_NITROGEN, QTY_LIVE_STEM_NITROGEN, QTY_DEAD_STEM_NITROGEN, &
                              QTY_NET_CARBON_PRODUCTION,  &
                              QTY_NET_CARBON_FLUX,        &
-                             QTY_SENSIBLE_HEAT_FLUX_AVERAGE, &
-                             QTY_LATENT_HEAT_FLUX_AVERAGE, &
+                             QTY_SH_FLUX_AVERAGE, &
+                             QTY_LH_FLUX_AVERAGE, &
                              QTY_LEAF_AREA_INDEX,        &
                              QTY_WATER_TABLE_DEPTH,      &
                              QTY_GEOPOTENTIAL_HEIGHT,    &
@@ -1301,8 +1301,8 @@ select case( obs_kind )
           QTY_FRACTION_ABSORBED_PAR, QTY_NET_CARBON_PRODUCTION, &
           QTY_PAR_DIRECT, QTY_PAR_DIFFUSE, QTY_ABSORBED_PAR, &
           QTY_SOLAR_INDUCED_FLUORESCENCE, QTY_LATENT_HEAT_FLUX, QTY_SOIL_CARBON, &
-          QTY_NET_CARBON_FLUX, QTY_SENSIBLE_HEAT_FLUX_AVERAGE, &
-          QTY_LATENT_HEAT_FLUX_AVERAGE )
+          QTY_NET_CARBON_FLUX, QTY_SH_FLUX_AVERAGE, &
+          QTY_LH_FLUX_AVERAGE )
 
       call compute_gridcell_value(state_handle, ens_size, location, obs_kind, &
                                   expected_obs, istatus)
