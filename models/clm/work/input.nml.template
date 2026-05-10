@@ -50,8 +50,8 @@
 
 
 &obs_sequence_tool_nml
-   filename_seq      = ''
-   filename_seq_list = 'olist'
+   filename_seq      = '/glade/work/bmraczka/DART/models/clm/work/obs_seq_LAI_SOC_FLUX.out'
+   filename_seq_list = ''
    filename_out      = 'OUTDIR/obs_seq.YYYY-MM-DD-SSSSS'
    print_only        = .false.
    gregorian_cal     = .true.
