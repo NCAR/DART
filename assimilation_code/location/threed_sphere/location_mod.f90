@@ -28,7 +28,7 @@ use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            do_nml_term, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use   obs_kind_mod, only : get_num_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
-use mpi_utilities_mod, only : my_task_id, task_count
+use mpi_utilities_mod, only : my_task_id, task_count, iam_task0
 use ensemble_manager_mod, only : ensemble_type
 
 implicit none
@@ -1646,12 +1646,40 @@ type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(in)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
 integer(i8),                   intent(in)  :: loc_indx(:)
-integer,                       intent(out) :: num_close, close_ind(:)
-real(r8),            optional, intent(out) :: dist(:)
+integer,                       intent(inout) :: num_close, close_ind(:)
+real(r8),            optional, intent(inout) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ensemble_handle
 
 ! Template for applying localization for strongly coupled 
+real(r8):: obs_loc(3)
+real(r8):: state_loc(3)
+integer:: i
 
+if(iam_task0()) then
+   write(42, *) 'num_close', num_close 
+endif
+
+
+! Loop through those state variables that are horizontally close and add in some vertical
+do i = 1, num_close
+   state_loc = get_location(locs(close_ind(i)))   
+   ! Are the verticals in log_pressure at this point?
+   if(iam_task0()) then
+      write(42, *) i, close_ind(i), dist(close_ind(i)), state_loc(3)
+   endif
+   !dist(i)=dist(i)+state_loc(3)*10.0_r8
+enddo
+
+
+!!!if(iam_task0()) then
+  !obs_loc = get_location(base_loc)
+  !write (41,*) 'obs_loc', obs_loc
+
+  !state_loc = get_location(locs(1))
+  !write (41,*) 'state_loc', state_loc
+
+  !write (41,*) 'dist', dist(1)
+!!endif
 
 end subroutine get_close_state_strongly_coupled
 
