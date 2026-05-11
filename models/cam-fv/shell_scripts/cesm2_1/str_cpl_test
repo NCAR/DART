@@ -1,0 +1,149 @@
+#!/bin/tcsh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# Script to test various namelist options for reproducing with sequential_prior_posterior
+# files in L96.
+#
+#PBS -N str_cpl_test
+#PBS -A P86850054
+#PBS -j oe
+#PBS -q main
+# Needed if queue "main" is used
+#PBS  -l job_priority=premium
+#PBS -m ae
+#PBS -l walltime=00:10:00
+# Resources to specify:
+#    select=#nodes
+#    ncpus=#CPUs/node
+#    mpiprocs=#MPI_tasks/node
+#    mem=needed for develop queue (shared node)
+# normal; 
+#PBS  -l select=1:ncpus=128:mpiprocs=128:ompthreads=1
+#PBS  -o Str_cpl_cam-fv3.out
+
+if ($?PBS_O_WORKDIR) then
+   cd $PBS_O_WORKDIR
+endif
+
+module add nco/5.3.4
+module list
+
+# 2026-4-24; probably don't need these on derecho (not used in recent setup_... jobs)
+# setenv OMP_STACKSIZE      256M
+# setenv MPI_TYPE_DEPTH     16
+# setenv MPI_IB_CONGESTED   1
+# setenv MPIEXEC_MPT_DEBUG  0
+# setenv MP_DEBUG_NOTIMEOUT yes
+setenv OMP_NUM_THREADS    1
+setenv TMPDIR             /glade/derecho/scratch/${USER}
+
+set casename = Str_cpl_cam-fv3
+# set CASEDIR = /glade/work/${USER}/Exp/$casename
+set RUNDIR = ${TMPDIR}/$casename
+
+# Harvest some information from the environment to construct output file name
+
+set jobname = $PBS_JOBNAME
+set numcpus = $NCPUS
+set numtasks = `cat  $PBS_NODEFILE | wc -l`
+set numnodes = `uniq $PBS_NODEFILE | wc -l`
+
+echo "jobname  is $jobname"
+echo "numcpus  is $numcpus"
+echo "numtasks is $numtasks"
+echo "numnodes is $numnodes"
+
+# Set the relative path to find the compiled filter program
+set FILTER_PATH = `pwd`/../../work
+echo "FILTER_PATH = $FILTER_PATH"
+
+if (! -d $RUNDIR) mkdir $RUNDIR
+cd $RUNDIR
+# Clean up files from old tests to avoid any confusion
+rm diff.nc
+rm obs_seq.final
+rm obs_seq.sequential_prior
+# hardwired clean up based on cam_out_files, which is a namelist entry.
+rm *.o.*
+rm orig_filter_output.nc
+rm {pre,post,ana}*
+
+#----------------------------------------------------------------------------
+# Running filter inheriting all mpi options from environment
+
+if (! -f ${FILTER_PATH}/bnrhf_qceff_table.csv) exit 9
+cp ${FILTER_PATH}/bnrhf_qceff_table.csv .
+
+if (! -f ${FILTER_PATH}/sampling_error_correction_table.nc) exit 9
+cp ${FILTER_PATH}/sampling_error_correction_table.nc .
+
+set in_files = /glade/derecho/scratch/raeder/f.e21.FHIST_BGC.f09_025.CAM6assim.011/archive/rest/2019-09-09-00000
+
+if (! -f caminput.nc) \
+ln -s ${in_files}/f.e21.FHIST_BGC.f09_025.CAM6assim.011.cam_0010.i.2019-09-09-00000.nc caminput.nc
+
+if (! -f cam_phis.nc) ln -s ${in_files}/cam_phis.nc .
+
+if (! -f cam_in_files) ln -s ${in_files}/cam*files .
+
+# Need to set the namelist to do output_sequential 
+sed -e "s#DO_OUTPUT_SEQUENTIAL#.true.#" \
+    -e "s#DO_USE_SEQUENTIAL#.false.#" \
+    -e "s#OBS_SEQ_EXTENSION#out#" \
+    ${FILTER_PATH}/STRONGLY_COUPLED_TEST_input.nml >! input.nml
+
+# cp ${FILTER_PATH}/obs_seq.out .
+# fv3
+cp /glade/derecho/scratch/raeder/Observations/Strongly_Coupled/20190910/obs_seq.subSahara obs_seq.out
+# fv2
+# cp /glade/derecho/scratch/raeder/Observations/Strongly_Coupled/20190910/obs_seq.OR-WA obs_seq.out
+
+# set my_output_file = ${jobname}_filter.out
+# echo "Running test 1 at `date`, saving output to ${my_output_file}"
+# cat input.nml                           >!  ${my_output_file}
+# env | sort                              >>  ${my_output_file}
+# echo " "                                >>  ${my_output_file}
+
+# Run the filter
+ls -l $FILTER_PATH/filter
+if ($status != 0) exit 19
+
+echo "Starting filter at "`date`
+mpiexec $FILTER_PATH/filter  
+#                   >>& ${my_output_file}
+echo "Finished filter at "`date`
+
+# Move the filter restart and obs_seq.final
+# cp obs_seq.final obs_seq.sequential_prior
+mv obs_seq.final obs_seq.sequential_prior
+mv output_mean.nc orig_output_mean.nc
+mv output_sd.nc orig_output_sd.nc
+foreach f (`cat cam_out_files`)
+   mv $f orig_$f
+   if ($status != 0) exit 29
+end
+
+#----------------------------------------------------------------------------
+# Setup for the comparison run
+# Need to set the namelist to do use_sequential 
+sed -e "s#DO_OUTPUT_SEQUENTIAL#.false.#" \
+    -e "s#DO_USE_SEQUENTIAL#.true.#" \
+    -e "s#OBS_SEQ_EXTENSION#sequential_prior#" \
+    ${FILTER_PATH}/STRONGLY_COUPLED_TEST_input.nml >! input.nml
+
+cp ${FILTER_PATH}/obs_seq.sequential_prior .
+
+# Rerun the filter
+mpiexec $FILTER_PATH/filter
+
+# Generate some difference for restart
+foreach f (`cat cam_out_files`)
+   ncdiff $f orig_$f diff_$f
+   if ($status != 0) exit 39
+end
+ncdiff output_mean.nc orig_output_mean.nc diff_output_mean.nc
+ncdiff output_sd.nc orig_output_sd.nc diff_output_sd.nc
+
