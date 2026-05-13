@@ -1652,22 +1652,34 @@ type(ensemble_type), optional, intent(in)  :: ensemble_handle
 
 ! Template for applying localization for strongly coupled 
 real(r8):: obs_loc(3)
-real(r8):: state_loc(3)
-integer:: i
+real(r8):: state_loc(3), maxdist
+integer:: i, bt
 
-if(iam_task0()) then
-   write(42, *) 'num_close', num_close 
-endif
+! Find the maximum distance for this observation base_type
+bt = gc%type_to_cutoff_map(base_type)
 
+! Local variable for what the maxdist is in this particular case.
+maxdist = gc%gtt(bt)%maxdist
 
 ! Loop through those state variables that are horizontally close and add in some vertical
 do i = 1, num_close
    state_loc = get_location(locs(close_ind(i)))   
-   ! Are the verticals in log_pressure at this point?
-   if(iam_task0()) then
-      write(42, *) i, close_ind(i), dist(close_ind(i)), state_loc(3)
+
+   ! State variables have a vertical location of model level by default here
+   ! Could these be vertical converted if needed?
+
+   ! Add on some additional distances 
+   ! Add on 20% of the maxdist just for being across the model boundary
+   dist(close_ind(i)) = dist(close_ind(i)) + 0.2_r8 * maxdist
+
+   ! Surface variables have missing_r8 for vertical location for now
+   ! No additonal cost for surface
+   if(state_loc(3) >= 0.0_r8) then
+      ! Add on additional distance that is function of model level
+      ! Even more cheating by knowing the model has 32 levels and level 32 is at the surface
+      dist(close_ind(i)) = dist(close_ind(i)) + maxdist * (32 - state_loc(3)) / 10.0_r8
    endif
-   !dist(i)=dist(i)+state_loc(3)*10.0_r8
+
 enddo
 
 
