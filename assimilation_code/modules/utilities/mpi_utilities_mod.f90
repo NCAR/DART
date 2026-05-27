@@ -53,34 +53,6 @@ use mpi
 ! since the usual distinction is between bob.F90 and bob.f90
 ! to decide what needs preprocessing
 
-! the NAG compiler needs these special definitions enabled.
-! the #ifdef lines are only there in case someday we can use
-! the fortran preprocessor.  they need to stay commented out.
-
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-! !#ifdef __NAG__
-!
-! use F90_unix_proc, only : sleep, system, exit
-!
-! !! NAG only needs the use statement above, but
-! !! these are the calling sequences if you need
-! !! to use these routines additional places in code.
-! !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
-! !    INTEGER,INTENT(IN) :: SECONDS
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
-! !
-! !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
-! !    CHARACTER*(*),INTENT(IN) :: STRING
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
-! !
-! !!also used in exit_all outside this module
-! !  SUBROUTINE EXIT(STATUS)
-! !    INTEGER,OPTIONAL :: STATUS
-! !! end block
-!
-!  !#endif
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-
 implicit none
 private
 
@@ -139,7 +111,7 @@ integer, parameter :: SNDRCV_MAXSIZE = 2 * 1000 * 1000 * 1000
 
 ! this turns on trace messages for most MPI communications
 logical :: verbose        = .false.   ! very very very verbose, use with care
-logical :: async2_verbose = .false.   ! messages only for system() in async2
+logical :: async2_verbose = .false.   ! messages only for execute_command_line() in async2
 logical :: async4_verbose = .false.   ! messages only for block/restart async4
 
 ! if your batch system does the task layout backwards, set this to true
@@ -191,7 +163,7 @@ character(len=*), intent(in), optional :: progname
 character(len=*), intent(in), optional :: alternatename
 integer,          intent(in), optional :: communicator
 
-integer :: errcode, iunit
+integer :: errcode, iunit, rc
 logical :: already
 
 if ( module_initialized ) then
@@ -213,13 +185,15 @@ errcode = -999
 call MPI_Initialized(already, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(*, *) 'MPI_Initialized returned error code ', errcode
-   call exit(-99)
+   call execute_command_line('exit(-99)', exitstat=rc)
+   !call exit(-99)
 endif
 if (.not.already) then
    call MPI_Init(errcode)
    if (errcode /= MPI_SUCCESS) then
       write(*, *) 'MPI_Init returned error code ', errcode
-      call exit(-99)
+      call execute_command_line('exit(-99)', exitstat=rc)
+      !call exit(-99)
    endif
 endif
 
@@ -235,7 +209,8 @@ endif
 call MPI_Comm_rank(my_local_comm, myrank, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(*, *) 'MPI_Comm_rank returned error code ', errcode
-   call exit(-99)
+   call execute_command_line('exit(-99)', exitstat=rc)
+   !call exit(-99)
 endif
 
 ! pass the arguments through so the utilities can log the program name
@@ -1701,10 +1676,6 @@ end subroutine finished_task
 !> it into background.   Function which returns the rc
 !> of the command, 0 being all is ok.
 !>
-!!!! REMOVE THIS
-!> allow code to test the theory that maybe the system call is
-!> not reentrant on some platforms.  if serialize is set and
-!> is true, do each call serially.
 
 function shell_execute(execute_string, serialize)
  character(len=*), intent(in) :: execute_string
@@ -1718,27 +1689,27 @@ integer :: status(MPI_STATUS_SIZE)
 if (verbose) async2_verbose = .true.
 
 ! default to everyone running concurrently, but if set and not true,
-! serialize the calls to system() so they do not step on each other.
+! serialize the calls to execute_command_line() so they do not step on each other.
 if (present(serialize)) then
    all_at_once = .not. serialize
 else
    all_at_once = .TRUE.
 endif
 
-if (async2_verbose) write(*,*) "PE", myrank, ": system string is: ", trim(execute_string)
+if (async2_verbose) write(*,*) "PE", myrank, ": execute_command_line string is: ", trim(execute_string)
 shell_execute = -1
 
 ! this is the normal (default) case
 if (all_at_once) then
 
-   ! all tasks call system at the same time
+   ! all tasks call execute_command_line at the same time
    call do_execute_command_line(execute_string, shell_execute)
    if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
    return
 endif
 
-! only one task at a time calls system, and all wait their turn by
+! only one task at a time calls execute_command_line, and all wait their turn by
 ! making each task wait for a message from the (N-1)th task.
 
 ! this is used only to signal; the value it contains is unused.
@@ -1812,10 +1783,6 @@ integer,          intent(out) :: rc
 character(len=300) :: full_command
 integer :: exit_code
 
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-!  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-
     full_command = (trim(shell_name)//' '//trim(execute))
     call execute_command_line(trim(full_command), exitstat=exit_code)
     rc = exit_code
@@ -1834,13 +1801,15 @@ subroutine sleep_seconds(naplength)
 real(r8), intent(in) :: naplength
 
  integer :: sleeptime
+ integer :: rc
 
  sleeptime = floor(naplength)
  if (sleeptime <= 0) sleeptime = 1
 
- call sleep(sleeptime)
+ call do_execute_command_line('sleep(sleeptime)', rc)
 
 end subroutine sleep_seconds
+
 
 !-----------------------------------------------------------------------------
 

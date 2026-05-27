@@ -31,34 +31,6 @@ use time_manager_mod, only : time_type, set_time
 ! since the usual distinction is between bob.F90 and bob.f90
 ! to decide what needs preprocessing.
 
-! the NAG compiler needs these special definitions enabled.
-! the #ifdef lines are only there in case someday we can use
-! the fortran preprocessor.  they need to stay commented out.
-
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-! !#ifdef __NAG__
-!
-! use F90_unix_proc, only : sleep, system, exit
-!
-! !! NAG only needs the use statement above, but
-! !! these are the calling sequences if you need
-! !! to use these routines additional places in code.
-! !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
-! !    INTEGER,INTENT(IN) :: SECONDS
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
-! !
-! !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
-! !    CHARACTER*(*),INTENT(IN) :: STRING
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
-! !
-! !!also used in exit_all outside this module
-! !  SUBROUTINE EXIT(STATUS)
-! !    INTEGER,OPTIONAL :: STATUS
-! !! end block
-!
-!  !#endif
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-
 
 implicit none
 private
@@ -490,10 +462,6 @@ integer,          intent(out) :: rc
 character(len=300) :: full_command
 integer :: exit_code
 
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-!  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-
     full_command = (trim(shell_name)//' '//trim(execute))
     call execute_command_line(trim(full_command), exitstat=exit_code)
     rc = exit_code
@@ -511,14 +479,16 @@ subroutine sleep_seconds(naplength)
 
 real(r8), intent(in) :: naplength
 
-integer :: sleeptime
+ integer :: sleeptime
+ integer :: rc
 
-sleeptime = floor(naplength)
-if (sleeptime <= 0) sleeptime = 1
+ sleeptime = floor(naplength)
+ if (sleeptime <= 0) sleeptime = 1
 
-call sleep(sleeptime)
+ call do_execute_command_line('sleep(sleeptime)', rc)
 
 end subroutine sleep_seconds
+
 
 !-----------------------------------------------------------------------------
 
@@ -648,11 +618,13 @@ end module mpi_utilities_mod
 !> this can be called from any code in the system.
 
 subroutine exit_all(exit_code)
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-! use F90_unix_proc, only : exit
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
+
  integer, intent(in) :: exit_code
 
-   call exit(exit_code)
+ integer :: rc
+ character(len=300) :: command
+
+   write(*, command) 'exit(',exit_code,')'
+   call execute_command_line(trim(command), exitstat=rc)
 
 end subroutine exit_all
