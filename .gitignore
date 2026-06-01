@@ -49,6 +49,8 @@ rtcoef*
 
 advance_time
 closest_member_tool
+cmems_ssh_to_obs
+cmems_sst_to_obs
 compare_states
 compute_error
 create_fixed_network_seq

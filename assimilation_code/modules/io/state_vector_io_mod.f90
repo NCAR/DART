@@ -61,8 +61,7 @@ use io_filenames_mod,     only : get_restart_filename, file_info_type, &
                                  assert_restart_names_initialized, &
                                  single_file_initialized
 
-!>@todo FIXME This should go through assim_model_mod
-use model_mod,            only : read_model_time
+use assim_model_mod,            only : read_model_time
 
 use state_structure_mod,  only : get_num_domains
 

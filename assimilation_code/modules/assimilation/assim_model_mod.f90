@@ -26,7 +26,8 @@ use     model_mod, only : get_model_size, static_init_model, get_state_meta_data
                           pert_model_copies, get_close_obs, get_close_state,       &
                           convert_vertical_obs, convert_vertical_state,            &
                           interpolate => model_interpolate,                        &
-                          read_model_time, write_model_time
+                          read_model_time, write_model_time, &
+                          nc_write_model_atts
 
 implicit none
 private
@@ -46,7 +47,8 @@ public :: static_init_assim_model, &
           convert_vertical_obs, &
           convert_vertical_state, &
           read_model_time, &
-          write_model_time
+          write_model_time, &
+          nc_write_model_atts
 
 ! Ensure init code is called exactly once
 logical :: module_initialized = .false.

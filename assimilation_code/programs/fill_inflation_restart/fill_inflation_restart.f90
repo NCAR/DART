@@ -36,7 +36,7 @@ use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
                                   get_restart_filename, set_file_metadata, &
                                   set_io_copy_flag, READ_COPY, WRITE_COPY
 
-use             model_mod, only : get_model_size
+use       assim_model_mod, only : get_model_size
 
 use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 

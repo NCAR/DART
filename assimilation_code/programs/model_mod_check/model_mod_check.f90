@@ -23,7 +23,8 @@ use          obs_kind_mod, only : get_name_for_quantity
 
 use      obs_sequence_mod, only : static_init_obs_sequence
 
-use       assim_model_mod, only : static_init_assim_model
+use       assim_model_mod, only : static_init_assim_model, get_model_size, &
+                                  get_state_meta_data
 
 use      time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                                   get_calendar_type, NO_CALENDAR
@@ -41,8 +42,6 @@ use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
                                   set_io_copy_flag, READ_COPY, WRITE_COPY
 
 use distributed_state_mod, only : create_state_window, free_state_window
-
-use             model_mod, only : get_model_size, get_state_meta_data
 
 use  test_interpolate_mod, only : test_interpolate_single, &
                                   test_interpolate_range, &
