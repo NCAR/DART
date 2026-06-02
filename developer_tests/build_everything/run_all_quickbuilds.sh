@@ -65,17 +65,6 @@ esac
 
 cp build_templates/$mkmf_template build_templates/mkmf.template
 
-# Run fixsystem to avoid all make commands from altering mpi_*_utilities_mod.f90 simultaneously
-cd assimilation_code/modules/utilities
-case $compiler in
-   ifort ) ./fixsystem ifort ;;
-     gcc ) ./fixsystem gfortran ;;
-     cce ) ./fixsystem ftn ;;
-   nvhpc ) ./fixsystem nvfortran ;;
-     ifx ) ./fixsystem ifx ;;
-esac
-cd -
-
 # Build preprocess once
 pp_dir=$DART/assimilation_code/programs/preprocess
 cd $pp_dir
