@@ -795,6 +795,7 @@ endif
 h%ii%grid_num = 0
 
 do i = 1, xlim
+   ! There's no wraparound in y, one box less than grid boundaries
    do j = 1, ny - 1
       if( all_corners_valid(h%opt, i, j, nx) ) then
          call get_quad_corners(h%ii%lons_2d, i, j, cyclic, pole, nx, ny, u_c_lons, istatus)
