@@ -491,10 +491,4 @@ if( $suffix eq '.a' ) {
 close MAKEFILE;
 print " $opt_m is ready.\n";
 
-exec 'make', '-j', '4', '-f', $opt_m if $opt_x;
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
-
+exec 'make', '-f', $opt_m if $opt_x;
