@@ -102,13 +102,10 @@ use io_filenames_mod,     only : get_restart_filename, inherit_copy_units, &
                                  netcdf_file_type, READ_COPY, WRITE_COPY, &
                                  noutput_state_variables
 
-use assim_model_mod,      only : get_model_size, read_model_time, write_model_time
-
-!>@todo FIXME : should move to assim_model_mod.f90
-use model_mod,            only : nc_write_model_atts
+use assim_model_mod,      only : get_model_size, read_model_time, write_model_time, &
+                                 nc_write_model_atts
 
 use typesizes
-
 use netcdf
 
 implicit none

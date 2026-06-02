@@ -1,3 +1,5 @@
+.. _detailed_structure_obs_seq:
+
 Detailed structure of an obs_seq file
 =====================================
 

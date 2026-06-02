@@ -192,7 +192,7 @@ else
   mkmf_libs=""
 fi
  
- $DART/build_templates/mkmf -a $DART -x $m $mkmf_libs -p $(basename $1)  \
+ $DART/build_templates/mkmf -c $version_def -a $DART -x $m $mkmf_libs -p $(basename $1)  \
      $EXTRA \
      $convsrc \
      $program \

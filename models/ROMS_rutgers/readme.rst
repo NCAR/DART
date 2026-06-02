@@ -49,15 +49,43 @@ at dart@ucar.edu
 
 Interface Overview
 ==================
-The ``ROMS_rutgers/mod_mod.f90`` is a module that serves as the interface between ROMS and DART. 
-It defines the set of routines that DART uses to interact with ROMS state variables, 
-perform interpolation, perturbations, metadata access, and read/write state data. It
-supports: 
+The interface between DART and ROMS supports multiple grid configurations,
+ranging from fully regular grids to curvilinear (fully irregular) grids.
+The choice of grid type affects both the compilation and the performance
+of the interpolation routines.
 
-- Model initialization and state management,
-- Observation-space interpolation of model state variables,
-- Vertical coordinate transformation and interpolation,
-- Mapping between DART's state vector and ROMS fields.
+To compile the DART interface, run ``quickbuild.sh`` with the appropriate
+grid option:
+
+- Regular grid: ``./quickbuild.sh reg_grid``
+- Irregular grid: ``./quickbuild.sh irreg_grid``
+
+After compilation, the interface module ``ROMS_rutgers/mod_mod.f90`` is generated.
+
+For grids that are logically rectangular with separable longitude and latitude
+coordinates (e.g., rectilinear grids with uniform or nonuniform spacing),
+the ``reg_grid`` option enables faster and more efficient interpolation by
+using optimized search routines based on 1D coordinate arrays.
+
+The ``irreg_grid`` option is intended for fully curvilinear grids, where
+longitude and latitude vary in both horizontal directions. In this case,
+the interpolation requires access to the full 2D coordinate arrays, which
+increases both memory usage and computational cost.
+
+The ``ROMS_rutgers/mod_mod.f90``  interface provides the 
+routines required for DART to interact with the model state and
+perform data assimilation tasks, including:
+
+- Model initialization and state management
+- Observation-space interpolation of model state variables
+- Vertical coordinate transformation and interpolation
+- Mapping between DART’s state vector and ROMS variables
+
+.. note::
+
+  In many practical ROMS configurations, grids may be irregularly spaced but
+  still rectilinear. These grids can take advantage of the more efficient
+  interpolation pathway associated with the ``reg_grid`` option.
 
 Observation Handling and Interpolation
 --------------------------------------

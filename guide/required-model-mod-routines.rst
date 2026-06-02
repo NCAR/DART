@@ -27,6 +27,7 @@ The table below lists all 18 routines and their defaults.
 See :doc:`suggestions-for-a-simple-model` (advanced by DART) or 
 :doc:`suggestions-for-a-complex-model` (advanced externally) for guidance.
 
+
 .. list-table:: Required model_mod routines
     :header-rows: 1
     :widths: 10 40 35
@@ -88,3 +89,13 @@ See :doc:`suggestions-for-a-simple-model` (advanced by DART) or
     * - **nc_write_model_vars**
       - This method is not currently called, so just use the default routine.
       - Does nothing.
+
+
+Note on Interpolation
++++++++++++++++++++++
+DART provides tools in the :doc:`Quad Utilities <../models/utilities/quad_utils_mod>` 
+module for both grid search and interpolation on logically rectangular grids, 
+that is, grids indexed like a regular ``(i,j)`` array but potentially curvilinear 
+in physical space. These **quad_utils_mod** routines can be used within 
+**model_interpolate()** to avoid having to implement interpolation 
+routines from scratch.

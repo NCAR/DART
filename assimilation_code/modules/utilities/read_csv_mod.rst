@@ -140,6 +140,10 @@ What this module does
   - values that cannot be converted to integer are returned as ``MISSING_I``
   - values that cannot be converted to real are returned as ``MISSING_R8``
 
+- If a file has extra lines on top (typically including links and data source 
+  information) before the actual header, these can be skipped when opening the 
+  file with ``csv_open`` using the optional argument ``skip_lines``
+
 - Treats backslash (``\``) as an escape character, preventing interpretation of the following character during parsing.
 
 What this module does not do
@@ -150,7 +154,6 @@ What this module does not do
 
 - It does not support:
 
-  - multiple header lines
   - comment lines or metadata blocks
   - embedded newlines inside quoted fields
 
