@@ -809,6 +809,10 @@ enddo
 
 write(string1,*)'two-pass: max candidates per coarse box = ', maxval(h%ii%grid_num)
 call error_handler(E_MSG, routine, string1)
+write(string1,*)'two-pass: min candidates per coarse box = ', minval(h%ii%grid_num)
+call error_handler(E_MSG, routine, string1)
+write(string1,*)'two-pass: empty coarse boxes = ', count(h%ii%grid_num == 0), ' of ', nrx*nry
+call error_handler(E_MSG, routine, string1)
 
 ! ---------------------------------------------------------------
 ! Prefix sum: build grid_start from grid_num; get u_total.
@@ -823,6 +827,12 @@ do i = 1, nrx
 enddo
 
 write(string1,*)'two-pass: total coarse-index entries = ', u_total
+call error_handler(E_MSG, routine, string1)
+write(string1,'(A,F6.1)')'two-pass: mean candidates per coarse box = ', &
+   real(u_total, r8) / real(nrx*nry, r8)
+call error_handler(E_MSG, routine, string1)
+write(string1,*)'two-pass: boxes with >2x mean = ', &
+   count(h%ii%grid_num > 2*(u_total/(nrx*nry))), ' of ', nrx*nry
 call error_handler(E_MSG, routine, string1)
 
 ! Allocate exact-sized flat lists (no waste, no cap).
@@ -846,6 +856,19 @@ do i = 1, xlim
          call reg_box_overlap(h, u_c_lons, u_c_lats, .false., reg_lon_ind, reg_lat_ind)
          call fill_reg_lists(fill_pos, h%ii%grid_lon_list, h%ii%grid_lat_list, &
                              reg_lon_ind, reg_lat_ind, nrx, nry, i, j)
+      endif
+   enddo
+enddo
+
+do i = 1, nrx
+   do j = 1, nry
+      if (fill_pos(i, j) /= h%ii%grid_start(i, j) + h%ii%grid_num(i, j)) then
+         write(string1, *) 'CSR mismatch at coarse box (', i, ',', j, '): ', &
+            'filled=', fill_pos(i,j) - h%ii%grid_start(i,j), &
+            ' counted=', h%ii%grid_num(i,j)
+         call error_handler(E_ERR, routine, &
+            'CSR invariant broken: pass 2 fill count /= pass 1 count', &
+             source, text2=string1)
       endif
    enddo
 enddo
