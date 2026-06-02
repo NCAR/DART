@@ -460,11 +460,19 @@ character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
 character(len=300) :: full_command
-integer :: exit_code
+integer :: exitstat
+integer :: cmdstat
+character(len=256) :: cmdmsg
 
     full_command = (trim(shell_name)//' '//trim(execute))
-    call execute_command_line(trim(full_command), exitstat=exit_code)
-    rc = exit_code
+    call execute_command_line(trim(full_command), exitstat=exitstat, &
+       cmdstat=cmdstat, cmdmsg=cmdmsg)
+
+    print *, "Command status (cmdstat): ", cmdstat
+    print *, "Exit status (exitstat): ", exitstat
+    if (cmdstat /= 0 ) print *, "Message: ", trim(cmdmsg)
+
+    rc = exitstat
 
 end subroutine do_execute_command_line
 
@@ -480,12 +488,14 @@ subroutine sleep_seconds(naplength)
 real(r8), intent(in) :: naplength
 
  integer :: sleeptime
+ character(len=300) :: command
  integer :: rc
 
  sleeptime = floor(naplength)
  if (sleeptime <= 0) sleeptime = 1
 
- call do_execute_command_line('sleep(sleeptime)', rc)
+ write(command, '("sleep ", i0)') sleeptime
+ call do_execute_command_line(trim(command), rc)
 
 end subroutine sleep_seconds
 
@@ -621,10 +631,17 @@ subroutine exit_all(exit_code)
 
  integer, intent(in) :: exit_code
 
- integer :: rc
+ integer :: exitstat
+ integer :: cmdstat
+ character(len=256) :: cmdmsg
  character(len=300) :: command
 
-   write(*, command) 'exit(',exit_code,')'
-   call execute_command_line(trim(command), exitstat=rc)
+   write(command, '("exit ", i0)') exit_code
+   call execute_command_line(trim(command), exitstat=exitstat, &
+         cmdstat=cmdstat, cmdmsg=cmdmsg)
+
+   print *, "Command status (cmdstat): ", cmdstat
+   print *, "Exit status (exitstat): ", exitstat
+   if (cmdstat /= 0 ) print *, "Message: ", trim(cmdmsg)
 
 end subroutine exit_all

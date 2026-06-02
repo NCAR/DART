@@ -1784,11 +1784,19 @@ character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
 character(len=300) :: full_command
-integer :: exit_code
+integer :: exitstat
+integer :: cmdstat
+character(len=256) :: cmdmsg
 
     full_command = (trim(shell_name)//' '//trim(execute))
-    call execute_command_line(trim(full_command), exitstat=exit_code)
-    rc = exit_code
+    call execute_command_line(trim(full_command), exitstat=exitstat, &
+       cmdstat=cmdstat, cmdmsg=cmdmsg)
+
+    print *, "Command status (cmdstat): ", cmdstat
+    print *, "Exit status (exitstat): ", exitstat
+    if (cmdstat /= 0 ) print *, "Message: ", trim(cmdmsg)
+
+    rc = exitstat
 
 end subroutine do_execute_command_line
 
@@ -1805,11 +1813,13 @@ real(r8), intent(in) :: naplength
 
  integer :: sleeptime
  integer :: rc
+ character(len=300) :: command
 
  sleeptime = floor(naplength)
  if (sleeptime <= 0) sleeptime = 1
 
- call do_execute_command_line('sleep(sleeptime)', rc)
+ write(command, '("sleep ", i0)') sleeptime
+ call do_execute_command_line(trim(command), rc)
 
 end subroutine sleep_seconds
 
