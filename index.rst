@@ -335,6 +335,8 @@ References
    observations/obs_converters/CHAMP/README
    observations/obs_converters/BATS/readme
    observations/obs_converters/cice/cice_to_obs
+   observations/obs_converters/cmems_ssh_l3/readme
+   observations/obs_converters/cmems_sst_l3s/readme
    observations/obs_converters/CONAGUA/README
    observations/obs_converters/COSMOS/COSMOS_to_obs
    observations/obs_converters/COSMOS/COSMOS_development
@@ -470,6 +472,7 @@ References
    models/wrf/WRF_DART_utilities/replace_wrf_fields
    models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
    models/utilities/default_model_mod
+   models/utilities/quad_utils_mod
 
 
 .. toctree::

@@ -1,3 +1,5 @@
+.. _creating-obs-seq-synthetic:
+
 Creating an obs_seq file of synthetic observations
 ==================================================
 

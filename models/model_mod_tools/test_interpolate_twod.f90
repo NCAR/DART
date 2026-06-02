@@ -32,9 +32,9 @@ use model_check_utilities_mod, only : test_single_interpolation, &
                                       count_error_codes, &
                                       verify_consistent_istatus
 
-use             model_mod, only : get_model_size, &
+use       assim_model_mod, only : get_model_size, &
                                   get_state_meta_data, &
-                                  model_interpolate
+                                  interpolate
 
 use netcdf
 
@@ -145,7 +145,7 @@ do i = 1, nx
       Y(j) = interp_test_yrange(1) + real(j-1,r8) * interp_test_dy
       loc  = set_location(X(i), Y(j))
 
-      call model_interpolate(ens_handle, ens_size, loc, quantity_index, field(i,j,:), ios_out)
+      call interpolate(ens_handle, ens_size, loc, quantity_index, field(i,j,:), ios_out)
 
       call verify_consistent_istatus(ens_size, field(i,j,:), ios_out)
 

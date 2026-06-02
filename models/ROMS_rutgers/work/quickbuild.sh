@@ -36,7 +36,34 @@ obs_seq_verify
 obs_sequence_tool
 )
 
-arguments "$@"
+# Parse reg_grid/irreg_grid option and remove it from the argument list.
+# Usage: quickbuild.sh [reg_grid|irreg_grid] [mpi/nompi/mpif08] [program]
+#   reg_grid   - link model_mod_reg_grid   to ../chosen_model_mod.f90 before building
+#   irreg_grid - link model_mod_irreg_grid to ../chosen_model_mod.f90 before building
+grid_type=""
+remaining_args=()
+for arg in "$@"; do
+    case $arg in
+        reg_grid|irreg_grid)
+            grid_type=$arg
+            ;;
+        *)
+            remaining_args+=("$arg")
+            ;;
+    esac
+done
+
+if [[ "$grid_type" == "reg_grid" ]]; then
+    cp -f "$DART/models/ROMS_rutgers/model_mod_reg_grid" "$DART/models/ROMS_rutgers/model_mod.f90"
+elif [[ "$grid_type" == "irreg_grid" ]]; then
+    cp -f "$DART/models/ROMS_rutgers/model_mod_irreg_grid" "$DART/models/ROMS_rutgers/model_mod.f90"
+else
+    echo "ERROR: grid type required."
+    echo "Usage: quickbuild.sh reg_grid|irreg_grid [mpi/nompi/mpif08] [program]"
+    exit 1
+fi
+
+arguments "${remaining_args[@]}"
 
 # clean the directory
 \rm -f -- *.o *.mod Makefile .cppdefs

@@ -247,9 +247,10 @@ must be the best estimate of what a real instrument would return if the
 real state of the system were each of the ensemble values.  
 
 For a regular grid this can be computed fairly simply with routines
-already provided in the DART system.  It involves locating the grid
+already provided in the DART system. It involves locating the grid
 values that enclose the observation location, and doing bi- or tri-linear
-interpolation to the actual location.
+interpolation to the actual location. 
+See :doc:`Quad Utilities <../models/utilities/quad_utils_mod>` for more details.
 
 However, many models have non-regular grid, especially in the vertical
 coordinates for an earth-system-based model.  Or the grid can be an 
