@@ -337,9 +337,6 @@ if (myrank == 0) then
    call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring, source)
 endif
 
-call sleep_seconds(20.0_r8)
-call exit_all(20)
-
 end subroutine initialize_mpi_utilities
 
 !-----------------------------------------------------------------------------

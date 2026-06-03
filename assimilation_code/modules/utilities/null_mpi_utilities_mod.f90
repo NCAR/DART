@@ -122,9 +122,6 @@ endif
 ! non-MPI successfully initialized.
 call error_handler(E_MSG,'initialize_mpi_utilities: ','Running single process', source)
 
-call sleep_seconds(20.0_r8)
-call exit_all(20)
-
 end subroutine initialize_mpi_utilities
 
 !-----------------------------------------------------------------------------
