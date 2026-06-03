@@ -122,6 +122,9 @@ endif
 ! non-MPI successfully initialized.
 call error_handler(E_MSG,'initialize_mpi_utilities: ','Running single process', source)
 
+call sleep_seconds(20.0_r8)
+call exit_all(20)
+
 end subroutine initialize_mpi_utilities
 
 !-----------------------------------------------------------------------------
@@ -459,18 +462,12 @@ subroutine do_execute_command_line(execute, rc)
 character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
-character(len=300) :: full_command
 integer :: exitstat
 integer :: cmdstat
 character(len=256) :: cmdmsg
 
-    full_command = (trim(shell_name)//' '//trim(execute))
-    call execute_command_line(trim(full_command), exitstat=exitstat, &
+    call execute_command_line(trim(execute), exitstat=exitstat, &
        cmdstat=cmdstat, cmdmsg=cmdmsg)
-
-    print *, "Command status (cmdstat): ", cmdstat
-    print *, "Exit status (exitstat): ", exitstat
-    if (cmdstat /= 0 ) print *, "Message: ", trim(cmdmsg)
 
     rc = exitstat
 
@@ -624,24 +621,14 @@ end module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
-!> Call exit with the specified code.  NOT PART of the mpi_utilities_mod, so
+!> Call error stop with the specified code.  NOT PART of the mpi_utilities_mod, so
 !> this can be called from any code in the system.
 
 subroutine exit_all(exit_code)
 
  integer, intent(in) :: exit_code
 
- integer :: exitstat
- integer :: cmdstat
- character(len=256) :: cmdmsg
- character(len=300) :: command
-
-   write(command, '("exit ", i0)') exit_code
-   call execute_command_line(trim(command), exitstat=exitstat, &
-         cmdstat=cmdstat, cmdmsg=cmdmsg)
-
-   print *, "Command status (cmdstat): ", cmdstat
-   print *, "Exit status (exitstat): ", exitstat
-   if (cmdstat /= 0 ) print *, "Message: ", trim(cmdmsg)
+   write(*, '("exit_all called with exit_code ", i0)') exit_code
+   error stop exit_code
 
 end subroutine exit_all

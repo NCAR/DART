@@ -163,7 +163,7 @@ character(len=*), intent(in), optional :: progname
 character(len=*), intent(in), optional :: alternatename
 integer,          intent(in), optional :: communicator
 
-integer :: errcode, iunit, rc
+integer :: errcode, iunit
 logical :: already
 
 if ( module_initialized ) then
@@ -185,15 +185,13 @@ errcode = -999
 call MPI_Initialized(already, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(*, *) 'MPI_Initialized returned error code ', errcode
-   call execute_command_line('exit(-99)', exitstat=rc)
-   !call exit(-99)
+   error stop errcode
 endif
 if (.not.already) then
    call MPI_Init(errcode)
    if (errcode /= MPI_SUCCESS) then
       write(*, *) 'MPI_Init returned error code ', errcode
-      call execute_command_line('exit(-99)', exitstat=rc)
-      !call exit(-99)
+      error stop errcode
    endif
 endif
 
@@ -209,8 +207,7 @@ endif
 call MPI_Comm_rank(my_local_comm, myrank, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(*, *) 'MPI_Comm_rank returned error code ', errcode
-   call execute_command_line('exit(-99)', exitstat=rc)
-   !call exit(-99)
+   error stop errcode
 endif
 
 ! pass the arguments through so the utilities can log the program name
@@ -1780,18 +1777,12 @@ subroutine do_execute_command_line(execute, rc)
 character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
-character(len=300) :: full_command
 integer :: exitstat
 integer :: cmdstat
 character(len=256) :: cmdmsg
 
-    full_command = (trim(shell_name)//' '//trim(execute))
-    call execute_command_line(trim(full_command), exitstat=exitstat, &
+    call execute_command_line(trim(execute), exitstat=exitstat, &
        cmdstat=cmdstat, cmdmsg=cmdmsg)
-
-    print *, "Command status (cmdstat): ", cmdstat
-    print *, "Exit status (exitstat): ", exitstat
-    if (cmdstat /= 0 ) print *, "Message: ", trim(cmdmsg)
 
     rc = exitstat
 
@@ -1808,15 +1799,14 @@ subroutine sleep_seconds(naplength)
 
 real(r8), intent(in) :: naplength
 
- integer :: sleeptime
- integer :: rc
+ integer :: sleeptime, rc
  character(len=300) :: command
 
  sleeptime = floor(naplength)
  if (sleeptime <= 0) sleeptime = 1
 
  write(command, '("sleep ", i0)') sleeptime
- call do_execute_command_line(trim(command), rc)
+ rc = shell_execute(trim(command))
 
 end subroutine sleep_seconds
 
