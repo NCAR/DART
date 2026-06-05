@@ -83,6 +83,14 @@ use     obs_kind_mod, only : QTY_SOIL_TEMPERATURE,       &
                              QTY_SOIL_CARBON,            &
                              QTY_LATENT_HEAT_FLUX,       &
                              QTY_LANDMASK,               &
+                             QTY_PHOTO_PARAM,            &
+                             QTY_HYDRO_PARAM,            &
+                             QTY_ALLOC_PARAM,            &
+                             QTY_N_PARAM,                &
+                             QTY_SNOW_PARAM,             &
+                             QTY_COUPLE_PARAM,           &
+                             QTY_PHEN_PARAM,             &
+                             QTY_MORT_PARAM,             &
                              get_index_for_quantity,     &
                              get_name_for_quantity,      &
                              get_quantity_for_type_of_obs
@@ -145,6 +153,8 @@ public::  init_time,              &
 ! Routines for support purposes, these interfaces can be changed as appropriate.
 public :: get_gridsize,                 &
           get_clm_restart_filename,     &
+          get_clm_param_filename,       &
+          get_assimilate_pfts,          &
           compute_gridcell_value,       &
           gridcell_components
 
@@ -159,6 +169,7 @@ logical, save :: module_initialized = .false.
 integer :: dom_restart = -1
 integer :: dom_history = -1
 integer :: dom_vector  = -1
+integer :: dom_param   = -1  ! parameter domain; added only when estimate_params = .true.
 
 !------------------------------------------------------------------
 !
@@ -233,6 +244,23 @@ character(len=256) :: clm_restart_filename = 'clm_restart.nc'
 character(len=256) :: clm_history_filename = 'clm_history.nc'
 character(len=256) :: clm_vector_history_filename = 'clm_vector_history.nc'
 
+! Parameter estimation controls.
+! estimate_params: set .true. to add the parameter domain to the DART state vector.
+!   Default is .false. for backward compatibility; no recompile needed to toggle.
+! clm_parameter_filename: the spatially-expanded parameter file created by clm_to_dart.
+!   Parameters from clm_params.nc are replicated onto the full 2D lat/lon grid
+!   so DART can assign locations and apply localization. See clm_to_dart for details.
+! assimilate_pfts: list of CLM PFT indices (0-based) to include in the DA.
+!   Unused slots should be set to -1. Example: assimilate_pfts = 7, 8, -1, -1, ...
+!   e.g., 7=broadleaf deciduous temperate. See input.nml for full PFT index reference.
+!   To add 'param'-origin variables to the state vector, list them in clm_variables
+!   with 'param' as the file-of-origin (column 5). Example:
+!     clm_variables = ... 'jmaxb0', 'QTY_PHOTO_PARAM', '0.0', 'NA', 'param', 'UPDATE'
+logical            :: estimate_params = .false.
+character(len=256) :: clm_parameter_filename = 'clm_params_expanded.nc'
+integer, parameter :: max_param_pfts = 8
+integer            :: assimilate_pfts(max_param_pfts) = -1
+
 character(len=obstypelength) :: clm_variables(max_state_variables*num_state_table_columns) = ' '
 
 namelist /model_nml/            &
@@ -243,6 +271,9 @@ namelist /model_nml/            &
    assimilation_period_seconds, &
    calendar,                    &
    debug,                       &
+   estimate_params,             &
+   clm_parameter_filename,      &
+   assimilate_pfts,             &
    clm_variables
 
 !----------------------------------------------------------------------
@@ -590,6 +621,29 @@ if (nvars > 0) then
                   update_list = var_update(1:nvars) )
    model_size = model_size + get_domain_size(dom_vector)
    if (debug > 1)  call state_structure_info(dom_vector)
+endif
+
+! Parameter domain (domain 4): only added when estimate_params = .true.
+! Variables with origin 'PARAM' in clm_variables are clustered here.
+! The template file (clm_parameter_filename) is the spatially-expanded param
+! file created by clm_to_dart, which maps scalar/PFT param values onto the
+! full 2D lat/lon grid so DART can assign locations and apply localization.
+call cluster_variables(variable_table, 'PARAM', nvars, var_names, &
+                       var_qtys, var_ranges, var_update)
+if (nvars > 0 .and. estimate_params) then
+   dom_param = add_domain(clm_parameter_filename, nvars, var_names(1:nvars), &
+                  kind_list   = var_qtys(  1:nvars),   &
+                  clamp_vals  = var_ranges(1:nvars,:), &
+                  update_list = var_update(1:nvars) )
+   model_size = model_size + get_domain_size(dom_param)
+   if (debug > 1)  call state_structure_info(dom_param)
+   write(string1,*)'Parameter estimation enabled: ',nvars,' param variable(s) added to state.'
+   call error_handler(E_MSG,routine,string1,source)
+else if (nvars > 0 .and. .not. estimate_params) then
+   write(string1,*)'clm_variables contains ''param'' entries but estimate_params = .false.'
+   write(string2,*)'Parameter domain will NOT be added to the DART state vector.'
+   write(string3,*)'Set estimate_params = .true. in model_nml to enable parameter estimation.'
+   call error_handler(E_MSG,routine,string1,source,text2=string2,text3=string3)
 endif
 
 if ((debug > 0) .and. do_output()) then
@@ -2425,6 +2479,44 @@ if ( .not. module_initialized ) call static_init_model
 filename = trim(clm_restart_filename)
 
 end subroutine get_clm_restart_filename
+
+
+!------------------------------------------------------------------
+!> Return the spatially-expanded parameter filename read from model_nml.
+!> Used by dart_to_clm to locate the posterior parameter file.
+
+subroutine get_clm_param_filename( filename )
+
+character(len=*), intent(OUT) :: filename
+
+if ( .not. module_initialized ) call static_init_model
+
+filename = trim(clm_parameter_filename)
+
+end subroutine get_clm_param_filename
+
+
+!------------------------------------------------------------------
+!> Return the array of target PFT indices (0-based CLM convention)
+!> and the count of active (non-negative) entries.
+!> Used by clm_to_dart (expansion) and dart_to_clm (averaging).
+
+subroutine get_assimilate_pfts( pft_indices, num_active_pfts )
+
+integer, intent(OUT) :: pft_indices(max_param_pfts)
+integer, intent(OUT) :: num_active_pfts
+
+integer :: i
+
+if ( .not. module_initialized ) call static_init_model
+
+pft_indices    = assimilate_pfts
+num_active_pfts = 0
+do i = 1, max_param_pfts
+   if (assimilate_pfts(i) >= 0) num_active_pfts = num_active_pfts + 1
+enddo
+
+end subroutine get_assimilate_pfts
 
 
 !------------------------------------------------------------------
