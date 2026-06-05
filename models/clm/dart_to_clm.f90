@@ -8,35 +8,44 @@ program dart_to_clm
 ! purpose: Update the CLM restart file with the DART posterior. If need
 !          be, take the posterior SWE (a diagnostic variable) and
 !          repartition it into prognostic snow layers.
+!          When estimate_params = .true. in model_nml, also averages the
+!          posterior 2D parameter fields (from clm_params_expanded.nc)
+!          back to a single representative value per PFT and writes them
+!          back to the compact parameter file (clm_params.nc).
 !
 ! method: Read DART posterior and replace the valid values in the
-!         CLM restart file. Anything with a DART posterior _FillValue 
-!         is replaced with the original CLM value. 
+!         CLM restart file. Anything with a DART posterior _FillValue
+!         is replaced with the original CLM value.
+!         For parameters: read the posterior 2D spatial field, compute
+!         an area-weighted (or PFT-weighted) spatial mean per ensemble
+!         member, and write back to the original compact parameter file.
+!         This averaging is done independently for each ensemble member,
+!         preserving ensemble spread in parameter space.
 !
 ! discussion: Some variables in the CLM restart file have variables that
 !         have neither the declared _FillValue nor a predictable value.
-!         The 'clm_to_dart' program replaced those CLM indeterminate 
-!         values with the _FillValue so the DART netCDF readers correctly 
-!         replace those values with the DART MISSING value. The DART 
+!         The 'clm_to_dart' program replaced those CLM indeterminate
+!         values with the _FillValue so the DART netCDF readers correctly
+!         replace those values with the DART MISSING value. The DART
 !         netCDF write routines replace the DART MISSING values with the
-!         variables declared _FillValue. This routine replaces the 
+!         variables declared _FillValue. This routine replaces the
 !         _FillValue with whatever was originally in the CLM restart file.
-!       
+!
 !         This routine also gives the user the option to manually repartition
 !         the prognostic snow-related variable updates from the DART update
 !         of the diagnostic total column SWE variable H2OSNO. The default
 !         behavior is for the prognostic snow related layers to be updated
-!         directly from DART.      
+!         directly from DART.
 !----------------------------------------------------------------------
 
-use        types_mod, only : r8, MISSING_R8
+use        types_mod, only : r8, MISSING_R8, obstypelength
 
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              open_file, close_file, &
                              logfileunit, nmlfileunit, &
                              do_nml_file, do_nml_term, &
-                             error_handler, E_MSG, E_ERR
+                             error_handler, E_MSG, E_ERR, to_upper
 
 use time_manager_mod, only : time_type, print_time, print_date, operator(/=)
 
@@ -53,17 +62,20 @@ use   state_structure_mod, only : get_num_variables, &
                                   get_domain_size, &
                                   get_varid_from_varname
 
-use netcdf_utilities_mod, only : nc_open_file_readonly, &
-                                 nc_open_file_readwrite,&
-                                 nc_get_variable_num_dimensions, &
-                                 nc_get_variable_dimension_names, &
-                                 nc_get_variable_size,  &
-                                 nc_get_variable, &
-                                 nc_put_variable, &
-                                 nc_close_file, &
-                                 nc_variable_exists, &
-                                 nc_get_dimension_size, &
+use netcdf_utilities_mod, only : nc_check,                        &
+                                 nc_open_file_readonly,            &
+                                 nc_open_file_readwrite,           &
+                                 nc_get_variable_num_dimensions,   &
+                                 nc_get_variable_dimension_names,  &
+                                 nc_get_variable_size,             &
+                                 nc_get_variable,                  &
+                                 nc_put_variable,                  &
+                                 nc_close_file,                    &
+                                 nc_variable_exists,               &
+                                 nc_get_dimension_size,            &
                                  NF90_MAX_NAME, NF90_MAX_VAR_DIMS
+
+use netcdf
 
 implicit none
 
@@ -73,19 +85,66 @@ character(len=*), parameter :: source = 'dart_to_clm.f90'
 ! The namelist variables
 !------------------------------------------------------------------
 
-character(len=256) :: dart_to_clm_input_file = 'dart_posterior.nc'
+character(len=256) :: dart_to_clm_input_file  = 'dart_posterior.nc'
 character(len=256) :: dart_to_clm_output_file = 'clm_restart.nc'
-integer            :: repartition_swe = 0
-character(len=256) :: repartition_vhist_file = 'clm_vector_history.nc'
+integer            :: repartition_swe          = 0
+character(len=256) :: repartition_vhist_file   = 'clm_vector_history.nc'
 character(len=256) :: repartition_analysis_file = 'dart_posterior_vector.nc'
-integer            :: verbose = 0
+integer            :: verbose                  = 0
 
-namelist /dart_to_clm_nml/ dart_to_clm_input_file, &
-                           dart_to_clm_output_file, &
-                           repartition_swe, &
-                           repartition_vhist_file, &
-                           repartition_analysis_file, &
-                           verbose
+! Parameter estimation options (only used when estimate_params = .true. in model_nml).
+!
+! dart_to_clm_param_expanded_file: DART posterior for the parameter domain.
+!   This 2D lat/lon file was created by clm_to_dart and updated by filter.
+!   Each grid point holds the posterior parameter value at that location.
+!
+! dart_to_clm_param_output_file: compact parameter file to update.
+!   The spatially-averaged posterior values are written back here
+!   (at the correct PFT slot) for use in the next CLM forecast.
+!
+! param_spatial_avg_method: collapses the 2D posterior field to one value.
+!   'AREA_WEIGHTED' (default): weighted mean using gridcell area; grid cells
+!      where the target PFT is absent (weight = 0) are excluded automatically.
+!      Correct geometric weighting; recommended for general use.
+!   'PFT_WEIGHTED': weighted mean using fractional spatial coverage of the
+!      specific target PFT at each grid cell. Grid cells with higher PFT
+!      coverage contribute more. Requires pfts1d_itype_veg in restart file;
+!      falls back to AREA_WEIGHTED if unavailable.
+!   Note: each ensemble member is averaged independently -- the spatially-
+!   averaged parameter value for each member is unique, preserving spread.
+character(len=256) :: dart_to_clm_param_expanded_file = 'clm_params_expanded.nc'
+character(len=256) :: dart_to_clm_param_output_file   = 'clm_params.nc'
+character(len=32)  :: param_spatial_avg_method         = 'AREA_WEIGHTED'
+
+namelist /dart_to_clm_nml/ dart_to_clm_input_file,          &
+                            dart_to_clm_output_file,         &
+                            repartition_swe,                 &
+                            repartition_vhist_file,          &
+                            repartition_analysis_file,       &
+                            dart_to_clm_param_expanded_file, &
+                            dart_to_clm_param_output_file,   &
+                            param_spatial_avg_method,        &
+                            verbose
+
+!------------------------------------------------------------------
+! Variables for partial model_nml read (parameter averaging support).
+! Only the variables declared here are updated on the read; other
+! model_nml entries present in input.nml are safely ignored.
+!------------------------------------------------------------------
+
+integer, parameter :: max_state_variables_d2c    = 40
+integer, parameter :: num_state_table_columns_d2c = 6
+integer, parameter :: max_param_pfts_d2c          = 8
+
+logical            :: estimate_params      = .false.
+character(len=256) :: clm_history_filename = 'clm_history.nc'
+character(len=256) :: clm_restart_filename = 'clm_restart.nc'
+integer            :: assimilate_pfts(max_param_pfts_d2c)                                    = -1
+character(len=obstypelength) :: &
+   clm_variables(max_state_variables_d2c * num_state_table_columns_d2c) = ' '
+
+namelist /model_nml/ clm_history_filename, clm_restart_filename, &
+                     estimate_params, assimilate_pfts, clm_variables
 
 !----------------------------------------------------------------------
 
@@ -208,6 +267,27 @@ enddo UPDATE
 call nc_close_file(ncid_clm,  source)
 call nc_close_file(ncid_dart, source)
 
+!------------------------------------------------------------------
+! Parameter domain update (domain 4).
+! Read model_nml to determine whether parameter estimation is active.
+! If so, average the posterior 2D parameter fields back to a single
+! representative value per PFT and write to the compact param file.
+! This is done per ensemble member (dart_to_clm is called once per
+! member by assimilate.csh), so each member's result is independent.
+!------------------------------------------------------------------
+
+call find_namelist_in_file("input.nml", "model_nml", iunit)
+read(iunit, nml = model_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_nml")
+
+if (estimate_params) then
+   write(string1,*)'Parameter estimation active: averaging posterior 2D fields'
+   write(string2,*)'from "'//trim(dart_to_clm_param_expanded_file)// &
+                   '" -> "'//trim(dart_to_clm_param_output_file)//'"'
+   call error_handler(E_MSG, source, string1, text2=string2)
+   call average_params_to_scalar()
+endif
+
 ! Log what we think we're doing, and exit.
 
 call finalize_utilities('dart_to_clm')
@@ -217,8 +297,326 @@ call finalize_utilities('dart_to_clm')
 contains
 !===============================================================================
 
+!------------------------------------------------------------------
+!  Reads the posterior 2D parameter fields from dart_to_clm_param_expanded_file,
+!  computes a spatial mean for each field (per ensemble member, independently),
+!  and writes the result back to the correct PFT slot in dart_to_clm_param_output_file.
+!
+! Two averaging methods are supported (param_spatial_avg_method namelist option):
+!   AREA_WEIGHTED: weighted mean using gridcell area from the CLM history file.
+!      Grid cells where the target PFT is absent (pfts1d_wtxy = 0) are excluded.
+!   PFT_WEIGHTED:  weighted mean using the fractional spatial coverage of the
+!      target PFT at each grid cell. Requires pfts1d_itype_veg in the CLM restart
+!      file; falls back to AREA_WEIGHTED if that variable is not available.
+!
+!  For PFT-indexed parameters: the source_pft_index_0based attribute on each
+!    expanded variable identifies which PFT slot in the compact file to update.
+!  For scalar parameters: the mean is written back as a single scalar value.
+! 
+!  Diagnostics: the prior value (currently in the compact file) and the posterior
+!   mean are both logged for each parameter variable.
+
+subroutine average_params_to_scalar()
+
+character(len=*), parameter :: routine = 'average_params_to_scalar'
+
+! netCDF file handles
+integer :: ncid_expanded, ncid_compact, ncid_hist, ncid_rst
+integer :: varid_expanded, varid_compact, varid_area
+integer :: io_nc
+
+! Grid dimensions
+integer :: nlon, nlat, npft_compact, npft_src
+
+! Param variable info parsed from clm_variables namelist
+character(len=NF90_MAX_NAME) :: param_varnames(max_state_variables_d2c)
+integer :: num_param_vars
+
+! Active PFTs (0-based)
+integer :: active_pfts(max_param_pfts_d2c), num_active_pfts
+integer :: pft0, pft1
+
+! Spatial data arrays
+real(r8), allocatable :: posterior_2d(:,:)   ! (nlon, nlat) posterior field
+real(r8), allocatable :: area_2d(:,:)        ! (nlon, nlat) gridcell area (km^2)
+real(r8), allocatable :: pft_cover_2d(:,:)   ! (nlon, nlat) PFT fractional coverage
+real(r8), allocatable :: pft_array_compact(:) ! 1D PFT array from compact file
+real(r8), allocatable :: pfts1d_wtxy(:)      ! PFT weights from restart file (sparse)
+integer,  allocatable :: pfts1d_ixy(:)       ! PFT lon indices from restart file
+integer,  allocatable :: pfts1d_jxy(:)       ! PFT lat indices from restart file
+integer,  allocatable :: pfts1d_itype_veg(:) ! PFT vegetation type (0-based) if available
+
+! Averaging variables
+real(r8) :: weighted_sum, weight_sum, posterior_mean, prior_val
+real(r8) :: fill_val
+integer  :: i, j, k, ivar, npft_rst
+character(len=obstypelength) :: origin_str
+character(len=NF90_MAX_NAME) :: expanded_varname
+character(len=32)  :: avg_method
+logical :: pft_type_available
+
+! -----------------------------------------------------------------------
+! Step 1: Parse clm_variables to collect 'param'-origin variable names
+! -----------------------------------------------------------------------
+
+num_param_vars = 0
+do ivar = 1, max_state_variables_d2c
+   if (trim(clm_variables(num_state_table_columns_d2c*ivar - 5)) == ' ') exit
+   origin_str = trim(clm_variables(num_state_table_columns_d2c*ivar - 1))
+   call to_upper(origin_str)
+   if (trim(origin_str) == 'PARAM') then
+      num_param_vars = num_param_vars + 1
+      param_varnames(num_param_vars) = &
+         trim(clm_variables(num_state_table_columns_d2c*ivar - 5))
+   endif
+enddo
+
+if (num_param_vars == 0) then
+   write(string1,*)'estimate_params = .true. but no ''param'' entries in clm_variables.'
+   write(string2,*)'No parameter averaging performed.'
+   call error_handler(E_MSG, routine, string1, text2=string2)
+   return
+endif
+
+! -----------------------------------------------------------------------
+! Step 2: Collect active PFT indices (0-based) from assimilate_pfts
+! -----------------------------------------------------------------------
+
+num_active_pfts = 0
+do k = 1, max_param_pfts_d2c
+   if (assimilate_pfts(k) >= 0) then
+      num_active_pfts = num_active_pfts + 1
+      active_pfts(num_active_pfts) = assimilate_pfts(k)
+   endif
+enddo
+
+! -----------------------------------------------------------------------
+! Step 3: Open files
+! -----------------------------------------------------------------------
+
+ncid_expanded = nc_open_file_readonly( dart_to_clm_param_expanded_file, routine)
+ncid_compact  = nc_open_file_readwrite(dart_to_clm_param_output_file,    routine)
+ncid_hist     = nc_open_file_readonly( clm_history_filename,             routine)
+ncid_rst      = nc_open_file_readonly( clm_restart_filename,             routine)
+
+! -----------------------------------------------------------------------
+! Step 4: Read grid dimensions and gridcell area from history file
+! -----------------------------------------------------------------------
+
+nlon = nc_get_dimension_size(ncid_hist, 'lon')
+nlat = nc_get_dimension_size(ncid_hist, 'lat')
+
+allocate(posterior_2d(nlon, nlat), area_2d(nlon, nlat), pft_cover_2d(nlon, nlat))
+
+call nc_get_variable(ncid_hist, 'area', area_2d, routine)
+
+call nc_close_file(ncid_hist, routine)
+
+! -----------------------------------------------------------------------
+! Step 5: Read PFT spatial data from restart file for weighting.
+!         pfts1d_wtxy: weight of each PFT instance relative to its gridcell.
+!         pfts1d_ixy/jxy: lon/lat grid index of each PFT instance.
+!         pfts1d_itype_veg: PFT vegetation type (0-based). Optional -- used
+!           only for PFT_WEIGHTED mode to identify which instances belong to
+!           the target PFT. Falls back to AREA_WEIGHTED if unavailable.
+! -----------------------------------------------------------------------
+
+npft_rst = nc_get_dimension_size(ncid_rst, 'pft')
+allocate(pfts1d_wtxy(npft_rst), pfts1d_ixy(npft_rst), pfts1d_jxy(npft_rst))
+
+call nc_get_variable(ncid_rst, 'pfts1d_wtxy', pfts1d_wtxy, routine)
+call nc_get_variable(ncid_rst, 'pfts1d_ixy',  pfts1d_ixy,  routine)
+call nc_get_variable(ncid_rst, 'pfts1d_jxy',  pfts1d_jxy,  routine)
+
+! Check whether PFT vegetation type is available (needed for PFT_WEIGHTED)
+pft_type_available = nc_variable_exists(ncid_rst, 'pfts1d_itype_veg')
+if (pft_type_available) then
+   allocate(pfts1d_itype_veg(npft_rst))
+   call nc_get_variable(ncid_rst, 'pfts1d_itype_veg', pfts1d_itype_veg, routine)
+else
+   write(string1,*)'pfts1d_itype_veg not found in "'//trim(clm_restart_filename)//'".'
+   write(string2,*)'PFT_WEIGHTED averaging requires this variable. Falling back to AREA_WEIGHTED.'
+   call error_handler(E_MSG, routine, string1, text2=string2)
+endif
+
+call nc_close_file(ncid_rst, routine)
+
+! Validate/normalise the averaging method string
+avg_method = trim(param_spatial_avg_method)
+call to_upper(avg_method)
+if (trim(avg_method) /= 'AREA_WEIGHTED' .and. trim(avg_method) /= 'PFT_WEIGHTED') then
+   write(string1,*)'Unrecognised param_spatial_avg_method: "'//trim(param_spatial_avg_method)//'"'
+   write(string2,*)'Valid options: AREA_WEIGHTED, PFT_WEIGHTED. Defaulting to AREA_WEIGHTED.'
+   call error_handler(E_MSG, routine, string1, text2=string2)
+   avg_method = 'AREA_WEIGHTED'
+endif
+if (trim(avg_method) == 'PFT_WEIGHTED' .and. .not. pft_type_available) then
+   avg_method = 'AREA_WEIGHTED'
+endif
+
+write(string1,*)'Spatial averaging method: '//trim(avg_method)
+call error_handler(E_MSG, routine, string1)
+
+! -----------------------------------------------------------------------
+! Step 6: Loop over param variables and compute spatial averages
+! -----------------------------------------------------------------------
+
+do ivar = 1, num_param_vars
+
+   ! Determine if variable is PFT-indexed (active PFTs) or scalar (single field)
+   if (num_active_pfts > 0) then
+
+      ! --- PFT-indexed variables: one 2D field per active PFT ---
+      do k = 1, num_active_pfts
+         pft0 = active_pfts(k)
+         pft1 = pft0 + 1   ! Fortran 1-based index into compact file
+
+         ! Construct the expanded field name (e.g. jmaxb0_pft07)
+         write(expanded_varname, '(a,a,i2.2)') &
+            trim(param_varnames(ivar)), '_pft', pft0
+
+         if (.not. nc_variable_exists(ncid_expanded, expanded_varname)) then
+            write(string1,*)'Expanded variable "'//trim(expanded_varname)//'" not found.'
+            write(string2,*)'Skipping. Check that clm_to_dart ran successfully.'
+            call error_handler(E_MSG, routine, string1, text2=string2)
+            cycle
+         endif
+
+         ! Read 2D posterior field
+         call nc_get_variable(ncid_expanded, trim(expanded_varname), posterior_2d, routine)
+
+         ! Build 2D weight field based on selected method
+         pft_cover_2d(:,:) = 0.0_r8
+         if (trim(avg_method) == 'PFT_WEIGHTED') then
+            ! Weight by PFT fractional coverage of target PFT type
+            do j = 1, npft_rst
+               if (pfts1d_itype_veg(j) == pft0) then
+                  pft_cover_2d(pfts1d_ixy(j), pfts1d_jxy(j)) = &
+                     pft_cover_2d(pfts1d_ixy(j), pfts1d_jxy(j)) + pfts1d_wtxy(j)
+               endif
+            enddo
+         else
+            ! AREA_WEIGHTED: use PFT presence mask (any instance of target PFT)
+            do j = 1, npft_rst
+               if (pfts1d_itype_veg(j) == pft0) then
+                  pft_cover_2d(pfts1d_ixy(j), pfts1d_jxy(j)) = 1.0_r8  ! mark as present
+               endif
+            enddo
+         endif
+
+         ! For AREA_WEIGHTED: multiply presence mask by gridcell area
+         ! For PFT_WEIGHTED:  multiply PFT coverage by gridcell area (for area correction)
+         ! In both cases: weight(i,j) = pft_cover_2d(i,j) * area_2d(i,j)
+         !   AREA_WEIGHTED: pft_cover_2d is 0/1 presence mask  -> area of cells with PFT
+         !   PFT_WEIGHTED:  pft_cover_2d is fractional coverage -> area * frac
+
+         weighted_sum = 0.0_r8
+         weight_sum   = 0.0_r8
+         do j = 1, nlat
+            do i = 1, nlon
+               if (pft_cover_2d(i,j) > 0.0_r8) then
+                  weighted_sum = weighted_sum + posterior_2d(i,j) * pft_cover_2d(i,j) * area_2d(i,j)
+                  weight_sum   = weight_sum   +                      pft_cover_2d(i,j) * area_2d(i,j)
+               endif
+            enddo
+         enddo
+
+         if (weight_sum > 0.0_r8) then
+            posterior_mean = weighted_sum / weight_sum
+         else
+            ! No grid cells with target PFT found -- use unweighted mean as fallback
+            write(string1,*)'No grid cells with PFT ',pft0,' found for weighting.'
+            write(string2,*)'Using unweighted mean of all grid points as fallback.'
+            call error_handler(E_MSG, routine, string1, text2=string2)
+            posterior_mean = sum(posterior_2d) / real(nlon*nlat, r8)
+         endif
+
+         ! Read prior value from compact file for diagnostic logging
+         npft_compact = nc_get_dimension_size(ncid_compact, 'pft')
+         allocate(pft_array_compact(npft_compact))
+         call nc_get_variable(ncid_compact, trim(param_varnames(ivar)), &
+                              pft_array_compact, routine)
+         prior_val = pft_array_compact(pft1)
+
+         write(string1,'(a,a,a,i0,a,es12.5,a,es12.5)') &
+            'Param update: ', trim(param_varnames(ivar)), &
+            ' PFT ', pft0, &
+            '  prior=', prior_val, '  posterior=', posterior_mean
+         call error_handler(E_MSG, routine, string1)
+
+         ! Write posterior mean back to compact file at the correct PFT slot
+         pft_array_compact(pft1) = posterior_mean
+         call nc_put_variable(ncid_compact, trim(param_varnames(ivar)), &
+                              pft_array_compact, routine)
+
+         deallocate(pft_array_compact)
+
+      enddo  ! active PFTs
+
+   else
+
+      ! --- Scalar variable: single 2D field, no PFT index ---
+      if (.not. nc_variable_exists(ncid_expanded, trim(param_varnames(ivar)))) then
+         write(string1,*)'Scalar expanded variable "'//trim(param_varnames(ivar))//'" not found.'
+         write(string2,*)'Skipping. Check that clm_to_dart ran successfully.'
+         call error_handler(E_MSG, routine, string1, text2=string2)
+         cycle
+      endif
+
+      call nc_get_variable(ncid_expanded, trim(param_varnames(ivar)), posterior_2d, routine)
+
+      ! Simple area-weighted mean for scalars (no PFT mask needed)
+      weighted_sum = 0.0_r8
+      weight_sum   = 0.0_r8
+      do j = 1, nlat
+         do i = 1, nlon
+            weighted_sum = weighted_sum + posterior_2d(i,j) * area_2d(i,j)
+            weight_sum   = weight_sum   +                      area_2d(i,j)
+         enddo
+      enddo
+      posterior_mean = weighted_sum / weight_sum
+
+      ! Read prior value (scalar)
+      io_nc = nf90_inq_varid(ncid_compact, trim(param_varnames(ivar)), varid_compact)
+      call nc_check(io_nc, routine, 'inquiring varid for '//trim(param_varnames(ivar)))
+      io_nc = nf90_get_var(ncid_compact, varid_compact, prior_val)
+      call nc_check(io_nc, routine, 'reading prior scalar '//trim(param_varnames(ivar)))
+
+      write(string1,'(a,a,a,es12.5,a,es12.5)') &
+         'Param update (scalar): ', trim(param_varnames(ivar)), &
+         '  prior=', prior_val, '  posterior=', posterior_mean
+
+      call error_handler(E_MSG, routine, string1)
+
+      ! Write back as scalar
+      io_nc = nf90_put_var(ncid_compact, varid_compact, posterior_mean)
+      call nc_check(io_nc, routine, 'writing posterior scalar '//trim(param_varnames(ivar)))
+
+   endif
+
+enddo  ! param variables
+
+! -----------------------------------------------------------------------
+! Step 7: Clean up
+! -----------------------------------------------------------------------
+
+call nc_close_file(ncid_expanded, routine)
+call nc_close_file(ncid_compact,  routine)
+
+deallocate(posterior_2d, area_2d, pft_cover_2d)
+deallocate(pfts1d_wtxy, pfts1d_ixy, pfts1d_jxy)
+if (allocated(pfts1d_itype_veg)) deallocate(pfts1d_itype_veg)
+
+write(string1,*)'Parameter averaging complete: ',num_param_vars,' variable(s) updated in "'// &
+                 trim(dart_to_clm_param_output_file)//'"'
+call error_handler(E_MSG, routine, string1)
+
+end subroutine average_params_to_scalar
+
+
+!------------------------------------------------------------------
 !> The DART posterior has had all the DART MISSING_R8 values replaced by
-!> the CLM declared '_FillValue' and the clamping values have been honored. 
+!> the CLM declared '_FillValue' and the clamping values have been honored.
 !> Get the 'original' variable from the netcdf file.
 
 subroutine replace_values_1D(dom_id, ivar, ncid_dart, ncid_clm)
