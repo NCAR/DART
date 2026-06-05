@@ -355,6 +355,16 @@ character(len=NF90_MAX_NAME) :: expanded_varname
 character(len=32)  :: avg_method
 logical :: pft_type_available
 
+! Variable type detection -- mirrors expand_params_to_grid in clm_to_dart.f90.
+! Each variable is checked against the compact param file to determine whether
+! it is PFT-indexed (ndims=1, dim='pft') or scalar (ndims=0), independently of
+! whether num_active_pfts > 0.  This correctly handles mixed lists of PFT and
+! scalar params in clm_variables.
+integer :: ndims_src, src_dimids(NF90_MAX_VAR_DIMS)
+integer :: varid_compact_chk
+character(len=NF90_MAX_NAME) :: src_dim1_name
+logical :: is_pft_indexed
+
 ! -----------------------------------------------------------------------
 ! Step 1: Parse clm_variables to collect 'param'-origin variable names
 ! -----------------------------------------------------------------------
@@ -463,10 +473,31 @@ call error_handler(E_MSG, routine, string1)
 
 do ivar = 1, num_param_vars
 
-   ! Determine if variable is PFT-indexed (active PFTs) or scalar (single field)
-   if (num_active_pfts > 0) then
+   ! Determine the actual variable type from the compact param file.
+   ! This mirrors the logic in expand_params_to_grid (clm_to_dart.f90) and ensures
+   ! scalar params are handled correctly even when num_active_pfts > 0.
+   io_nc = nf90_inq_varid(ncid_compact, trim(param_varnames(ivar)), varid_compact_chk)
+   call nc_check(io_nc, routine, 'inquiring varid for '//trim(param_varnames(ivar)))
+   io_nc = nf90_inquire_variable(ncid_compact, varid_compact_chk, &
+                                  ndims=ndims_src, dimids=src_dimids)
+   call nc_check(io_nc, routine, 'inquiring variable '//trim(param_varnames(ivar)))
+
+   is_pft_indexed = .false.
+   if (ndims_src == 1) then
+      io_nc = nf90_inquire_dimension(ncid_compact, src_dimids(1), name=src_dim1_name)
+      call nc_check(io_nc, routine, 'inquiring dim for '//trim(param_varnames(ivar)))
+      if (trim(src_dim1_name) == 'pft') is_pft_indexed = .true.
+   endif
+
+   if (is_pft_indexed) then
 
       ! --- PFT-indexed variables: one 2D field per active PFT ---
+      if (num_active_pfts == 0) then
+         write(string1,*)'PFT-indexed variable "'//trim(param_varnames(ivar))// &
+                         '" found but no valid PFT indices in assimilate_pfts. Skipping.'
+         call error_handler(E_MSG, routine, string1)
+         cycle
+      endif
       do k = 1, num_active_pfts
          pft0 = active_pfts(k)
          pft1 = pft0 + 1   ! Fortran 1-based index into compact file
@@ -553,7 +584,7 @@ do ivar = 1, num_param_vars
 
       enddo  ! active PFTs
 
-   else
+   else  ! scalar (ndims=0) or non-pft 1D -- treated as single global value
 
       ! --- Scalar variable: single 2D field, no PFT index ---
       if (.not. nc_variable_exists(ncid_expanded, trim(param_varnames(ivar)))) then
