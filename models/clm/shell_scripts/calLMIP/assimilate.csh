@@ -161,6 +161,41 @@ endif
 
 echo "`date` -- END COPY BLOCK"
 
+#=========================================================================
+# Consistency check: verify that estimate_params in DART_params_tower_assim.csh
+# (shell layer) matches estimate_params in input.nml (Fortran layer).
+# A mismatch means the shell scripts and Fortran executables will disagree
+# on whether to perform parameter DA, which will cause errors or silent
+# incorrect behavior.  Warn loudly so the user can fix it before filter runs.
+#=========================================================================
+
+set NML_PARAM_TRUE = `grep -i 'estimate_params' input.nml | grep -i 'true'  | wc -l`
+set NML_PARAM_FALSE = `grep -i 'estimate_params' input.nml | grep -i 'false' | wc -l`
+
+if ( $estimate_params == TRUE && $NML_PARAM_TRUE == 0 ) then
+   echo " "
+   echo "WARNING ================================================================"
+   echo "WARNING: estimate_params = TRUE in DART_params_tower_assim.csh"
+   echo "WARNING: but estimate_params = .false. (or missing) in input.nml"
+   echo "WARNING: Shell scripting will attempt param DA but Fortran executables"
+   echo "WARNING: will NOT -- this will cause errors. Fix before proceeding."
+   echo "WARNING: Set estimate_params = .true. in input.nml:model_nml to resolve."
+   echo "WARNING ================================================================"
+   echo " "
+endif
+
+if ( $estimate_params == FALSE && $NML_PARAM_TRUE > 0 ) then
+   echo " "
+   echo "WARNING ================================================================"
+   echo "WARNING: estimate_params = FALSE in DART_params_tower_assim.csh"
+   echo "WARNING: but estimate_params = .true. in input.nml"
+   echo "WARNING: Fortran executables will attempt param DA but shell scripting"
+   echo "WARNING: will NOT -- param files will be missing and filter will fail."
+   echo "WARNING: Set estimate_params = FALSE in input.nml:model_nml to resolve."
+   echo "WARNING ================================================================"
+   echo " "
+endif
+
 # If possible, use the round-robin approach to deal out the tasks.
 
 if ($?TASKS_PER_NODE) then
