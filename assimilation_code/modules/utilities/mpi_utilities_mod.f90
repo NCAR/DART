@@ -1953,8 +1953,7 @@ end module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
-!> In case of error, call this instead of the fortran intrinsic exit().
-!> It will signal the other MPI tasks that something bad happened and they
+!> Signals to the other MPI tasks that something bad happened and they
 !> should also exit.
 
 subroutine exit_all(exit_code)

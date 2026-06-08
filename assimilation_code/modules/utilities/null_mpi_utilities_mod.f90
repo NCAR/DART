@@ -618,7 +618,7 @@ end module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
-!> Call error stop with the specified code.  NOT PART of the mpi_utilities_mod, so
+!> Call stop with the specified code.  NOT PART of the mpi_utilities_mod, so
 !> this can be called from any code in the system.
 
 subroutine exit_all(exit_code)
@@ -626,6 +626,6 @@ subroutine exit_all(exit_code)
  integer, intent(in) :: exit_code
 
    write(*, '("exit_all called with exit_code ", i0)') exit_code
-   error stop exit_code
+   stop exit_code
 
 end subroutine exit_all
