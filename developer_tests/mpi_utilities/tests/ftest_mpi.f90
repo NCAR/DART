@@ -18,6 +18,7 @@ use mpi
 
 implicit none
 
+!include "mpif.h"
 
 ! integer variables
 integer :: ierror, myrank, totalprocs, rc

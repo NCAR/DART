@@ -48,13 +48,11 @@ use time_manager_mod, only : time_type, get_time, set_time
 use mpi
 
 
-! We build on case-insensitive systems so we cannot reliably
-! count on having the build system run the fortran preprocessor
-! since the usual distinction is between bob.F90 and bob.f90
-! to decide what needs preprocessing
-
 implicit none
 private
+
+!include "mpif.h"
+
 
 ! allow global sum to be computed for integers, r4, and r8s
 interface sum_across_tasks
@@ -1768,9 +1766,6 @@ end function shell_execute
 !-----------------------------------------------------------------------------
 
 !> wrapper so you only have to make this work in a single place
-!> 'shell_name' is a namelist item and normally is the null string.
-!> on at least on cray system, the compute nodes only had one type
-!> of shell and you had to specify it.
 
 subroutine do_execute_command_line(execute, rc)
 
@@ -1778,11 +1773,8 @@ character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
 integer :: exitstat
-integer :: cmdstat
-character(len=256) :: cmdmsg
 
-    call execute_command_line(trim(execute), exitstat=exitstat, &
-       cmdstat=cmdstat, cmdmsg=cmdmsg)
+    call execute_command_line(trim(execute), exitstat=exitstat)
 
     rc = exitstat
 
