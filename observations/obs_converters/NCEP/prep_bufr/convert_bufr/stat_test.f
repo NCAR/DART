@@ -38,7 +38,7 @@ C     LIBRARY:
 C       System   - getarg stat
 C       W3LIB    - errexit 
 C
-C   EXIT STATES:
+C   STOP STATES:
 C     COND =   0 - SUCCESSFUL RUN
 C          =   2 - Incorrect argument list
 C          =   4 - Coud not allocate memory to hold Input BUFR file
@@ -66,7 +66,7 @@ C
       IF(NARG.NE.1) THEN
         PRINT *,'stat_test:  Incorrect usage'
         PRINT *,'Usage: stat_test inputBUFRfile'
-        CALL EXIT(2)
+        STOP 2
       ENDIF
 
       call getarg(1,infile)
@@ -90,7 +90,7 @@ c  tested the right offset seems to be 8
       rc = STAT(infile,JSTAT)
       IF (rc.NE.0) THEN
          PRINT*,'ERROR IN FUNCTION STAT GETTING FILE INFO, RC = ',rc
-         CALL EXIT(99)
+         STOP 99
       ELSE
 c        Use the following print and find the index into JSTAT which is 
 c        the same as the actual size of the bufr input file.  make sure

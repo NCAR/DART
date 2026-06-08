@@ -32,7 +32,7 @@ C     LIBRARY:
 C       System   - getarg
 C       W3LIB    - errexit
 C
-C   EXIT STATES:
+C   STOP STATES:
 C     COND =   0 - SUCCESSFUL RUN
 C          =   2 - Incorrect argument list
 C          =   4 - Coud not allocate memory to hold Input BUFR file
@@ -57,7 +57,7 @@ C  comment this section out and use the hardcoded filenames below.
       IF(NARG.NE.2) THEN
         PRINT *,'arg_test:  Incorrect usage'
         PRINT *,'Usage: arg_test inputBUFRfile ouputBUFRfile'
-        CALL EXIT(2)
+        STOP 2
       ENDIF
 
       call getarg(1,infile)
