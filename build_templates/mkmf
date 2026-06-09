@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 #
 # This file is not protected by the DART copyright agreement.
-# DART $Id$
 
 #-----------------------------------------------------------------------
 #              mkmf: Perl script for makefile construction
@@ -43,12 +42,9 @@ sub ensureTrailingSlash {
    local $/ = '/'; chomp @_[0]; @_[0] .= '/';
 }
 
-my $version = '$Id$ ';
-
 # initialize variables: use getopts for these
 getopts( 'a:c:df:l:m:o:p:t:vwx' ) || die "\aSyntax: $0 [-a abspath] [-c cppdefs] [-d] [-f] [-l loadflags] [-m makefile] [-o otherflags] [-p program] [-t template] [-v] [-w] [-x] [targets]\n";
 $opt_v = 1 if $opt_d;	# debug flag turns on verbose flag also
-print "$0 $version\n" if $opt_v;
 
 $opt_m = 'Makefile' unless $opt_m; # set default makefile name
 print "Making makefile $opt_m ...\n" if $opt_v;
@@ -120,7 +116,7 @@ sub print_formatted_list{
 die "ERROR: Environment variable DART must be set\n" unless defined $ENV{DART};
 
 open MAKEFILE, ">$opt_m" or die "\aERROR opening file $opt_m for writing: $!\n";
-printf MAKEFILE "# Makefile created by %s $version\n\n", basename($0);
+printf MAKEFILE "# Makefile created by %s\n\n", basename($0);
 if ( $opt_t ) {
     open TEMPLATE, "<$opt_t" or die "\aERROR: could not read resource file $opt_t: $!\n" 
 }
