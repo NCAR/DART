@@ -55,7 +55,7 @@ integer :: ierror, myrank, totalprocs, rc
    ! This is not really an MPI test, but we do use execute_command_line to
    ! start model advances in async=2 and async=4 modes
    call do_execute_command_line("echo hello world", rc)
-   if (rc /= 0) print *, 'call to system() returned error'
+   if (rc /= 0) print *, 'call to execute_command_line() returned error'
 
    ierror = -999
    call MPI_Finalize(ierror)
@@ -77,11 +77,8 @@ character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
 integer :: exitstat
-integer :: cmdstat
-character(len=256) :: cmdmsg
 
-    call execute_command_line(trim(execute), exitstat=exitstat, &
-       cmdstat=cmdstat, cmdmsg=cmdmsg)
+    call execute_command_line(trim(execute), exitstat=exitstat)
 
     rc = exitstat
 
