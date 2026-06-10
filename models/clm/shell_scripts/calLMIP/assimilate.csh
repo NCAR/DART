@@ -168,33 +168,28 @@ echo "`date` -- END COPY BLOCK"
 # on whether to perform parameter DA, which will cause errors or silent
 # incorrect behavior.  Warn loudly so the user can fix it before filter runs.
 #=========================================================================
-
-set NML_PARAM_TRUE = `grep -i 'estimate_params' input.nml | grep -i 'true'  | wc -l`
-set NML_PARAM_FALSE = `grep -i 'estimate_params' input.nml | grep -i 'false' | wc -l`
+set NML_PARAM_TRUE  = `grep -i 'estimate_params' input.nml | grep -v '^\s*#' | grep -i '\.true\.'  | wc -l`
+set NML_PARAM_FALSE = `grep -i 'estimate_params' input.nml | grep -v '^\s*#' | grep -i '\.false\.' | wc -l`
 
 if ( $estimate_params == TRUE && $NML_PARAM_TRUE == 0 ) then
    echo " "
-   echo "WARNING ================================================================"
-   echo "WARNING: estimate_params = TRUE in DART_params_tower_assim.csh"
-   echo "WARNING: but estimate_params = .false. (or missing) in input.nml"
-   echo "WARNING: Shell scripting will attempt param DA but Fortran executables"
-   echo "WARNING: will NOT -- this will cause errors. Fix before proceeding."
-   echo "WARNING: Set estimate_params = .true. in input.nml:model_nml to resolve."
-   echo "WARNING ================================================================"
+   echo "ERROR: estimate_params=TRUE in DART_params but .false. in input.nml" 
+   echo "ERROR: Parameter estimation will be SKIPPED by the Fortran executables." 
+   echo "ERROR: Enforce consisten settings between estimate_params and input.nml" 
+   exit 1
    echo " "
 endif
 
 if ( $estimate_params == FALSE && $NML_PARAM_TRUE > 0 ) then
    echo " "
-   echo "WARNING ================================================================"
-   echo "WARNING: estimate_params = FALSE in DART_params_tower_assim.csh"
-   echo "WARNING: but estimate_params = .true. in input.nml"
-   echo "WARNING: Fortran executables will attempt param DA but shell scripting"
-   echo "WARNING: will NOT -- param files will be missing and filter will fail."
-   echo "WARNING: Set estimate_params = FALSE in input.nml:model_nml to resolve."
-   echo "WARNING ================================================================"
+   echo "ERROR: estimate_params=FALSE in DART_params but .true. in input.nml"
+   echo "ERROR: Fortran executables will attempt param DA but shell scripting will not."
+   echo "ERROR: Enforce consistent settings between estimate_params and input.nml"
+   exit 1
    echo " "
 endif
+
+
 
 # If possible, use the round-robin approach to deal out the tasks.
 
