@@ -79,24 +79,38 @@ namelist /clm_to_dart_nml/ clm_restart_file,          &
                             verbose
 
 !-------------------------------------------------------------------------------
-! Variables read from model_nml to support parameter expansion.
-! Only the variables declared here are updated; other model_nml entries
-! present in input.nml are safely ignored by Fortran namelist I/O.
+! Variables for model_nml read.
+! ALL variables present in input.nml:model_nml must be declared here;
+! Fortran namelist I/O sets IOSTAT non-zero for any undeclared entry,
+! which DART's check_namelist_read treats as a fatal error.
+! Variables not needed by this program are declared with defaults and unused.
 !-------------------------------------------------------------------------------
 
 integer, parameter :: max_state_variables    = 40
 integer, parameter :: num_state_table_columns = 6
 integer, parameter :: max_param_pfts          = 8
 
-logical            :: estimate_params     = .false.
+! Variables actively used by clm_to_dart
+logical            :: estimate_params      = .false.
 character(len=256) :: clm_history_filename = 'clm_history.nc'
 integer            :: assimilate_pfts(max_param_pfts) = -1
 character(len=obstypelength) :: &
    clm_variables(max_state_variables * num_state_table_columns) = ' '
 
-! Partial read of model_nml -- only the four variables above are populated.
-namelist /model_nml/ clm_history_filename, estimate_params, &
-                     assimilate_pfts, clm_variables
+! Variables declared to satisfy namelist read; not used by this program
+character(len=256) :: clm_restart_filename        = 'clm_restart.nc'
+character(len=256) :: clm_vector_history_filename = 'clm_vector_history.nc'
+character(len=256) :: clm_parameter_filename      = 'clm_params_expanded.nc'
+integer            :: assimilation_period_days     = 0
+integer            :: assimilation_period_seconds  = 21600
+integer            :: debug                        = 0
+character(len=32)  :: calendar                     = 'Gregorian'
+
+namelist /model_nml/ clm_restart_filename, clm_history_filename,        &
+                     clm_vector_history_filename, clm_parameter_filename, &
+                     assimilation_period_days, assimilation_period_seconds, &
+                     calendar, debug,                                      &
+                     estimate_params, assimilate_pfts, clm_variables
 
 !-------------------------------------------------------------------------------
 ! global storage

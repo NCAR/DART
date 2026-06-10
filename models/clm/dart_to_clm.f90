@@ -127,23 +127,37 @@ namelist /dart_to_clm_nml/ dart_to_clm_input_file,          &
                             verbose
 
 !------------------------------------------------------------------
-! Variables for partial model_nml read (parameter averaging support).
-! Only the variables declared here are updated on the read; other
-! model_nml entries present in input.nml are safely ignored.
+! Variables for model_nml read.
+! ALL variables present in input.nml:model_nml must be declared here;
+! Fortran namelist I/O sets IOSTAT non-zero for any undeclared entry,
+! which DART's check_namelist_read treats as a fatal error.
+! Variables not needed by this program are declared with defaults and unused.
 !------------------------------------------------------------------
 
 integer, parameter :: max_state_variables_d2c    = 40
 integer, parameter :: num_state_table_columns_d2c = 6
 integer, parameter :: max_param_pfts_d2c          = 8
 
+! Variables actively used by dart_to_clm
 logical            :: estimate_params      = .false.
 character(len=256) :: clm_history_filename = 'clm_history.nc'
 character(len=256) :: clm_restart_filename = 'clm_restart.nc'
-integer            :: assimilate_pfts(max_param_pfts_d2c)                                    = -1
+integer            :: assimilate_pfts(max_param_pfts_d2c) = -1
 character(len=obstypelength) :: &
    clm_variables(max_state_variables_d2c * num_state_table_columns_d2c) = ' '
 
-namelist /model_nml/ clm_history_filename, clm_restart_filename, &
+! Variables declared to satisfy namelist read; not used by this program
+character(len=256) :: clm_vector_history_filename = 'clm_vector_history.nc'
+character(len=256) :: clm_parameter_filename      = 'clm_params_expanded.nc'
+integer            :: assimilation_period_days     = 0
+integer            :: assimilation_period_seconds  = 21600
+integer            :: debug                        = 0
+character(len=32)  :: calendar                     = 'Gregorian'
+
+namelist /model_nml/ clm_restart_filename, clm_history_filename,         &
+                     clm_vector_history_filename, clm_parameter_filename, &
+                     assimilation_period_days, assimilation_period_seconds, &
+                     calendar, debug,                                       &
                      estimate_params, assimilate_pfts, clm_variables
 
 !----------------------------------------------------------------------
