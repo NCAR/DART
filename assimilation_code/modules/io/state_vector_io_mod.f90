@@ -29,6 +29,7 @@ module state_vector_io_mod
 
 use adaptive_inflate_mod, only : adaptive_inflate_type, mean_from_restart, sd_from_restart, &
                                  do_single_ss_inflate, &
+                                 ! GXCOMMENT: do_single_ss_inflate, do_covariance_inflate, &
                                  get_inflate_mean, get_inflate_sd, do_ss_inflate, &
                                  get_is_prior, get_is_posterior, get_inflation_mean_copy, &
                                  get_inflation_sd_copy, print_inflation_restart_filename
@@ -364,14 +365,22 @@ integer :: POST_INF_SD
 ! Return if not doing single state space inflation
 if (.not. do_single_ss_inflate(prior_inflate_handle) .and. &
     .not. do_single_ss_inflate(post_inflate_handle)) return
+! GXCOMMENT: if (.not. do_single_ss_inflate(prior_inflate_handle) .and. &
+! GXCOMMENT: .not. do_single_ss_inflate(post_inflate_hanlde) &
+! GXCOMMENT: .not. do_covariance_inflate(prior_inflate_handle) .and. &
+! GXCOMMENT: .not. do_covariance_inflate(post_inflate_hanlde)) return
 
 return_me = .true.
 ! Return if not reading any state space inflation values from files
 if ( do_single_ss_inflate(prior_inflate_handle)) then
+! GXCOMMENT: if (do_single_ss_inflate(prior_inflate_handle) .or. &
+! GXCOMMENT: do_covariance_inflate(prior_inflate_handle)) then
    if (mean_from_restart(prior_inflate_handle)) return_me = .false.
    if (sd_from_restart(prior_inflate_handle))   return_me = .false.
 endif
 if ( do_single_ss_inflate(post_inflate_handle)) then
+! GXCOMMENT: if (do_single_ss_inflate(post_inflate_handle) .or. &
+! GXCOMMENT: do_covariance_inflate(post_inflate_handle)) then
    if (mean_from_restart(post_inflate_handle)) return_me = .false.
    if (sd_from_restart(post_inflate_handle))   return_me = .false.
 endif
@@ -381,8 +390,10 @@ if (return_me) return
 inf_count = 0
 if (do_single_ss_inflate(prior_inflate_handle)) inf_count = 2
 if (do_single_ss_inflate(post_inflate_handle))  inf_count = inf_count + 2
+! GXCOMMENT: if (do_covariance_inflate(prior_inflate_handle)) inf_count = 1
+! GXCOMMENT: if (do_covariance_inflate(post_inflate_handle)) inf_count = inf_count + 1
 
-allocate(inf_array(inf_count)) ! for sending and recveiving inflation values
+allocate(inf_array(inf_count)) ! for sending and receiving inflation values
 
 ! Find out who owns the first element of vars array
 first_element = 1
@@ -401,18 +412,29 @@ if (ens_handle%my_pe == owner) then
       inf_array(3) = ens_handle%copies(POST_INF_MEAN,  owners_index)
       inf_array(4) = ens_handle%copies(POST_INF_SD,    owners_index)
 
+   ! GXCOMMENT: elseif (do_single_ss_inflate(prior_inflate_handle) .and. &
+   ! GXCOMMENT:    .not. do_single_ss_inflate(post_inflate_handle)) then
    elseif (do_single_ss_inflate(post_inflate_handle) .and. &
      .not. do_single_ss_inflate(post_inflate_handle)) then
 
       inf_array(1) = ens_handle%copies(PRIOR_INF_MEAN, owners_index)
       inf_array(2) = ens_handle%copies(PRIOR_INF_SD,   owners_index)
 
+   ! GXCOMMENT: elseif (.not. do_single_ss_inflate(prior_inflate_handle) .and. &
+   ! GXCOMMENT:    do_single_ss_inflate(post_inflate_handle)) then
    elseif(.not. do_single_ss_inflate(post_inflate_handle) .and. &
                 do_single_ss_inflate(post_inflate_handle)) then
 
       inf_array(1) = ens_handle%copies(POST_INF_MEAN, owners_index)
       inf_array(2) = ens_handle%copies(POST_INF_SD,   owners_index)
 
+   ! GXCOMMENT: elseif ( do_covariance_inflate(prior_inflate_handle) ) then
+   ! GXCOMMENT:    inf_array(1) = ens_handle%copies(PRIOR_INF_MEAN, owners_index)
+   ! GXCOMMENT:    if ( do_variance_inflate(post_inflate_handle) ) then
+   ! GXCOMMENT:       inf_array(2) = ens_handle%copies(POST_INF_MEAN, owners_index)
+   ! GXCOMMENT:    endif
+   ! GXCOMMENT: elseif ( do_covariance_inflate(post_inflate_handle) ) then
+   ! GXCOMMENT:    inf_array(1) = ens_handle%copies(POST_INF_MEAN)
    endif
 
    call broadcast_send(map_pe_to_task(ens_handle, owner), inf_array)
@@ -441,6 +463,14 @@ else
       ens_handle%copies(POST_INF_MEAN, owners_index) = inf_array(1)
       ens_handle%copies(POST_INF_SD,   owners_index) = inf_array(2)
 
+   ! GXCOMMENT: elseif ( do_covariance_inflate(prior_inflate_handle) ) then
+   ! GXCOMMENT:    ens_handle%copies(PRIOR_INF_MEAN, owners_index) = inf_array(1)
+   ! GXCOMMENT:    if ( do_covariance_inflate(post_inflate_handle) ) then
+   ! GXCOMMENT:       ens_handle%copies(POST_INF_MEAN, owners_index) = inf_array(2)
+   ! GXCOMMENT:    endif
+   ! GXCOMMENT: elseif ( do_covariance_inflate(post_inflate_handle) ) then
+   ! GXCOMMENT:    ens_handle%copies(POST_INF_MEAN, owners_index) = inf_array(1)
+
    endif
 
 endif
@@ -468,7 +498,9 @@ INF_SD_COPY   = get_inflation_sd_copy(  inflate_handle)
 ! To match Lanai filter_state_space_diagnostics, 
 ! if not doing inflation set inf_mean = 1, inf_sd = 0
 if (.not. do_ss_inflate(inflate_handle)) then
+   ! GXCOMMENT: if (.not. do_covariance_inflate(inflate_handle)) then
    ens_handle%copies(INF_MEAN_COPY, :) = 1.0_r8
+   ! GXCOMMENT: endif
    ens_handle%copies(INF_SD_COPY, :)   = 0.0_r8
    return
 endif

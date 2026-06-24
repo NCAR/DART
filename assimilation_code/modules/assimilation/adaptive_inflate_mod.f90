@@ -64,6 +64,7 @@ integer, parameter :: VARYING_SS_INFLATION       = 2
 integer, parameter :: SINGLE_SS_INFLATION        = 3
 integer, parameter :: RELAXATION_TO_PRIOR_SPREAD = 4
 integer, parameter :: ENHANCED_SS_INFLATION      = 5
+! GXCOMMENT: integer, parameter :: COVARIANCE_ONLY_INFLATION = 6
 
 ! Type to keep track of information for inflation
 type adaptive_inflate_type
@@ -389,6 +390,17 @@ do_enhanced_ss_inflate = ((inflate_handle%inflation_flavor == VARYING_SS_INFLATI
 
 end function do_enhanced_ss_inflate
 
+! GXCOMMENT: ! --------------------------------------------------------------------------
+! GXCOMMENT: !> Returns true if covariance-only inflation is indicated
+
+! GXCOMMENT: function do_covariance_inflate(inflate_handle)
+
+! GXCOMMENT: logical                                 :: do_covariance_inflate
+! GXCOMMENT: type(adaptive_inflate_type), intent(in) :: inflate_handle
+
+! GXCOMMENT: do_covariance_inflate = (inflate_handle%inflation_flavor == COVARIANCE_ONLY_INFLATION)
+
+! GXCOMMENT: end function do_covariance_inflate
 
 !-------------------------------------------------------------------------------
 !> Returns true if deterministic inflation is indicated
@@ -434,7 +446,9 @@ string(PRIOR_INF)     = 'Prior'
 string(POSTERIOR_INF) = 'Posterior'
 
 do i = PRIOR_INF, POSTERIOR_INF
+   ! GXCOMMENT: if (inf_flavor(i) < NO_INFLATION .or. inf_flavor(i) > COVARIANCE_ONLY_INFLATION) then
    if(inf_flavor(i) < NO_INFLATION .or. inf_flavor(i) > ENHANCED_SS_INFLATION) then
+      ! GXCOMMENT: write(string1, *) 'inf_flavor=', inf_flavor(i), 'Must be 0, 1, 2, 3, 4, 5, or 6'
       write(string1, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, 4, or 5 '
       call error_handler(E_ERR,'validate_inflate_options', string1, source, &
                                 text2='Inflation type for '//string(i))
@@ -538,6 +552,10 @@ real(r8) :: rand_sd, var, sd_inflate
 if (inflate_handle%allow_missing_in_clm) then
    if (any(ens == MISSING_R8)) return
 endif
+
+! GXCOMMENT: if (do_covariance_inflate(inflate_handle)) then
+! GXCOMMENT: return
+! GXCOMMENT: endif
 
 if(inflate_handle%deterministic) then
 
@@ -1323,6 +1341,10 @@ select case(inflation_handle%inflation_flavor)
       tadapt = ' time-adaptive,'    ! IS THIS TRUE??
       sadapt = ' spatially-varying relaxation-to-prior-spread,'
       akind = ' state-space'
+! GXCOMMENT: case (COVARIANCE_ONLY_INFLATION)
+! GXCOMMENT:    sadapt = ' varying with localization, '
+! GXCOMMENT:    tadapt = ' varying with observation, '
+! GXCOMMENT:    akind = ' covariance '
    case default
       write(string1, *) 'Illegal inflation value for ', label
       call error_handler(E_ERR, 'adaptive_inflate_init', string1, source)

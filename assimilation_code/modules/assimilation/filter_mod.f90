@@ -60,6 +60,7 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
                                   NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION,  &
                                   SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD,    &
                                   ENHANCED_SS_INFLATION
+                                  ! GXCOMMENT: ENHANCED_SS_INFLATION, COVARIANCE_ONLY_INFLATION
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
@@ -900,6 +901,7 @@ AdvanceTime : do
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
       OBS_VAR_END, inflate_only = .false.)
+      ! GXCOMMENT: OBS_VAR_END, inflate_only = .false., post_inflate, POST_INF_COPY)
 
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
