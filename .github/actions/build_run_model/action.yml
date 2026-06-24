@@ -52,7 +52,7 @@ runs:
         case ${{ inputs.compiler }} in
           gfortran)
             cp mkmf.template.gfortran mkmf.template
-            echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
+            echo 'FFLAGS = -fsanitize=address -fno-omit-frame-pointer -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
             ;;
           nvhpc)
             cp mkmf.template.nvhpc mkmf.template
