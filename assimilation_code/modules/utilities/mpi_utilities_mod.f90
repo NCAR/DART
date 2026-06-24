@@ -184,8 +184,8 @@ logical :: all_tasks_print      = .false.   ! by default only msgs from 0 print
 
 ! make local array copy for send/recv/bcast.  was needed on an old, buggy version
 ! of the mpi libs but seems unneeded now. 
-logical :: make_copy_before_sendrecv  = .false.   ! should not be needed; .true. is very slow
-logical :: make_copy_before_broadcast = .false.   ! should not be needed; .true. is very slow
+logical :: make_copy_before_sendrecv  = .true.   ! should not be needed; .true. is very slow
+logical :: make_copy_before_broadcast = .true.   ! should not be needed; .true. is very slow
 
 ! NAMELIST: change the following from .false. to .true. to enable
 ! the reading of this namelist.  This is the only place you need
