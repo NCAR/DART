@@ -19,20 +19,21 @@ use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, send_minmax_
 implicit none
 private
 
-public :: update_inflation,                                 do_obs_inflate,           &
-          update_single_state_space_inflation, update_varying_state_space_inflation,  &
-          do_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,              &
-          adaptive_inflate_init,    adaptive_inflate_type,                            &
-                                    deterministic_inflate,  solve_quadratic,          &
-          log_inflation_info,       get_minmax_task_zero,   mean_from_restart,        &
-          sd_from_restart,                                                            &
-          output_inf_restart,       get_inflate_mean,       get_inflate_sd,           &
-          get_is_prior,             get_is_posterior,       do_ss_inflate,            &
-          set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy,  &
-          get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options, &
-          print_inflation_restart_filename,                                           &
+public :: update_inflation,                                 do_obs_inflate,            &
+          update_single_state_space_inflation, update_varying_state_space_inflation,   &
+          do_varying_ss_inflate,    do_single_ss_inflate,   inflate_ens,               &
+          adaptive_inflate_init,    adaptive_inflate_type,                             &
+                                    deterministic_inflate,  solve_quadratic,           &
+          log_inflation_info,       get_minmax_task_zero,   mean_from_restart,         &
+          sd_from_restart,                                                             &
+          output_inf_restart,       get_inflate_mean,       get_inflate_sd,            &
+          get_is_prior,             get_is_posterior,       do_ss_inflate,             &
+          set_inflation_mean_copy,  set_inflation_sd_copy,  get_inflation_mean_copy,   &
+          get_inflation_sd_copy,    do_rtps_inflate,        validate_inflate_options,  &
+          print_inflation_restart_filename, do_covariance_inflate,                     &
           PRIOR_INF, POSTERIOR_INF, NO_INFLATION, OBS_INFLATION, VARYING_SS_INFLATION, &
-          SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD, ENHANCED_SS_INFLATION
+          SINGLE_SS_INFLATION, RELAXATION_TO_PRIOR_SPREAD, ENHANCED_SS_INFLATION,      &
+          COVARIANCE_ONLY_INFLATION
 
 character(len=*), parameter :: source = 'adaptive_inflate_mod.f90'
 
@@ -64,7 +65,7 @@ integer, parameter :: VARYING_SS_INFLATION       = 2
 integer, parameter :: SINGLE_SS_INFLATION        = 3
 integer, parameter :: RELAXATION_TO_PRIOR_SPREAD = 4
 integer, parameter :: ENHANCED_SS_INFLATION      = 5
-! GXCOMMENT: integer, parameter :: COVARIANCE_ONLY_INFLATION = 6
+integer, parameter :: COVARIANCE_ONLY_INFLATION  = 6
 
 ! Type to keep track of information for inflation
 type adaptive_inflate_type
@@ -390,17 +391,17 @@ do_enhanced_ss_inflate = ((inflate_handle%inflation_flavor == VARYING_SS_INFLATI
 
 end function do_enhanced_ss_inflate
 
-! GXCOMMENT: ! --------------------------------------------------------------------------
-! GXCOMMENT: !> Returns true if covariance-only inflation is indicated
+! -------------------------------------------------------------------------------
+!> Returns true if covariance-only inflation is indicated
 
-! GXCOMMENT: function do_covariance_inflate(inflate_handle)
+function do_covariance_inflate(inflate_handle)
 
-! GXCOMMENT: logical                                 :: do_covariance_inflate
-! GXCOMMENT: type(adaptive_inflate_type), intent(in) :: inflate_handle
+logical                                 :: do_covariance_inflate
+type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-! GXCOMMENT: do_covariance_inflate = (inflate_handle%inflation_flavor == COVARIANCE_ONLY_INFLATION)
+do_covariance_inflate = (inflate_handle%inflation_flavor == COVARIANCE_ONLY_INFLATION)
 
-! GXCOMMENT: end function do_covariance_inflate
+end function do_covariance_inflate
 
 !-------------------------------------------------------------------------------
 !> Returns true if deterministic inflation is indicated
@@ -446,10 +447,8 @@ string(PRIOR_INF)     = 'Prior'
 string(POSTERIOR_INF) = 'Posterior'
 
 do i = PRIOR_INF, POSTERIOR_INF
-   ! GXCOMMENT: if (inf_flavor(i) < NO_INFLATION .or. inf_flavor(i) > COVARIANCE_ONLY_INFLATION) then
-   if(inf_flavor(i) < NO_INFLATION .or. inf_flavor(i) > ENHANCED_SS_INFLATION) then
-      ! GXCOMMENT: write(string1, *) 'inf_flavor=', inf_flavor(i), 'Must be 0, 1, 2, 3, 4, 5, or 6'
-      write(string1, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, 4, or 5 '
+   if (inf_flavor(i) < NO_INFLATION .or. inf_flavor(i) > COVARIANCE_ONLY_INFLATION) then
+      write(string1, *) 'inf_flavor=', inf_flavor(i), 'Must be 0, 1, 2, 3, 4, 5, or 6'
       call error_handler(E_ERR,'validate_inflate_options', string1, source, &
                                 text2='Inflation type for '//string(i))
    endif
@@ -553,9 +552,10 @@ if (inflate_handle%allow_missing_in_clm) then
    if (any(ens == MISSING_R8)) return
 endif
 
-! GXCOMMENT: if (do_covariance_inflate(inflate_handle)) then
-! GXCOMMENT: return
-! GXCOMMENT: endif
+! Covariance_Only_Inflation does not actually inflate ensemble members
+if (do_covariance_inflate(inflate_handle)) then
+   return
+endif
 
 if(inflate_handle%deterministic) then
 
@@ -1341,10 +1341,10 @@ select case(inflation_handle%inflation_flavor)
       tadapt = ' time-adaptive,'    ! IS THIS TRUE??
       sadapt = ' spatially-varying relaxation-to-prior-spread,'
       akind = ' state-space'
-! GXCOMMENT: case (COVARIANCE_ONLY_INFLATION)
-! GXCOMMENT:    sadapt = ' varying with localization, '
-! GXCOMMENT:    tadapt = ' varying with observation, '
-! GXCOMMENT:    akind = ' covariance '
+   case (COVARIANCE_ONLY_INFLATION)
+      sadapt = ' varying with localization, '
+      tadapt = ' varying with observation, '
+      akind = ' covariance '
    case default
       write(string1, *) 'Illegal inflation value for ', label
       call error_handler(E_ERR, 'adaptive_inflate_init', string1, source)
