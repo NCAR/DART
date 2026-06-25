@@ -467,10 +467,9 @@ INF_SD_COPY   = get_inflation_sd_copy(  inflate_handle)
 
 ! To match Lanai filter_state_space_diagnostics, 
 ! if not doing inflation set inf_mean = 1, inf_sd = 0
-if (.not. do_ss_inflate(inflate_handle)) then
-   if (.not. do_covariance_inflate(inflate_handle)) then
-      ens_handle%copies(INF_MEAN_COPY, :) = 1.0_r8
-   endif
+if (.not. do_ss_inflate(inflate_handle) .and. &
+    .not. do_covariance_inflate(inflate_handle)) then
+   ens_handle%copies(INF_MEAN_COPY, :) = 1.0_r8
    ens_handle%copies(INF_SD_COPY, :)   = 0.0_r8
    return
 endif
