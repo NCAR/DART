@@ -816,7 +816,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
             obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
             net_a, grp_size, grp_beg, grp_end, i, my_state_indx(state_index), final_factor, correl, &
-            local_varying_ss_inflate, inflate_only, -1.0_r8, ens_handle%copies(ENS_INF_COPY, state_index))
+            local_varying_ss_inflate, inflate_only, &
+            inflate_value_post=ens_handle%copies(ENS_INF_POST_COPY, state_index))
       else
          call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
             my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &

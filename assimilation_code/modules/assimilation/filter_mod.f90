@@ -576,7 +576,6 @@ call log_inflation_info(prior_inflate, state_ens_handle%my_pe, 'Prior', single_f
 call get_minmax_task_zero(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
 call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior', single_file_in)
 
-
 if (perturb_from_single_instance) then
    call error_handler(E_MSG,'filter_main:', &
       'Reading in a single member and perturbing data for the other ensemble members')
