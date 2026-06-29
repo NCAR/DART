@@ -1,0 +1,10 @@
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00001.nc
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00002.nc
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00003.nc
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00004.nc
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00005.nc
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00006.nc
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00007.nc
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00008.nc
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00009.nc
+/Users/xinguan/DATA/Default_DART_Ensemble/l96_mem00010.nc

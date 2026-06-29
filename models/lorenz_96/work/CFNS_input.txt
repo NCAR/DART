@@ -1,0 +1,6 @@
+set_def_regular_2.out
+1
+3000
+0 43200
+1 0
+obs_seq_regular_2.in

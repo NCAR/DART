@@ -2,23 +2,23 @@
    /
 
 &algorithm_info_nml
-   qceff_table_filename = ''
+   qceff_table_filename = 'QCEFF_TABLE_NAME'
    /
 
 &perfect_model_obs_nml
-   read_input_state_from_file = .true.,
+   read_input_state_from_file = BOOL_PMO_IN_FILE,
    single_file_in             = .false.
-   input_state_files          = "/Users/xinguan/DATA/Synthetic_Truth/l96_mem00001.nc"
+   input_state_files          = "PMO_FILE_IN"
 
-   write_output_state_to_file = .false.,
+   write_output_state_to_file = BOOL_PMO_OUT_FILE,
    single_file_out            = .true.
-   output_state_files         = "pmo_output.nc"
+   output_state_files         = "PMO_FILE_OUT"
    output_interval            = 1,
 
-   async                      = 0 
+   async                      = PARALLELMODE ASYNCADDON
 
-   obs_seq_in_file_name       = "obs_seq.in",
-   obs_seq_out_file_name      = "obs_seq.out",
+   obs_seq_in_file_name       = "PMO_OBS_IN",
+   obs_seq_out_file_name      = "PMO_OBS_OUT",
    init_time_days             = 0,
    init_time_seconds          = 0,
    first_obs_days             = -1,
@@ -36,30 +36,30 @@
 &filter_nml
    single_file_in               = .false.
    input_state_files            = ''
-   input_state_file_list        = 'lorenz_input_file_list.txt'
+   input_state_file_list        = 'INPUTFILES'
 
-   stages_to_write  = "forecast", "preassim", "postassim", "analysis", "output"
+   stages_to_write  = STAGES_TO_WRITE
 
    single_file_out              = .true.
    output_state_files           = ''
-   output_state_file_list       = 'lorenz_output_file_list.txt'
+   output_state_file_list       = 'OUTPUTFILES'
    output_interval              = 1,
-   output_members               = .true.
-   num_output_state_members     = 10
+   output_members               = BOOL_OUTPUT_MEMBERS
+   num_output_state_members     = N_OUTPUT_STATE
    output_mean                  = .false.
    output_sd                    = .false.
 
-   ens_size                     = 10
+   ens_size                     = ENSEMBLE_SIZE
    num_groups                   = 1,
    perturb_from_single_instance = .false.,
    perturbation_amplitude       = 0.2,
    distributed_state            = .true.
 
-   async                        = 0 
+   async                        = PARALLELMODE ASYNCADDON
 
-   obs_sequence_in_name         = "obs_seq.out",
-   obs_sequence_out_name        = "obs_seq.final",
-   num_output_obs_members       = 10
+   obs_sequence_in_name         = "FILTER_OBS_IN",
+   obs_sequence_out_name        = "FILTER_OBS_OUT",
+   num_output_obs_members       = N_OUTPUT_OBS
    init_time_days               = 0,
    init_time_seconds            = 0,
    first_obs_days               = -1,
@@ -67,17 +67,17 @@
    last_obs_days                = -1,
    last_obs_seconds             = -1,
 
-   inf_flavor                  = 6, 6
-   inf_initial_from_restart    = .false., .false.
-   inf_sd_initial_from_restart = .false., .false.
+   inf_flavor                  = INFFLAVOUR0, INFFLAVOUR1
+   inf_initial_from_restart    = BOOLINFINITRESTART0, BOOLINFINITRESTART1
+   inf_sd_initial_from_restart = BOOLINFSTDINITRESTART0, BOOLINFSTDINITRESTART1
    inf_deterministic           = .true.,                  .true.,
-   inf_initial                 = 1.1, 1.1
-   inf_lower_bound             = 1.0, 1.0
-   inf_upper_bound             = 10000.0, 10000.0
-   inf_damping                 = 1.0, 1.0
-   inf_sd_initial              = 0.6, 0.3
-   inf_sd_lower_bound          = 0.3, 0.1
-   inf_sd_max_change           = 1.05, 1.05
+   inf_initial                 = INITIALINFLATION0, INITIALINFLATION1
+   inf_lower_bound             = INFLATIONLOWERBOUND0, INFLATIONLOWERBOUND1
+   inf_upper_bound             = INFLATIONUPPERBOUND0, INFLATIONUPPERBOUND1
+   inf_damping                 = INFLATIONDAMPING0, INFLATIONDAMPING1
+   inf_sd_initial              = INITIALINFLATIONSTD0, INITIALINFLATIONSTD1
+   inf_sd_lower_bound          = INFLATIONSTDLOWERBOUND0, INFLATIONSTDLOWERBOUND1
+   inf_sd_max_change           = INFLATIONSTDMAXSTEP0, INFLATIONSTDMAXSTEP1
 
    trace_execution              = .false.,
    output_timestamps            = .false.,
@@ -87,15 +87,15 @@
    /
 
 &fill_inflation_restart_nml
-   write_prior_inf = .false.
-   prior_inf_mean  = 1.03
-   prior_inf_sd    = 0.6
+   write_prior_inf = BOOLINFRESTARTWRITE0
+   prior_inf_mean  = OWNINITINFMEAN0
+   prior_inf_sd    = OWNINITINFSTD0
    
-   write_post_inf  = .false.
-   post_inf_mean   = 1.08
-   post_inf_sd     = 0.6
+   write_post_inf  = BOOLINFRESTARTWRITE1
+   post_inf_mean   = OWNINITINFMEAN1
+   post_inf_sd     = OWNINITINFSTD1
    
-   input_state_files = 'reference_lorenz_member.nc'
+   input_state_files = OWNINITINFINPUT_FILES
    single_file       = .false.
                        
    verbose           = .false.   
@@ -104,16 +104,16 @@
 
 &ensemble_manager_nml
    layout         = 2         
-   tasks_per_node = 4
+   tasks_per_node = NTASKSPERNODE
    /
 
 &assim_tools_nml
    distribute_mean                 = .false.
-   cutoff                          = 0.2
+   cutoff                          = ASSIMCUTOFF
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
-   sampling_error_correction       = .false.
-   adaptive_localization_threshold = -1
+   sampling_error_correction       = SAMPLINGERRORCORRECTION
+   adaptive_localization_threshold = ADAPLOCTHRESH
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
    print_every_nth_obs             = 0,
@@ -126,8 +126,8 @@
    /
 
 &reg_factor_nml
-   select_regression    = 1
-   input_reg_file       = "time_mean_reg"
+   select_regression    = REGRESSIONFACTORTYPE
+   input_reg_file       = "REGRESSIONFACTORINPUTFILE"
    save_reg_diagnostics = .false.,
    reg_diagnostics_file = "reg_diagnostics",
    /
@@ -144,15 +144,15 @@
    /
 
 &model_nml
-   model_size        = 40
-   forcing           = 8.00
-   delta_t           = 0.05
-   time_step_days    = 0
-   time_step_seconds = 3600
+   model_size        = NUMLORENZLOC
+   forcing           = LORENZF
+   delta_t           = LORENZDT
+   time_step_days    = RWEQDTDAYS
+   time_step_seconds = RWEQDTSECS
    /
 
 &model_mod_nml
-   assimilation_period_seconds = 30
+   assimilation_period_seconds = MODELMODASSIMSECS
    /
 
 &utilities_nml
@@ -178,13 +178,13 @@
    /
 
 &obs_sequence_tool_nml
-   filename_seq_list  = 'ObsSeqFileList.txt'
-   filename_out       = 'obs_seq.in'
-   first_obs_days     = 0
-   first_obs_seconds  = 0
-   last_obs_days      = 300
-   last_obs_seconds   = 0
-   edit_copy_metadata = .false.
+   filename_seq_list  = 'OBSSEQFILELIST'
+   filename_out       = 'OBSSEQOUTPUTFILE'
+   first_obs_days     = OBSSEQDAYS0
+   first_obs_seconds  = OBSSEQSECONDS0
+   last_obs_days      = OBSSEQDAYS1
+   last_obs_seconds   = OBSSEQSECONDS1
+   edit_copy_metadata = BOOLOBSSEQMETADATA
    new_copy_metadata  = 'OBSSEQOBSMETANAME'
    gregorian_cal      = .false.
    print_only         = .false.
@@ -228,13 +228,13 @@
 !    /
 
 &state_vector_io_nml
-   single_precision_output = .true.
+   single_precision_output = SQUISHMYOUTPUT
    /
 
 &quality_control_nml
-   input_qc_threshold          =  3.0
-   outlier_threshold           =  -1
-   enable_special_outlier_code =  .false.
+   input_qc_threshold          =  QCGRADE
+   outlier_threshold           =  QCSTD
+   enable_special_outlier_code =  BOOLQCSPECIALCODE
    /
 
 &model_mod_check_nml

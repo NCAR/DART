@@ -1,0 +1,2 @@
+obs_seq_regular.in
+obs_seq_regular_2.in

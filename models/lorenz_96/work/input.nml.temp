@@ -67,11 +67,11 @@
    last_obs_days                = -1,
    last_obs_seconds             = -1,
 
-   inf_flavor                  = 6, 6
+   inf_flavor                  = 0, 6
    inf_initial_from_restart    = .false., .false.
    inf_sd_initial_from_restart = .false., .false.
    inf_deterministic           = .true.,                  .true.,
-   inf_initial                 = 1.1, 1.1
+   inf_initial                 = 1.03, 1.0295
    inf_lower_bound             = 1.0, 1.0
    inf_upper_bound             = 10000.0, 10000.0
    inf_damping                 = 1.0, 1.0
@@ -182,8 +182,8 @@
    filename_out       = 'obs_seq.in'
    first_obs_days     = 0
    first_obs_seconds  = 0
-   last_obs_days      = 300
-   last_obs_seconds   = 0
+   last_obs_days      = 1500
+   last_obs_seconds   = OBSSEQSECONDS1
    edit_copy_metadata = .false.
    new_copy_metadata  = 'OBSSEQOBSMETANAME'
    gregorian_cal      = .false.
