@@ -796,22 +796,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       if(final_factor <= 0.0_r8) cycle STATE_UPDATE
       
-      if (local_covariance_inflate_prior) then
-         if (local_covariance_inflate_post) then
-            call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
-               my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
-               obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-               net_a, grp_size, grp_beg, grp_end, i, my_state_indx(state_index), final_factor, correl, &
-               local_varying_ss_inflate, inflate_only, ens_handle%copies(ENS_INF_COPY, state_index), &
-               ens_handle%copies(ENS_INF_POST_COPY, state_index))
-         else
-            call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
-               my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
-               obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-               net_a, grp_size, grp_beg, grp_end, i, my_state_indx(state_index), final_factor, correl, &
-               local_varying_ss_inflate, inflate_only, ens_handle%copies(ENS_INF_COPY, state_index))
-         endif
-      elseif (local_covariance_inflate_post) then
+      if (local_covariance_inflate_prior .and. local_covariance_inflate_post) then
+         call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
+            my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
+            obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+            net_a, grp_size, grp_beg, grp_end, i, my_state_indx(state_index), final_factor, correl, &
+            local_varying_ss_inflate, inflate_only, ens_handle%copies(ENS_INF_COPY, state_index), &
+            ens_handle%copies(ENS_INF_POST_COPY, state_index))
+      elseif (local_covariance_inflate_prior .and. .not. local_covariance_inflate_post) then
+         call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
+            my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
+            obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+            net_a, grp_size, grp_beg, grp_end, i, my_state_indx(state_index), final_factor, correl, &
+            local_varying_ss_inflate, inflate_only, ens_handle%copies(ENS_INF_COPY, state_index))
+      elseif (.not. local_covariance_inflate_prior .and. local_covariance_inflate_post) then
          call obs_updates_ens(ens_size, num_groups, ens_handle%copies(1:ens_size, state_index), &
             my_state_loc(state_index), my_state_kind(state_index), obs_prior, obs_inc, &
             obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
@@ -1579,15 +1577,13 @@ if(sampling_error_correction) then
 endif
 
 ! Then compute the increment as product of reg_coef and observation space increment
-if (present(inflation_value_prior)) then
+if (present(inflation_value_prior) .and. .not. present(inflation_value_post)) then
    reg_coef = reg_coef * inflation_value_prior
-   if (present(inflation_value_post)) then
-      obs_inc_mean = sum(obs_inc) / ens_size
-      state_inc = reg_coef * inflation_value_post * obs_inc + (inflation_value_prior * inflation_value_post - 1) * (state - state_mean) - (inflation_value_post - 1) * reg_coef * obs_inc_mean
-   else
-      state_inc = reg_coef * obs_inc + (inflation_value_prior - 1) * (state - state_mean)
-   endif
-elseif (present(inflation_value_post)) then
+   state_inc = reg_coef * obs_inc + (inflation_value_prior - 1) * (state - state_mean)
+elseif (present(inflation_value_prior) .and. present(inflation_value_post)) then
+   obs_inc_mean = sum(obs_inc) / ens_size
+   state_inc = reg_coef * inflation_value_post * obs_inc + (inflation_value_prior * inflation_value_post - 1) * (state - state_mean) - (inflation_value_post - 1) * reg_coef * obs_inc_mean
+elseif (.not. present(inflation_value_prior) .and. present(inflation_value_post)) then
    obs_inc_mean = sum(obs_inc) / ens_size
    state_inc = reg_coef * inflation_value_post * obs_inc + (inflation_value_post - 1) * (state - state_mean) - (inflation_value_post - 1) * reg_coef * obs_inc_mean
 else
@@ -2092,20 +2088,18 @@ do group = 1, num_groups
       call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
          obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
          increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
-   elseif (present(inflate_value_prior) .and. inflate_value_prior > 0.0_r8) then
-      if (present(inflate_value_post)) then
-         call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-            obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
-            increment(grp_bot:grp_top), reg_coef(group), net_a(group), & 
-            inflation_value_prior = inflate_value_prior, &
-            inflation_value_post = inflate_value_post)
-      else
-         call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-            obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
-            increment(grp_bot:grp_top), reg_coef(group), net_a(group), &
-            inflation_value_prior = inflate_value_prior)
-      endif
-   elseif (present(inflate_value_post)) then
+   elseif (present(inflate_value_prior) .and. present(inflate_value_post)) then
+      call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+         obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+         increment(grp_bot:grp_top), reg_coef(group), net_a(group), & 
+         inflation_value_prior = inflate_value_prior, &
+         inflation_value_post = inflate_value_post)
+   elseif (present(inflate_value_prior) .and. .not. present(inflate_value_post)) then
+      call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+         obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
+         increment(grp_bot:grp_top), reg_coef(group), net_a(group), &
+         inflation_value_prior = inflate_value_prior)
+   elseif (.not. present(inflate_value_prior) .and. present(inflate_value_post)) then
       call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
          obs_prior_var(group), obs_inc(grp_bot:grp_top), ens(grp_bot:grp_top), grp_size, &
          increment(grp_bot:grp_top), reg_coef(group), net_a(group), &
