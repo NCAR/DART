@@ -393,6 +393,10 @@ logical  :: bounded_below, bounded_above
 real(r8) :: lower_bound,   upper_bound
 real(r8) :: probit_ens(ens_size)
 
+! Temporary Solution to handle obs-state drift during covariance_inflation
+real(r8) :: obs_inf_duct_tape_prior
+real(r8) :: obs_inf_duct_tape_post
+
 ! allocate rather than dump all this on the stack
 allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
          close_obs_ind(      obs_ens_handle%my_num_vars), &
@@ -838,6 +842,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    end do STATE_UPDATE
 
    if(.not. inflate_only) then
+      ! Temporary Solution to handle obs-state drift during covariance inflation
+      if (local_covariance_inflate_prior) then
+         obs_inf_duct_tape_prior = sum(ens_handle%copies(ENS_INF_COPY, :)) / ens_size
+      endif
+      if (local_covariance_inflate_post) then
+         obs_inf_duct_tape_post = sum(ens_handle%copies(ENS_INF_POST_COPY, :)) / ens_size
+      endif
       ! Now everybody updates their obs priors (only ones after this one)
       OBS_UPDATE: do j = 1, num_close_obs
          obs_index = close_obs_ind(j)
@@ -857,11 +868,34 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
             if(final_factor <= 0.0_r8) cycle OBS_UPDATE
 
-            call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
-               my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
-               obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
-               net_a, grp_size, grp_beg, grp_end, i, &
-               -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
+            if (local_covariance_inflate_prior .and. local_covariance_inflate_post) then
+               call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+                  my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
+                  obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+                  net_a, grp_size, grp_beg, grp_end, i, &
+                  -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only, &
+                  obs_inf_duct_tape_prior, obs_inf_duct_tape_post)
+            elseif (local_covariance_inflate_prior .and. .not. local_covariance_inflate_post) then
+               call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+                  my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
+                  obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+                  net_a, grp_size, grp_beg, grp_end, i, &
+                  -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only, &
+                  obs_inf_duct_tape_prior)
+            elseif (.not. local_covariance_inflate_prior .and. local_covariance_inflate_post) then
+               call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+                  my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
+                  obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+                  net_a, grp_size, grp_beg, grp_end, i, &
+                  -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only, &
+                  inflate_value_post=obs_inf_duct_tape_post)
+            else
+               call obs_updates_ens(ens_size, num_groups, obs_ens_handle%copies(1:ens_size, obs_index), &
+                  my_obs_loc(obs_index), my_obs_kind(obs_index), obs_prior, obs_inc, &
+                  obs_prior_mean, obs_prior_var, base_obs_loc, base_obs_type, obs_time, &
+                  net_a, grp_size, grp_beg, grp_end, i, &
+                  -1*my_obs_indx(obs_index), final_factor, correl, .false., inflate_only)
+            endif
          endif
       end do OBS_UPDATE
    endif
