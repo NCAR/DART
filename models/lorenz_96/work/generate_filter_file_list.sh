@@ -6,6 +6,9 @@ n_members=$3
 input_filelist=lorenz_input_file_list.txt
 output_filelist=lorenz_output_file_list.txt
 
+echo "Input Ensemble from : ${input_projectname}"
+echo "Output Ensemble to : ${output_projectname}"
+
 if [ -f ${input_filelist} ]; then
     rm ${input_filelist}
 fi

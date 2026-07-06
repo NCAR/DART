@@ -1,8 +1,9 @@
 #!/bin/bash
 
 ensemble_projectname=Default_DART_Ensemble
-output_main_projectname=Test_Repeat_Procedure
-#output_projectname=Full_Obs_No_DA_Reference
+#output_main_projectname=Test_Posterior_CovInf_All_Observe
+#output_main_projectname=No_DA_Reference_All_Observe
+output_main_projectname=Moha_Prior_Reference_Sparse
 ensemble_directory=/Users/xinguan/DATA
 obs_repository=/Users/xinguan/DATA/obs_repository/L96
 n_ensemble_members=10
@@ -11,24 +12,25 @@ is_regular_obs_2=1                       # 0 = No, 1 = Yes
 is_irregular_obs=0                       # 0 = No, 1 = Yes
 is_random_obs=0                          # 0 = No, 1 = Yes | Note: not fully random, consistent in time
                                          #                 |     : for fully random obs, generate manually, then set is_full_random_input=1
-n_tasks=4
+n_tasks=2
+is_clean_output_directory=1              # 0 = No, 1 = Yes
 
 is_perfect_model_obs=1                   # 0 = No, 1 = Yes
-is_generate_obs_input=0                  # 0 = No, 1 = Yes
+is_generate_obs_input=1                  # 0 = No, 1 = Yes
 is_run_filter=1                          # 0 = No, 1 = Yes
 is_save_obs_file=1                       # 0 = No, 1 = Yes
-obs_save_filepath_header=obs_seq_dense
+obs_save_filepath_header=obs_seq_sparse
 is_grab_obs_file=1                       # 0 = No, 1 = Yes
-obs_grab_filepath_header=obs_seq_dense
+obs_grab_filepath_header=obs_seq_sparse
 is_full_random_input=0                   # 0 = No, 1 = Yes | REQUIRES is_generate_obs_input=0
 
-prior_inflation_type=6                   # 0 = No Inflation, 5 = Moha Inflation, 6 = My Inflation
-posterior_inflation_type=6               # 0 = No Inflation, 5 = Moha Inflation, 6 = My Inflation
-initial_prior_inflation=1.1
-initial_posterior_inflation=1.1
-inflation_increment_prior=0.0025
-inflation_increment_posterior=0.0025
-experiment_count=1
+prior_inflation_type=5                   # 0 = No Inflation, 5 = Moha Inflation, 6 = My Inflation
+posterior_inflation_type=0               # 0 = No Inflation, 5 = Moha Inflation, 6 = My Inflation
+initial_prior_inflation=1.00
+initial_posterior_inflation=1.00
+inflation_increment_prior=0.002
+inflation_increment_posterior=0.002
+experiment_count=10
 is_tuning=0                              # 0 = False, 1 = True
 
 ###########################
@@ -40,7 +42,7 @@ for i_experiment in $(seq 1 1 ${experiment_count}); do
 	if [ ${is_tuning} -eq 0 ]; then
 		obs_save_filepath="${obs_save_filepath_header}_${i_experiment}.out"
 		obs_grab_filepath="${obs_grab_filepath_header}_${i_experiment}.out"
-		printf -v pmo_file_index '%05d' "${i_experiment}"
+		printf -v pmo_file_index '%05d' ${i_experiment}
     else
 		obs_save_filepath="${obs_save_filepath_header}_tuning.out"
 		obs_grab_filepath="${obs_grab_filepath_header}_tuning.out"
@@ -55,6 +57,12 @@ for i_experiment in $(seq 1 1 ${experiment_count}); do
 
 		echo "Prior Inflation of ${initial_prior_inflation}"
 		echo "Posterior Inflation of ${initial_posterior_inflation}"
+	fi
+
+	if [ ${is_clean_output_directory} -eq 1 ]; then
+		if [ -d ${ensemble_directory}/${output_projectname} ]; then
+			rm ${ensemble_directory}/${output_projectname}/*.nc
+		fi
 	fi
 
 	cp runtime_create_input.sh.template runtime_create_input.sh
@@ -137,10 +145,8 @@ for i_experiment in $(seq 1 1 ${experiment_count}); do
 	fi
 
 	if [ ${is_run_filter} -eq 1 ]; then
-    	sh generate_filter_file_list.sh ${ensemble_directory}/${ensemble_projectname} ${ensemble_directory}/${output_projectname} ${n_ensemble_members}   
-        wait
-	    mpirun -n ${n_tasks} ./filter
-		wait
+        sh generate_filter_file_list.sh ${ensemble_directory}/${ensemble_projectname} ${ensemble_directory}/${output_projectname} ${n_ensemble_members}   
+		mpirun -n ${n_tasks} ./filter
 	fi
 
 	if [ $? -eq 0 ]; then

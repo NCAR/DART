@@ -8,12 +8,12 @@ output_file_basename=obs_seq
 obs_frequency_type=1         # 1 = Regular, 2 = Irregular
 
 # regular obs
-n_obs_in_sequence=3000
+n_obs_in_sequence=30000
 initial_time=(0 0)           # days, seconds
 obs_interval=(1 0)
 
 # regular obs 2
-n_obs_in_sequence_2=3000
+n_obs_in_sequence_2=30000
 initial_time_2=(0 43200)
 obs_interval_2=(1 0)
 

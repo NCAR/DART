@@ -844,10 +844,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if(.not. inflate_only) then
       ! Temporary Solution to handle obs-state drift during covariance inflation
       if (local_covariance_inflate_prior) then
-         obs_inf_duct_tape_prior = sum(ens_handle%copies(ENS_INF_COPY, :)) / ens_size
+         obs_inf_duct_tape_prior = 0
+         do j = 1, num_close_states
+            state_index = close_state_ind(j)
+            obs_inf_duct_tape_prior = obs_inf_duct_tape_prior + ens_handle%copies(ENS_INF_COPY, state_index)
+         end do
+         obs_inf_duct_tape_prior = obs_inf_duct_tape_prior / num_close_states
       endif
       if (local_covariance_inflate_post) then
-         obs_inf_duct_tape_post = sum(ens_handle%copies(ENS_INF_POST_COPY, :)) / ens_size
+         obs_inf_duct_tape_post = 0
+         do j = 1, num_close_states
+            state_index = close_state_ind(j)
+            obs_inf_duct_tape_post = obs_inf_duct_tape_post + ens_handle%copies(ENS_INF_POST_COPY, state_index)
+         end do
+         obs_inf_duct_tape_post = obs_inf_duct_tape_post / num_close_states
       endif
       ! Now everybody updates their obs priors (only ones after this one)
       OBS_UPDATE: do j = 1, num_close_obs

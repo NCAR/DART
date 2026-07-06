@@ -111,7 +111,6 @@ fi
 
 if [ ${is_run_filter} -eq 1 ]; then
     sh generate_filter_file_list.sh ${ensemble_directory}/${ensemble_projectname} ${ensemble_directory}/${output_projectname} ${n_ensemble_members}   
-
     mpirun -n ${n_tasks} ./filter
 fi
 

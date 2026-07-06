@@ -65,7 +65,7 @@ filter_obs_input=obs_seq.out
 filter_obs_output=obs_seq.final
 
 # Inflation | All inflation parameters have two inputs--key in as length 2 array--the first for the prior, the second for the posterior
-inflation_type=(0 6)                     # 0=No inflation, 2=Spatial and Temporally varying Gaussian inflation
+inflation_type=(6 6)                     # 0=No inflation, 2=Spatial and Temporally varying Gaussian inflation
                                          # 3=Temporally varying Gaussian inflation, 4=Relaxation to Prior Spread
                                          # 5=Spatially and Temporally varying Gamma inflation
 										 # 6=Covariance_Only_Inflation :D

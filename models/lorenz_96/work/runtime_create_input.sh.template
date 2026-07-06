@@ -74,13 +74,13 @@ initial_inflation=(INITIAL_PRIOR_INFLATION INITIAL_POSTERIOR_INFLATION)         
                                          # If inflation_type=4 (RTPS), the second entry is the alpha parameter
                                          # (alpha=0.3 means 30% prior spread, 70% posterior spread)
 initial_inflation_std=(0.6 0.3)
-inflation_lower_bound=(1.0 1.0)
+inflation_lower_bound=(0.0 1.0)
 inflation_upper_bound=(10000.0 10000.0)
-inflation_std_lower_bound=(0.3 0.1)
+inflation_std_lower_bound=(0.6 0.1)
 inflation_std_max_step=(1.05 1.05)       # Only used for flavour=5, where std can change.
                                          # Denotes maximum (proportional) change in std with each step.
                                          # Value of 1 means std can not increase
-inflation_damping=(1.0 1.0)
+inflation_damping=(0.9 0.9)
 write_own_initial_inflation=(0 0)        # 0=No, 1=Yes # For generating your own initial inflation file
 own_initial_inflation_mean=(1.03 1.08)
 own_initial_inflation_std=(0.6 0.6)
@@ -101,7 +101,7 @@ is_incompatible_metadata=0                # 0 = No, 1 = Yes
 new_metadata_name=observation           # for obs_sequence_tool metadata.
 obs_seq_filelist=ObsSeqFileList.txt
 obs_seq_tool_output_file=obs_seq.in
-observation_days=(0 300)                    # Start, End
+observation_days=(0 30000)                    # Start, End
 observation_seconds=(0 0)                 # Start, End
 
 #########################
@@ -111,118 +111,106 @@ observation_seconds=(0 0)                 # Start, End
 cp input.nml.template input.nml
 
 # Settling Filepathing and Basic Toggles
-sed -i -e "s@INPUTFILES@${input_filelist}@" input.nml
-sed -i -e "s@OUTPUTFILES@${output_filelist}@" input.nml
-sed -i -e "s@PARALLELMODE@${parallel_mode}@g" input.nml
-sed -i -e "s@N_OUTPUT_STATE@${n_output_state_members}@" input.nml
-sed -i -e "s@ENSEMBLE_SIZE@${ensemble_size}@" input.nml
-sed -i -e "s@PMO_OBS_IN@${perfect_model_obs_input}@" input.nml
-sed -i -e "s@PMO_OBS_OUT@${perfect_model_obs_output}@" input.nml
-sed -i -e "s@PMO_FILE_IN@${perfect_model_file_input}@" input.nml
-sed -i -e "s@PMO_FILE_OUT@${perfect_model_file_output}@" input.nml
-sed -i -e "s@N_OUTPUT_OBS@${n_output_obs_members}@" input.nml
-sed -i -e "s@FILTER_OBS_IN@${filter_obs_input}@" input.nml
-sed -i -e "s@FILTER_OBS_OUT@${filter_obs_output}@" input.nml
-sed -i -e "s@OWNINITINFINPUT_FILES@${own_initial_inflation_reference_state_file}@" input.nml
-sed -i -e "s@NTASKSPERNODE@${n_tasks_per_node}@" input.nml
-sed -i -e "s@REGRESSIONFACTORTYPE@${regression_factor_type}@" input.nml
-sed -i -e "s@REGRESSIONFACTORINPUTFILE@${regression_factor_input_file}@" input.nml
-sed -i -e "s@MODELMODASSIMSECS@${assimilation_period_seconds}@" input.nml
-sed -i -e "s@NUMLORENZLOC@${number_of_locations}@" input.nml
-sed -i -e "s@LORENZF@${lorenz_forcing}@" input.nml
-sed -i -e "s@LORENZDT@${lorenz_timestep}@" input.nml
-sed -i -e "s@RWEQDTDAYS@${real_equivalent_timestep_days}@" input.nml
-sed -i -e "s@RWEQDTSECS@${real_equivalent_timestep_seconds}@" input.nml
-sed -i -e "s@ASSIMCUTOFF@${localisation_half_radius}@" input.nml
-sed -i -e "s@ADAPLOCTHRESH@${adaptive_localisation_n_obs_threshold}@" input.nml
-sed -i -e "s@QCGRADE@${quality_control_grade_threshold}@" input.nml
-sed -i -e "s@QCSTD@${quality_control_std_threshold}@" input.nml
-sed -i -e "s@OBSSEQFILELIST@${obs_seq_filelist}@" input.nml
-sed -i -e "s@OBSSEQOUTPUTFILE@${obs_seq_tool_output_file}@" input.nml
-#sed -i -e "s@@@" input.nml
-#sed -i -e "s@@@" input.nml
-#sed -i -e "s@@@" input.nml
-#sed -i -e "s@@@" input.nml
-#sed -i -e "s@@@" input.nml
-#sed -i -e "s@@@" input.nml
+sed -i .temp -e "s@INPUTFILES@${input_filelist}@" input.nml
+sed -i .temp -e "s@OUTPUTFILES@${output_filelist}@" input.nml
+sed -i .temp -e "s@PARALLELMODE@${parallel_mode}@g" input.nml
+sed -i .temp -e "s@N_OUTPUT_STATE@${n_output_state_members}@" input.nml
+sed -i .temp -e "s@ENSEMBLE_SIZE@${ensemble_size}@" input.nml
+sed -i .temp -e "s@PMO_OBS_IN@${perfect_model_obs_input}@" input.nml
+sed -i .temp -e "s@PMO_OBS_OUT@${perfect_model_obs_output}@" input.nml
+sed -i .temp -e "s@PMO_FILE_IN@${perfect_model_file_input}@" input.nml
+sed -i .temp -e "s@PMO_FILE_OUT@${perfect_model_file_output}@" input.nml
+sed -i .temp -e "s@N_OUTPUT_OBS@${n_output_obs_members}@" input.nml
+sed -i .temp -e "s@FILTER_OBS_IN@${filter_obs_input}@" input.nml
+sed -i .temp -e "s@FILTER_OBS_OUT@${filter_obs_output}@" input.nml
+sed -i .temp -e "s@OWNINITINFINPUT_FILES@${own_initial_inflation_reference_state_file}@" input.nml
+sed -i .temp -e "s@NTASKSPERNODE@${n_tasks_per_node}@" input.nml
+sed -i .temp -e "s@REGRESSIONFACTORTYPE@${regression_factor_type}@" input.nml
+sed -i .temp -e "s@REGRESSIONFACTORINPUTFILE@${regression_factor_input_file}@" input.nml
+sed -i .temp -e "s@MODELMODASSIMSECS@${assimilation_period_seconds}@" input.nml
+sed -i .temp -e "s@NUMLORENZLOC@${number_of_locations}@" input.nml
+sed -i .temp -e "s@LORENZF@${lorenz_forcing}@" input.nml
+sed -i .temp -e "s@LORENZDT@${lorenz_timestep}@" input.nml
+sed -i .temp -e "s@RWEQDTDAYS@${real_equivalent_timestep_days}@" input.nml
+sed -i .temp -e "s@RWEQDTSECS@${real_equivalent_timestep_seconds}@" input.nml
+sed -i .temp -e "s@ASSIMCUTOFF@${localisation_half_radius}@" input.nml
+sed -i .temp -e "s@ADAPLOCTHRESH@${adaptive_localisation_n_obs_threshold}@" input.nml
+sed -i .temp -e "s@QCGRADE@${quality_control_grade_threshold}@" input.nml
+sed -i .temp -e "s@QCSTD@${quality_control_std_threshold}@" input.nml
+sed -i .temp -e "s@OBSSEQFILELIST@${obs_seq_filelist}@" input.nml
+sed -i .temp -e "s@OBSSEQOUTPUTFILE@${obs_seq_tool_output_file}@" input.nml
 
 # Settling Boolean Replacements
 if [ ${is_perfect_model_obs_from_file} -eq 0 ]; then
-	sed -i -e "s@BOOL_PMO_IN_FILE@.false.@" input.nml
+	sed -i .temp -e "s@BOOL_PMO_IN_FILE@.false.@" input.nml
 else
-	sed -i -e "s@BOOL_PMO_IN_FILE@.true.@" input.nml
+	sed -i .temp -e "s@BOOL_PMO_IN_FILE@.true.@" input.nml
 fi
 
 if [ ${is_write_perfect_model_member_output_file} -eq 0 ]; then
-	sed -i -e "s@BOOL_PMO_OUT_FILE@.false.@" input.nml
+	sed -i .temp -e "s@BOOL_PMO_OUT_FILE@.false.@" input.nml
 else
-	sed -i -e "s@BOOL_PMO_OUT_FILE@.true.@" input.nml
+	sed -i .temp -e "s@BOOL_PMO_OUT_FILE@.true.@" input.nml
 fi
 
 if [ ${is_output_members} -eq 0 ]; then
-	sed -i -e "s@BOOL_OUTPUT_MEMBERS@.false.@" input.nml
+	sed -i .temp -e "s@BOOL_OUTPUT_MEMBERS@.false.@" input.nml
 else
-	sed -i -e "s@BOOL_OUTPUT_MEMBERS@.true.@" input.nml
+	sed -i .temp -e "s@BOOL_OUTPUT_MEMBERS@.true.@" input.nml
 fi
 
 if [ ${single_precision_output} -eq 1 ]; then
-    sed -i -e "s/SQUISHMYOUTPUT/.true./" input.nml
+    sed -i .temp -e "s/SQUISHMYOUTPUT/.true./" input.nml
 else
-    sed -i -e "s/SQUISHMYOUTPUT/.false./" input.nml
+    sed -i .temp -e "s/SQUISHMYOUTPUT/.false./" input.nml
 fi
 
 if [ ${use_sampling_error_correction} -eq 1 ]; then
-    sed -i -e "s/SAMPLINGERRORCORRECTION/.true./" input.nml
+    sed -i .temp -e "s/SAMPLINGERRORCORRECTION/.true./" input.nml
 else
-    sed -i -e "s/SAMPLINGERRORCORRECTION/.false./" input.nml
+    sed -i .temp -e "s/SAMPLINGERRORCORRECTION/.false./" input.nml
 fi
 
 if [ ${use_special_outlier_function} -eq 1 ]; then
-    sed -i -e "s/BOOLQCSPECIALCODE/.true./" input.nml
+    sed -i .temp -e "s/BOOLQCSPECIALCODE/.true./" input.nml
 else
-    sed -i -e "s/BOOLQCSPECIALCODE/.false./" input.nml
+    sed -i .temp -e "s/BOOLQCSPECIALCODE/.false./" input.nml
 fi
 
 if [ ${is_incompatible_metadata} -eq 1 ]; then
-    sed -i -e "s/BOOLOBSSEQMETADATA/.true./" input.nml
-    sed -i -e "s/OBSSEQOBSMETANAME/${new_metadata_name}/" input.nml
+    sed -i .temp -e "s/BOOLOBSSEQMETADATA/.true./" input.nml
+    sed -i .temp -e "s/OBSSEQOBSMETANAME/${new_metadata_name}/" input.nml
 else
-    sed -i -e "s/BOOLOBSSEQMETADATA/.false./" input.nml
+    sed -i .temp -e "s/BOOLOBSSEQMETADATA/.false./" input.nml
 fi
-
-#if [  -eq 0 ]; then
-#	sed -i -e "s@@.false.@" input.nml
-#else
-#	sed -i -e "s@@.true.@" input.nml
-#fi
 
 # Settling Looped Toggles
 for inflation_index in 0 1; do
-    sed -i -e "s/INFFLAVOUR${inflation_index}/${inflation_type[${inflation_index}]}/" input.nml
-    sed -i -e "s/INITIALINFLATION${inflation_index}/${initial_inflation[${inflation_index}]}/" input.nml
-    sed -i -e "s/INFLATIONLOWERBOUND${inflation_index}/${inflation_lower_bound[${inflation_index}]}/" input.nml
-    sed -i -e "s/INFLATIONUPPERBOUND${inflation_index}/${inflation_upper_bound[${inflation_index}]}/" input.nml
-    sed -i -e "s/INITIALINFLATIONSTD${inflation_index}/${initial_inflation_std[${inflation_index}]}/" input.nml
-    sed -i -e "s/INFLATIONSTDLOWERBOUND${inflation_index}/${inflation_std_lower_bound[${inflation_index}]}/" input.nml
-    sed -i -e "s/INFLATIONSTDMAXSTEP${inflation_index}/${inflation_std_max_step[${inflation_index}]}/" input.nml
-    sed -i -e "s/INFLATIONDAMPING${inflation_index}/${inflation_damping[${inflation_index}]}/" input.nml
-    sed -i -e "s/OWNINITINFMEAN${inflation_index}/${own_initial_inflation_mean[${inflation_index}]}/" input.nml
-    sed -i -e "s/OWNINITINFSTD${inflation_index}/${own_initial_inflation_std[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/INFFLAVOUR${inflation_index}/${inflation_type[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/INITIALINFLATION${inflation_index}/${initial_inflation[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/INFLATIONLOWERBOUND${inflation_index}/${inflation_lower_bound[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/INFLATIONUPPERBOUND${inflation_index}/${inflation_upper_bound[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/INITIALINFLATIONSTD${inflation_index}/${initial_inflation_std[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/INFLATIONSTDLOWERBOUND${inflation_index}/${inflation_std_lower_bound[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/INFLATIONSTDMAXSTEP${inflation_index}/${inflation_std_max_step[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/INFLATIONDAMPING${inflation_index}/${inflation_damping[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/OWNINITINFMEAN${inflation_index}/${own_initial_inflation_mean[${inflation_index}]}/" input.nml
+    sed -i .temp -e "s/OWNINITINFSTD${inflation_index}/${own_initial_inflation_std[${inflation_index}]}/" input.nml
     if [ ${get_inflation_from_restart_file[${inflation_index}]} -eq 1 ]; then
-        sed -i -e "s/BOOLINFINITRESTART${inflation_index}/.true./" input.nml
+        sed -i .temp -e "s/BOOLINFINITRESTART${inflation_index}/.true./" input.nml
 		if [ ${inflation_type[${inflation_index}]} -eq 5 ]; then
-            sed -i -e "s/BOOLINFSTDINITRESTART${inflation_index}/.true./" input.nml
+            sed -i .temp -e "s/BOOLINFSTDINITRESTART${inflation_index}/.true./" input.nml
 		else
-            sed -i -e "s/BOOLINFSTDINITRESTART${inflation_index}/.false./" input.nml
+            sed -i .temp -e "s/BOOLINFSTDINITRESTART${inflation_index}/.false./" input.nml
 		fi
     else
-        sed -i -e "s/BOOLINFINITRESTART${inflation_index}/.false./" input.nml
-        sed -i -e "s/BOOLINFSTDINITRESTART${inflation_index}/.false./" input.nml
+        sed -i .temp -e "s/BOOLINFINITRESTART${inflation_index}/.false./" input.nml
+        sed -i .temp -e "s/BOOLINFSTDINITRESTART${inflation_index}/.false./" input.nml
     fi
     if [ ${write_own_initial_inflation[${inflation_index}]} -eq 1 ]; then
-        sed -i -e "s/BOOLINFRESTARTWRITE${inflation_index}/.true./" input.nml
+        sed -i .temp -e "s/BOOLINFRESTARTWRITE${inflation_index}/.true./" input.nml
     else
-        sed -i -e "s/BOOLINFRESTARTWRITE${inflation_index}/.false./" input.nml
+        sed -i .temp -e "s/BOOLINFRESTARTWRITE${inflation_index}/.false./" input.nml
     fi
 done
 
@@ -230,34 +218,34 @@ StageWriteCounter=${#stages_to_write[@]}
 while [ ${StageWriteCounter} -gt 0 ]; do
 	StageWriteCounter=$((StageWriteCounter-1))
 	if [ ${StageWriteCounter} -eq 0 ]; then
-		sed -i -e "s@STAGES_TO_WRITE@\"${stages_to_write[${StageWriteCounter}]}\"@" input.nml
+		sed -i .temp -e "s@STAGES_TO_WRITE@\"${stages_to_write[${StageWriteCounter}]}\"@" input.nml
 	else
-		sed -i -e "s@STAGES_TO_WRITE@STAGES_TO_WRITE, \"${stages_to_write[${StageWriteCounter}]}\"@" input.nml
+		sed -i .temp -e "s@STAGES_TO_WRITE@STAGES_TO_WRITE, \"${stages_to_write[${StageWriteCounter}]}\"@" input.nml
 	fi
 done
 
 # Settling Extra Arguments
 if [ ${parallel_mode} -eq 2 ]; then
-	sed -i -e "s@ASYNCADDON@\n   adv_ens_command              = \"${model_advance_shell_script}\"@g" input.nml
+	sed -i .temp -e "s@ASYNCADDON@\n   adv_ens_command              = \"${model_advance_shell_script}\"@g" input.nml
 else
-	sed -i -e "s@ASYNCADDON@@g" input.nml
+	sed -i .temp -e "s@ASYNCADDON@@g" input.nml
 fi
 
 # Settling QCEFF
 if [ ${is_qceff} -eq 1 ]; then
 	if [ ${is_qceff_already_made} -eq 1 ]; then
-		sed -i -e "s@QCEFF_TABLE_NAME@${qceff_table_name}@" input.nml
+		sed -i .temp -e "s@QCEFF_TABLE_NAME@${qceff_table_name}@" input.nml
 	else
 		echo 'On the fly generation of QCEFF table currently unavailable. Turning off QCEFF'
-		sed -i -e "s@QCEFF_TABLE_NAME@@" input.nml
+		sed -i .temp -e "s@QCEFF_TABLE_NAME@@" input.nml
 	fi
 else
-	sed -i -e "s@QCEFF_TABLE_NAME@@" input.nml
+	sed -i .temp -e "s@QCEFF_TABLE_NAME@@" input.nml
 fi
 
 # Settling Obs Sequence Tool
 for obs_seq_tool_index in 0 1; do
-    sed -i -e "s@OBSSEQDAYS${obs_seq_tool_index}@${observation_days[${obs_seq_tool_index}]}@" input.nml
-    sed -i -e "s@OBSSEQSECONDS${obs_seq_tool_index}@${observation_seconds[${obs_seq_tool_index}]}@" input.nml
+    sed -i .temp -e "s@OBSSEQDAYS${obs_seq_tool_index}@${observation_days[${obs_seq_tool_index}]}@" input.nml
+    sed -i .temp -e "s@OBSSEQSECONDS${obs_seq_tool_index}@${observation_seconds[${obs_seq_tool_index}]}@" input.nml
 done
 
