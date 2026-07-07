@@ -45,6 +45,7 @@
    input_state_files            = ''
    single_file_in               = .false.
    perturb_from_single_instance = .false.
+   perturb_for_localization_test = .false.
    init_time_days               = -1
    init_time_seconds            = -1
 
@@ -80,6 +81,8 @@
    obs_sequence_out_name    = 'obs_seq.final'
    num_output_obs_members   = 3
    compute_posterior        = .true.
+   output_sequential_prior_post = .false.
+   use_sequential_prior_post = .false.
 
    trace_execution          = .true.
    output_timestamps        = .true.

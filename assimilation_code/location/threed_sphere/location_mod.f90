@@ -1670,28 +1670,16 @@ do i = 1, num_close
 
    ! Add on some additional distances 
    ! Add on 20% of the maxdist just for being across the model boundary
-   dist(close_ind(i)) = dist(close_ind(i)) + 0.2_r8 * maxdist
+   dist(i) = dist(i) + 0.2_r8 * maxdist
 
    ! Surface variables have missing_r8 for vertical location for now
    ! No additonal cost for surface
    if(state_loc(3) >= 0.0_r8) then
       ! Add on additional distance that is function of model level
       ! Even more cheating by knowing the model has 32 levels and level 32 is at the surface
-      dist(close_ind(i)) = dist(close_ind(i)) + maxdist * (32 - state_loc(3)) / 10.0_r8
+      dist(i) = dist(i) + maxdist * (32 - state_loc(3)) / 10.0_r8
    endif
-
 enddo
-
-
-!!!if(iam_task0()) then
-  !obs_loc = get_location(base_loc)
-  !write (41,*) 'obs_loc', obs_loc
-
-  !state_loc = get_location(locs(1))
-  !write (41,*) 'state_loc', state_loc
-
-  !write (41,*) 'dist', dist(1)
-!!endif
 
 end subroutine get_close_state_strongly_coupled
 
