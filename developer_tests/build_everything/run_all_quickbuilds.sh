@@ -58,12 +58,21 @@ fi
 
 # mkmf for chosen compiler
 case $compiler in
-   ifx   ) module load intel-oneapi ;;
-   ifort ) module load intel-classic ;;
+   ifx   ) module load intel ;;
+   ifort ) module load ncarenv/24.12 intel/2024.2.1 hdf5/1.12.3 netcdf/4.9.2 craype/2.7.31 libfabric/1.15.2.0 cray-mpich/8.1.29 ;;
      *   ) module load $compiler ;;
 esac
 
+
 cp build_templates/$mkmf_template build_templates/mkmf.template
+if [[ $compiler == "ifort" ]]; then
+export LD_LIBRARY_PATH="$NETCDF/lib:$NETCDF/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+cat >> build_templates/mkmf.template <<'EOF'
+NETCDF = /glade/u/apps/derecho/24.12/spack/opt/spack/netcdf/4.9.2/oneapi/2024.2.1/uao5
+INCS = -I$(NCAR_INC_NETCDF)
+LIBS = -L$(NCAR_LDFLAGS_NETCDF) -L$(NCAR_LDFLAGS_NETCDF64) -lnetcdff -lnetcdf
+EOF
+fi
 
 # Build preprocess once
 pp_dir=$DART/assimilation_code/programs/preprocess
