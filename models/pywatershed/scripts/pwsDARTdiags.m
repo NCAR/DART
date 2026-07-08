@@ -1,17 +1,18 @@
 function [observation, openloop, forecast, analysis, exp] = ...
     pwsDARTdiags(dir_exps, dir_ol, disp_res, figs_dir, form)
 
-diag_ol = true;
-
 if nargin < 1
-    error('No arguments provided!! Please enter the name of experiment directories')
+    error('No arguments provided!! Please enter the following: (1) Name of experiment directories and (2) Gauges to diagnose')
+elseif nargin == 5
+    diag_ol    = true; 
+elseif nargin == 4
+    diag_ol    = true;
+    form       = '.png';
 elseif nargin == 1 % no open-loop case
     diag_ol    = false; 
-    disp_res   = 0;
-elseif nargin <= 3
-    disp_res   = 0;
-elseif nargin == 4
-    form       = '.png';
+    disp_res   = 1;
+elseif nargin <= 3 % disp is false
+    diag_ol    = true;
 end
 
 gY = [ 150, 150, 150 ]/255;
@@ -206,6 +207,8 @@ while(diag_gauges)
     
     att_count = att_count - 1;
 end
+
+
 gauges.want.num = length(collect_gauge_IDs);
 state_tag       = 'STREAM_FLOW_';
 
@@ -213,6 +216,7 @@ gauges.want.IND = sort(collect_gauge_IDs);
 for l = 1:gauges.want.num
     gauges.want.OID(l) = gauges.avail.OID(gauges.avail.IND == gauges.want.IND(l));
 end
+
 
 % Reading:
 for e = 1:num_exps
@@ -223,22 +227,22 @@ for e = 1:num_exps
     % inflation files
     if inf_flav_n(e, 1) > 0 || inf_flav_n(e, 2) > 0
         if inf_flav_n(e, 1) > 0 && inf_flav_n(e, 2) > 0 
-            exp(e).pr.infm.x1 = ncread(nc(e).pr_inflate_mean, 'seg_inflow');
-            exp(e).pr.infs.x1 = ncread(nc(e).pr_inflate_sd  , 'seg_inflow');
-            exp(e).po.infm.x1 = ncread(nc(e).po_inflate_mean, 'seg_inflow');
-            exp(e).po.infs.x1 = ncread(nc(e).po_inflate_sd  , 'seg_inflow');
+            exp(e).pr.infm.x1 = ncread(nc(e).pr_inflate_mean, 'outflow_ts');
+            exp(e).pr.infs.x1 = ncread(nc(e).pr_inflate_sd  , 'outflow_ts');
+            exp(e).po.infm.x1 = ncread(nc(e).po_inflate_mean, 'outflow_ts');
+            exp(e).po.infs.x1 = ncread(nc(e).po_inflate_sd  , 'outflow_ts');
         elseif inf_flav_n(e, 1) > 0 
-            exp(e).pr.infm.x1 = ncread(nc(e).pr_inflate_mean, 'seg_inflow');
-            exp(e).pr.infs.x1 = ncread(nc(e).pr_inflate_sd  , 'seg_inflow');
+            exp(e).pr.infm.x1 = ncread(nc(e).pr_inflate_mean, 'outflow_ts');
+            exp(e).pr.infs.x1 = ncread(nc(e).pr_inflate_sd  , 'outflow_ts');
         elseif inf_flav_n(e, 2) > 0 
-            exp(e).po.infm.x1 = ncread(nc(e).po_inflate_mean, 'seg_inflow');
-            exp(e).po.infs.x1 = ncread(nc(e).po_inflate_sd  , 'seg_inflow');
+            exp(e).po.infm.x1 = ncread(nc(e).po_inflate_mean, 'outflow_ts');
+            exp(e).po.infs.x1 = ncread(nc(e).po_inflate_sd  , 'outflow_ts');
         end
 
         % Hybrid files
         if hyb_flav_n(e) > 0 
-            exp(e).pr.hybm.x1 = ncread(nc(e).hybrid_mean, 'seg_inflow');
-            exp(e).pr.hybs.x1 = ncread(nc(e).hybrid_sd  , 'seg_inflow');
+            exp(e).pr.hybm.x1 = ncread(nc(e).hybrid_mean, 'outflow_ts');
+            exp(e).pr.hybs.x1 = ncread(nc(e).hybrid_sd  , 'outflow_ts');
         end
     end
 end
@@ -255,9 +259,8 @@ analysis    = cell( 9, gauges.want.num, num_exps);
 
 % prior+posterior ensemble + 2 mean and 2 sd copies
 % + 1 obs copy and 1 obs_var copy
-Ne = zeros(1, num_exps);
-if diag_ol, ol_Ne = ol.ens_size * 2 + 6; end
-
+Ne    = zeros(1, num_exps);
+ol_Ne = ol.ens_size * 2 + 6;
 for e = 1:num_exps
     Ne(e) = exp(e).ens_size * 2 + 6;
 end
@@ -269,7 +272,6 @@ loc.sf = 4;
 loc.sa = 5;
 
 bad_gages = zeros(1, gauges.want.num);
-
 for i = 1:gauges.want.num
 
     k = gauges.want.IND(i);
@@ -302,41 +304,33 @@ for i = 1:gauges.want.num
             tmp.ens_mean_ol = ol.ensemble(loc.mf   , ol_obs); 
             tmp.ens_sd_ol   = ol.ensemble(loc.sf   , ol_obs); 
             tmp.ensemble_ol = ol.ensemble(loc.ol_ef, ol_obs);
-
-            if isempty(ol_time)
-                bad_gages(i) = 1;
-                continue 
-            end
         end  
 
         exp_time = exp(e).O_time(exp_obs); 
-        if isempty(exp_time) 
+        if isempty(exp_time) || isempty(ol_time)
             bad_gages(i) = 1;
             continue 
         end
 
         % time management:
         [el, ~] = ismember(current, exp_time); 
-        
         % check if there is a time-offset issue or 
         % just small number of data from this gauge
         gauge_data_in_time = sum(el);
         if gauge_data_in_time >= 0
-            % account for any time shift
+            % no data; early time shift
             td = current(1) - exp_time(1);
             exp_time = exp_time + td;
             [~, et] = ismember(current, exp_time); et(et == 0) = NaN;
             
-            if diag_ol 
-                ol_time = ol_time + td; 
-                [~, ot] = ismember(current,  ol_time); ot(ot == 0) = NaN;   
-            end
+            if diag_ol, ol_time = ol_time + td; end
         else
             % Something is off with the time between 
             % obs_diag and obs_epoch
             bad_gages(i) = 1;
             continue
         end
+        [~, ot] = ismember(current,  ol_time); ot(ot == 0) = NaN;   
     
         obs_val    = zeros(1, Nt);
         ens_mean_f = zeros(1, Nt);
@@ -548,7 +542,7 @@ for i = 1:gauges.want.num
     end
 end
 
-
+disp(bad_gages)
 %% DISPLAY RESULTS: %
 % ***************** %
 gage_list = 1:gauges.want.num;
@@ -586,7 +580,6 @@ if disp_res
     ii = 0;
     for o = gage_list
         ii = ii + 1;
-
         fprintf('Gauge[%3d]: %10d; %3d/%3d\n', o, gauges.want.OID(o), ii, num_gauge)
         
         for e = 1:num_exps
