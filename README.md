@@ -5,6 +5,8 @@
 
 ![DARTlogo](guide/images/Dartboard7.png)
 
+A change
+
 # DART 
 
 Welcome to DART, the **Data Assimilation Research Testbed**. DART is an open-source, 
