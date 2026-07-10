@@ -451,11 +451,22 @@ subroutine do_execute_command_line(execute, rc)
 character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
-integer :: exitstat
+integer            :: exitstat, cmdstat
+character(len=256) :: cmdmsg
 
-    call execute_command_line(trim(execute), exitstat=exitstat)
 
-    rc = exitstat
+call execute_command_line(trim(execute), exitstat=exitstat, &
+                        cmdstat=cmdstat, cmdmsg=cmdmsg)
+
+if (cmdstat /= 0) then
+   write(errstring, '(3a,i0)') 'command "', trim(execute), &
+         '" could not be executed, cmdstat = ', cmdstat
+   call error_handler(E_WARN, 'do_execute_command_line', errstring, &
+                     source, text2=trim(cmdmsg))
+   rc = cmdstat
+else
+   rc = exitstat
+endif
 
 end subroutine do_execute_command_line
 
