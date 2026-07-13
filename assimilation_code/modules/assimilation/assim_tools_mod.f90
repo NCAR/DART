@@ -478,7 +478,7 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 ! do the forward operator calculation
 call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, obs_time)
 
-! JLA; The conversion would have been done the first time around. But it has not been saved. 
+! The conversion would have been done the first time around. But it has not been saved. 
 ! It can't be repeated here because obs could be from a different model if use_sequential_prior
 if(.not. use_sequential_prior) then
    if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
@@ -517,7 +517,10 @@ do i = 1, ens_handle%my_num_vars
 end do
 
 !> optionally convert all state location verticals
-if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
+! For sequential_priors, this converts the vertical coordinate for localization by the 
+! strongly_coupled localization call in location_mod
+if (convert_all_state_verticals_first .and.  &
+   (is_doing_vertical_conversion .or. use_sequential_prior)) then
    if (ens_handle%my_num_vars > 0) then
       call convert_vertical_state(ens_handle, ens_handle%my_num_vars, my_state_loc, my_state_kind,  &
                                   my_state_indx, get_vertical_localization_coord(), istatus)
@@ -747,13 +750,16 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             orig_obs_prior_var(group), obs(1), obs_err_var, grp_size, inflate_only)
       end do
    endif
-  
-   ! Adaptive localization needs number of other observations within localization radius.
-   ! Do get_close_obs first, even though state space increments are computed before obs increments.
-   call  get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type,      &
-      my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
-      ens_handle, last_base_obs_loc, last_num_close_obs, num_close_obs_cached,             &
-      num_close_obs_calls_made)
+
+   ! Not doing close obs if a sequential prior is being used 
+   if(.not. use_sequential_prior) then
+      ! Adaptive localization needs number of other observations within localization radius.
+      ! Do get_close_obs first, even though state space increments are computed before obs increments.
+      call  get_close_obs_cached(gc_obs, base_obs_loc, base_obs_type,      &
+         my_obs_loc, my_obs_kind, my_obs_type, num_close_obs, close_obs_ind, close_obs_dist,  &
+         ens_handle, last_base_obs_loc, last_num_close_obs, num_close_obs_cached,             &
+         num_close_obs_calls_made)
+   endif
 
    ! set the cutoff default, keep a copy of the original value, and avoid
    ! looking up the cutoff in a list if the incoming obs is an identity ob
