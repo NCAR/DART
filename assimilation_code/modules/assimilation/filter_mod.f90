@@ -23,6 +23,8 @@ use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,    
 use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                                   get_obs_def_type_of_obs
 
+use obs_kind_mod,          only : assimilate_this_type_of_obs
+
 use obs_def_utilities_mod, only : set_debug_fwd_op
 
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
@@ -2047,6 +2049,11 @@ if(my_task == io_task) then
       call get_obs_from_key(seq, keys(j), obs)
       call get_qc(obs, rvalue, get_obs_dartqc_index(seq))
       obs_temp(j) = rvalue(1)
+
+      ! If this observation type is not in the assimilate list, change qc to evaluate only
+      call get_obs_def(obs, obs_def)
+      if(.not. assimilate_this_type_of_obs(get_obs_def_type_of_obs(obs_def))) &
+         obs_temp(j) = 1
    end do
 endif
 call put_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)

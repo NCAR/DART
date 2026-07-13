@@ -1661,24 +1661,54 @@ bt = gc%type_to_cutoff_map(base_type)
 ! Local variable for what the maxdist is in this particular case.
 maxdist = gc%gtt(bt)%maxdist
 
-! Loop through those state variables that are horizontally close and add in some vertical
+! Look at the obs location
+obs_loc = get_location(base_loc)
+write(*, *) 'obs_loc ', obs_loc
+
+! Have looked at doing localization of CLM obs as function of CAM model level or
+! normalized scale height. To get normalized scale height, in cam model_nml
+! set vertical_localization_coord to SCALEHEIGHT and 
+! no_normalization_of_scale_heights to .false. 
+! This means the scale height of ps is 0 and values decrease as one moves up from the
+! ps value.
+! JLA CURRENTLY HARDCODING TO FORCE THE CONVERSION IN ASSIM_TOOLS
+! What to do for missing_r8 for vertical location value?
+
+! Loop through state variables that are horizontally close and add in some vertical localizattion
 do i = 1, num_close
    state_loc = get_location(locs(close_ind(i)))   
-
-   ! State variables have a vertical location of model level by default here
-   ! Could these be vertical converted if needed?
 
    ! Add on some additional distances 
    ! Add on 20% of the maxdist just for being across the model boundary
    dist(i) = dist(i) + 0.2_r8 * maxdist
 
-   ! Surface variables have missing_r8 for vertical location for now
-   ! No additonal cost for surface
-   if(state_loc(3) >= 0.0_r8) then
-      ! Add on additional distance that is function of model level
-      ! Even more cheating by knowing the model has 32 levels and level 32 is at the surface
-      dist(i) = dist(i) + maxdist * (32 - state_loc(3)) / 10.0_r8
+   if(.false.) then
+
+      !------------------------------------------------------------------------------
+      ! This block is an example for vertical localization as function of model level
+      ! Surface variables have missing_r8 for vertical location for now
+      ! No additonal cost for surface
+      if(state_loc(3) >= 0.0_r8) then
+         ! Add on additional distance that is function of model level
+         ! Even more cheating by knowing the model has 32 levels and level 32 is at the surface
+         dist(i) = dist(i) + maxdist * (32 - state_loc(3)) / 10.0_r8
+      endif
+      !------------------------------------------------------------------------------
+   
+   else
+   
+      !------------------------------------------------------------------------------
+      ! This block is an example for vertical localization as function of 
+      ! normalized scale height
+      ! Surface variables have missing_r8 for vertical location for now
+      ! No additonal cost for surface
+      if(state_loc(3) >= 0.0_r8) then
+         ! Add on additional distance that is function of normalized scale height
+         dist(i) = dist(i) + maxdist * state_loc(3) / 4.0_r8
+      endif
+      !------------------------------------------------------------------------------
    endif
+
 enddo
 
 end subroutine get_close_state_strongly_coupled
