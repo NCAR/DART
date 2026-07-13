@@ -99,6 +99,16 @@ and returns.  If not, it interpolates values for other constituent
 fields and does a generic computation.
 
 
+External (Precomputed) Forward Operators
+----------------------------------------
+
+If the ensemble of expected observation values has already been computed
+entirely outside of DART, for example by another data assimilation system or
+by the model itself, the values can be stored in the observation sequence
+file and used directly by ``filter`` instead of calling any forward operator
+code.  See :ref:`external-FOs` for details.
+
+
 Parallelism Implementation Details
 ==================================
 
