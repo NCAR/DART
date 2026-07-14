@@ -183,13 +183,13 @@ errcode = -999
 call MPI_Initialized(already, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(*, *) 'MPI_Initialized returned error code ', errcode
-   stop errcode
+   stop -999
 endif
 if (.not.already) then
    call MPI_Init(errcode)
    if (errcode /= MPI_SUCCESS) then
       write(*, *) 'MPI_Init returned error code ', errcode
-      stop errcode
+      stop -999
    endif
 endif
 
@@ -205,7 +205,7 @@ endif
 call MPI_Comm_rank(my_local_comm, myrank, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(*, *) 'MPI_Comm_rank returned error code ', errcode
-   stop errcode
+   stop -999
 endif
 
 ! pass the arguments through so the utilities can log the program name

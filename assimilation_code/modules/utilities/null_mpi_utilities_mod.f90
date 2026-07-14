@@ -626,6 +626,6 @@ subroutine exit_all(exit_code)
  integer, intent(in) :: exit_code
 
    write(*, '("exit_all called with exit_code ", i0)') exit_code
-   stop exit_code
+   stop -999
 
 end subroutine exit_all
