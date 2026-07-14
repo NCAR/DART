@@ -35,7 +35,7 @@ C     LIBRARY:
 C       System   - getarg stat
 C       W3LIB    - errexit gbyte sbyte
 C
-C   STOP STATES:
+C   EXIT STATES:
 C     COND =   0 - SUCCESSFUL RUN
 C          =   2 - Incorrect argument list
 C          =   4 - Coud not allocate memory to hold Input BUFR file
@@ -69,7 +69,7 @@ C  comment this section out and use the hardcoded filenames below.
       IF(NARG.NE.2) THEN
         PRINT *,'grabbufr:  Incorrect usage'
         PRINT *,'Usage: grabbufr inputBUFRfile ouputBUFRfile'
-        STOP 2
+        CALL EXIT(2)
       ENDIF
 
       call getarg(1,infile)
@@ -98,7 +98,7 @@ c  an integer variable before being tested seemed to fix the problem.
       rc = STAT(infile,JSTAT)
       IF (rc.NE.0) THEN
          PRINT*,'ERROR IN FUNCTION STAT GETTING FILE INFO, RC = ',rc
-         STOP 99
+         CALL EXIT(99)
       ELSE
 c        If this program has an error, or if the output files are missing data
 c        run the stat_test program in this same directory and see if the
@@ -122,7 +122,7 @@ C
       IF (istat.ne.0) THEN
         PRINT*,' ERROR Allocating ',kbytes,' bytes to read in file ',
      &          infile
-        STOP 4
+        CALL EXIT(4)
       ENDIF
 C
 C  Read input BUFR file into cbuf
