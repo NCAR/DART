@@ -12,7 +12,7 @@
   --light-blue: #42C0FF;
   --orange: #FAA119;
   --yellow: #ffdd31;
-  --search-section-height: 150px; /* Adjust this value to match your search section height */
+  --search-section-height: 500px; /* Adjust this value to match your search section height */
 }
 
 /* Apply Poppins font to text elements (excluding code blocks) */

@@ -22,6 +22,21 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**June 24 2026 :: DART_LAB bug fix. Tag v11.24.1**
+
+Bug fix:
+
+  - DART_LAB del_q calculation ens_size + 1
+  
+Documentation update:
+
+  - Readthedocs theme updated to allow server side search.
+
+Repo Infrastructure:
+
+  - quickbuilds added for outstanding DART executables.
+
+
 **May 27 2026 :: Copernicus Observation Converters. Tag v11.24.0**
 
 New Features:
