@@ -56,7 +56,7 @@ fi
 
 # mkmf for chosen compiler
 case $compiler in
-   ifx   ) module load intel-oneapi ;;
+   ifx   ) module load intel ;;
      *   ) module load $compiler ;;
 esac
 
