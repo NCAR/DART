@@ -22,6 +22,22 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 16 2026 :: Remove fixsystem. Tag v11.25.0**
+
+New feature / build system update:
+
+  - Removes fixystem script from the build system and subsequently removes compiler dependencies in the code
+
+Bug-fix:
+
+  - Read state before broadcasting single value state space inflation
+  - Fixes logic in which files to read for prior and posterior inflation
+
+Documentation update:
+
+  - Updates the custom.css to use Poppins font
+
+
 **June 24 2026 :: DART_LAB bug fix. Tag v11.24.1**
 
 Bug fix:
