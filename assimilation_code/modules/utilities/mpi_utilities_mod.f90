@@ -48,67 +48,10 @@ use time_manager_mod, only : time_type, get_time, set_time
 use mpi
 
 
-! We build on case-insensitive systems so we cannot reliably
-! count on having the build system run the fortran preprocessor
-! since the usual distinction is between bob.F90 and bob.f90
-! to decide what needs preprocessing.  instead we utilize a
-! script we provide called 'fixsystem' which looks for the
-! special XXX_BLOCK_EDIT comment lines and comments the blocks
-! in and out depending on the target compiler.
-
-! the NAG compiler needs these special definitions enabled.
-! the #ifdef lines are only there in case someday we can use
-! the fortran preprocessor.  they need to stay commented out.
-
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-! !#ifdef __NAG__
-!
-! use F90_unix_proc, only : sleep, system, exit
-!
-! !! NAG only needs the use statement above, but
-! !! these are the calling sequences if you need
-! !! to use these routines additional places in code.
-! !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
-! !    INTEGER,INTENT(IN) :: SECONDS
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
-! !
-! !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
-! !    CHARACTER*(*),INTENT(IN) :: STRING
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
-! !
-! !!also used in exit_all outside this module
-! !  SUBROUTINE EXIT(STATUS)
-! !    INTEGER,OPTIONAL :: STATUS
-! !! end block
-!
-!  !#endif
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-
 implicit none
 private
 
 !include "mpif.h"
-
-
-! BUILD TIP 2
-! Some compilers require an interface block for the system() function;
-! some fail if you define one.  If you get an error at link time (something
-! like 'undefined symbol _system_') try running the fixsystem script in
-! this directory.  It is a sed script that comments in and out the interface
-! block below.  Please leave the BLOCK comment lines unchanged.
-
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !#endif
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 
 ! allow global sum to be computed for integers, r4, and r8s
@@ -166,7 +109,7 @@ integer, parameter :: SNDRCV_MAXSIZE = 2 * 1000 * 1000 * 1000
 
 ! this turns on trace messages for most MPI communications
 logical :: verbose        = .false.   ! very very very verbose, use with care
-logical :: async2_verbose = .false.   ! messages only for system() in async2
+logical :: async2_verbose = .false.   ! messages only for execute_command_line() in async2
 logical :: async4_verbose = .false.   ! messages only for block/restart async4
 
 ! if your batch system does the task layout backwards, set this to true
@@ -240,13 +183,13 @@ errcode = -999
 call MPI_Initialized(already, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(*, *) 'MPI_Initialized returned error code ', errcode
-   call exit(-99)
+   stop -999
 endif
 if (.not.already) then
    call MPI_Init(errcode)
    if (errcode /= MPI_SUCCESS) then
       write(*, *) 'MPI_Init returned error code ', errcode
-      call exit(-99)
+      stop -999
    endif
 endif
 
@@ -262,7 +205,7 @@ endif
 call MPI_Comm_rank(my_local_comm, myrank, errcode)
 if (errcode /= MPI_SUCCESS) then
    write(*, *) 'MPI_Comm_rank returned error code ', errcode
-   call exit(-99)
+   stop -999
 endif
 
 ! pass the arguments through so the utilities can log the program name
@@ -1551,12 +1494,12 @@ if ((myrank == head_task) .and. separate_node_sync) then
    if (async4_verbose) then
       write(*,*)  'checking master task host'
       rc = shell_execute('echo master task running on host `hostname`')
-      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+      if (rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose .or. print4status) write(*,*) 'MPI job telling script to advance model'
    rc = shell_execute('echo advance > '//trim(non_pipe))
-   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   if (async4_verbose .and. rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
 
 endif
 
@@ -1565,16 +1508,16 @@ if ((myrank == head_task) .and. .not. separate_node_sync) then
    if (async4_verbose) then
       write(*,*)  'checking master task host'
       rc = shell_execute('echo master task running on host `hostname`')
-      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+      if (rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose .or. print4status) write(*,*) 'MPI job telling script to advance model'
    rc = shell_execute('echo advance > '//trim(filter_to_model))
-   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   if (async4_verbose .and. rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
 
    if (async4_verbose) write(*,*) 'MPI job now waiting to read from lock file'
    rc = shell_execute('cat < '//trim(model_to_filter)//'> /dev/null')
-   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   if (async4_verbose .and. rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
 
 else
 
@@ -1586,24 +1529,24 @@ else
    if (async4_verbose) then
       write(*,*)  'checking slave task host'
       rc = shell_execute('echo '//trim(fifo_name)//' accessed from host `hostname`')
-      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+      if (rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose) write(*,*) 'removing any previous lock file: '//trim(fifo_name)
    rc = shell_execute('rm -f '//trim(fifo_name))
-   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   if (async4_verbose .and. rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
 
    if (async4_verbose) write(*,*) 'made fifo, named: '//trim(fifo_name)
    rc = shell_execute('mkfifo '//trim(fifo_name))
-   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   if (async4_verbose .and. rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
 
    if (async4_verbose) write(*,*) 'ready to read from lock file: '//trim(fifo_name)
    rc = shell_execute('cat < '//trim(fifo_name)//'> /dev/null')
-   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   if (async4_verbose .and. rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
 
    if (async4_verbose) write(*,*) 'got response, removing lock file: '//trim(fifo_name)
    rc = shell_execute('rm -f '//trim(fifo_name))
-   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   if (async4_verbose .and. rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
 
 endif
 
@@ -1652,12 +1595,12 @@ if ((myrank == head_task) .and. .not. separate_node_sync) then
 
    if (async4_verbose) then
       rc = shell_execute('echo master task running on host `hostname`')
-      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+      if (rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose .or. print4status) write(*,*) 'script telling MPI job ok to restart'
    rc = shell_execute('echo restart > '//trim(model_to_filter))
-   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   if (async4_verbose .and. rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
 
 else
 
@@ -1668,12 +1611,12 @@ else
 
    if (async4_verbose) then
       rc = shell_execute('echo '//trim(fifo_name)//' accessed from host `hostname`')
-      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+      if (rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose) write(*,*) 'ready to write to lock file: '//trim(fifo_name)
    rc = shell_execute('echo restart > '//trim(fifo_name))
-   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   if (async4_verbose .and. rc /= 0) write(*, *) 'execute_command_line command returned nonzero rc, ', rc
 
 endif
 
@@ -1718,18 +1661,16 @@ endif
 end subroutine finished_task
 
 !-----------------------------------------------------------------------------
-! general system util wrappers.
+! general execute_command_line util wrappers.
 !-----------------------------------------------------------------------------
 
-!> Use the system() command to execute a command string.
+!> Use the execute_command_line() intrinsic subroutine to execute a command string.
+
 !> Will wait for the command to complete and returns an
 !> error code unless you end the command with & to put
 !> it into background.   Function which returns the rc
 !> of the command, 0 being all is ok.
 !>
-!> allow code to test the theory that maybe the system call is
-!> not reentrant on some platforms.  if serialize is set and
-!> is true, do each call serially.
 
 function shell_execute(execute_string, serialize)
  character(len=*), intent(in) :: execute_string
@@ -1743,27 +1684,27 @@ integer :: status(MPI_STATUS_SIZE)
 if (verbose) async2_verbose = .true.
 
 ! default to everyone running concurrently, but if set and not true,
-! serialize the calls to system() so they do not step on each other.
+! serialize the calls to execute_command_line() so they do not step on each other.
 if (present(serialize)) then
    all_at_once = .not. serialize
 else
    all_at_once = .TRUE.
 endif
 
-if (async2_verbose) write(*,*) "PE", myrank, ": system string is: ", trim(execute_string)
+if (async2_verbose) write(*,*) "PE", myrank, ": execute_command_line string is: ", trim(execute_string)
 shell_execute = -1
 
 ! this is the normal (default) case
 if (all_at_once) then
 
-   ! all tasks call system at the same time
-   call do_system(execute_string, shell_execute)
+   ! all tasks call execute_command_line at the same time
+   call do_execute_command_line(execute_string, shell_execute)
    if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
    return
 endif
 
-! only one task at a time calls system, and all wait their turn by
+! only one task at a time calls execute_command_line, and all wait their turn by
 ! making each task wait for a message from the (N-1)th task.
 
 ! this is used only to signal; the value it contains is unused.
@@ -1772,7 +1713,7 @@ dummy = 0
 if (myrank == 0) then
 
    ! my turn to execute
-   call do_system(execute_string, shell_execute)
+   call do_execute_command_line(execute_string, shell_execute)
    if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
    if (total_tasks > 1) then
@@ -1795,7 +1736,7 @@ else if (myrank /= (total_tasks-1)) then
    endif
 
    ! my turn to execute
-   call do_system(execute_string, shell_execute)
+   call do_execute_command_line(execute_string, shell_execute)
    if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
    ! and now tell (me+1) to go
@@ -1815,7 +1756,7 @@ else
    endif
 
    ! my turn to execute
-   call do_system(execute_string, shell_execute)
+   call do_execute_command_line(execute_string, shell_execute)
    if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
 endif
@@ -1825,23 +1766,29 @@ end function shell_execute
 !-----------------------------------------------------------------------------
 
 !> wrapper so you only have to make this work in a single place
-!> 'shell_name' is a namelist item and normally is the null string.
-!> on at least on cray system, the compute nodes only had one type
-!> of shell and you had to specify it.
 
-subroutine do_system(execute, rc)
+subroutine do_execute_command_line(execute, rc)
 
 character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-!  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-! !!OTHER_BLOCK_EDIT START COMMENTED_IN
-    rc = system(trim(shell_name)//' '//trim(execute)//' '//char(0))
-! !!OTHER_BLOCK_EDIT END COMMENTED_IN
+integer            :: exitstat, cmdstat
+character(len=256) :: cmdmsg
 
-end subroutine do_system
+call execute_command_line(trim(execute), exitstat=exitstat, &
+                        cmdstat=cmdstat, cmdmsg=cmdmsg)
+
+if (cmdstat /= 0) then
+   write(errstring, '(3a,i0)') 'command "', trim(execute), &
+         '" could not be executed, cmdstat = ', cmdstat
+   call error_handler(E_WARN, 'do_execute_command_line', errstring, &
+                     source, text2=trim(cmdmsg))
+   rc = cmdstat
+else
+   rc = exitstat
+endif
+
+end subroutine do_execute_command_line
 
 !-----------------------------------------------------------------------------
 
@@ -1854,14 +1801,17 @@ subroutine sleep_seconds(naplength)
 
 real(r8), intent(in) :: naplength
 
- integer :: sleeptime
+ integer :: sleeptime, rc
+ character(len=300) :: command
 
  sleeptime = floor(naplength)
  if (sleeptime <= 0) sleeptime = 1
 
- call sleep(sleeptime)
+ write(command, '("sleep ", i0)') sleeptime
+ rc = shell_execute(trim(command))
 
 end subroutine sleep_seconds
+
 
 !-----------------------------------------------------------------------------
 
@@ -2005,8 +1955,7 @@ end module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
-!> In case of error, call this instead of the fortran intrinsic exit().
-!> It will signal the other MPI tasks that something bad happened and they
+!> Signals to the other MPI tasks that something bad happened and they
 !> should also exit.
 
 subroutine exit_all(exit_code)
