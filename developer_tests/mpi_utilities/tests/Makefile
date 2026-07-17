@@ -36,7 +36,6 @@ MPICC = mpicc  # mpi wrapper for cc
 # to comment in or out blocks of code.
 
 UTILS_DIR = ../../../assimilation_code/modules/utilities
-FIXSYSTEM = $(UTILS_DIR)/fixsystem
 
 # ----------------------------------------------------------------------------
 
@@ -68,10 +67,6 @@ all:  $(EXE)
 # what parts of the install are giving problems
 everything: $(ALLEXE)
 
-fixsys:
-	$(FIXSYSTEM) $(FC) $(FIXLIST)
-
-
 ## check: run the basic executables interactively
 check:  all
 	./ftest_f90                   # this should run
@@ -93,7 +88,7 @@ ftest_f90: ftest_f90.f90
 	$(FC) ftest_f90.f90 $(LDFLAGS) -o ftest_f90
 
 # f90 test program that calls MPI functions
-ftest_mpi: fixsys ftest_mpi.f90
+ftest_mpi: ftest_mpi.f90
 	$(MPIFC) ftest_mpi.f90 $(LDFLAGS) -o ftest_mpi
 
 # f90 test program that uses DART MPI utility routines
@@ -119,7 +114,6 @@ time_manager_mod.o: $(UTILS_DIR)/time_manager_mod.f90
 	$(MPIFC) $(FFLAGS) -c $<
 
 mpi_utilities_mod.o: $(UTILS_DIR)/mpi_utilities_mod.f90
-	cd $(UTILS_DIR); ./fixsystem $(FC)
 	$(MPIFC) $(FFLAGS) -c $<
 
 # f90 test program that calls netCDF functions

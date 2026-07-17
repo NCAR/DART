@@ -16,7 +16,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
    get_copy_meta_data, get_qc_meta_data, set_qc_meta_data
 use time_manager_mod, only : time_type, set_time, get_time, interactive_time, &
                              operator(*), operator(+), operator(-), operator(<)
-use        model_mod, only : static_init_model
+use  assim_model_mod, only : static_init_assim_model
 
 implicit none
 
@@ -36,7 +36,7 @@ real(r8)                :: perturbation_amplitude, delseconds  ! size of perturb
 call initialize_utilities('obs_timejitter')
 
 ! Call the underlying model's static initialization for calendar info
-call static_init_model()
+call static_init_assim_model()
 
 ! Initialize the obs_sequence module
 call static_init_obs_sequence()

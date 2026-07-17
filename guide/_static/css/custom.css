@@ -2,6 +2,55 @@
    NCAR Documentation Custom Styles
    ===================================================== */
 
+/*  Font files in ../fonts/Poppins */
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins/Poppins-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins/Poppins-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins/Poppins-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins/Poppins-SemiBoldItalic.ttf') format('truetype');
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins/Poppins-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins/Poppins-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 /* NCAR color palette */
 :root {
   --ncar-blue: #0057C2;
@@ -12,7 +61,7 @@
   --light-blue: #42C0FF;
   --orange: #FAA119;
   --yellow: #ffdd31;
-  --search-section-height: 150px; /* Adjust this value to match your search section height */
+  --search-section-height: 500px; /* Adjust this value to match your search section height */
 }
 
 /* Apply Poppins font to text elements (excluding code blocks) */
@@ -22,7 +71,7 @@ p, li, td, th, span,
 .wy-menu-vertical a,
 .wy-menu-vertical p.caption,
 .wy-menu-vertical header {
-  font-family: Poppins, "Tw Cen MT", Futura, sans-serif;
+  font-family: Poppins, Helvetica, "Tw Cen MT", Futura, Arial, sans-serif;
 }
 
 /* Keep code elements monospace */

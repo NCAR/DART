@@ -21,7 +21,7 @@ copyright = '2023, University Corporation for Atmospheric Research'
 author = 'Data Assimilation Research Section'
 
 # The full version, including alpha/beta/rc tags
-release = '11.24.0'
+release = '11.25.0'
 root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
@@ -55,6 +55,7 @@ html_theme_options = {
     'logo_only': True,
     'includehidden': False
 }
+html_use_index = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['guide/_templates']

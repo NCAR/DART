@@ -22,6 +22,37 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**July 16 2026 :: Remove fixsystem. Tag v11.25.0**
+
+New feature / build system update:
+
+  - Removes fixystem script from the build system and subsequently removes compiler dependencies in the code
+
+Bug-fix:
+
+  - Read state before broadcasting single value state space inflation
+  - Fixes logic in which files to read for prior and posterior inflation
+
+Documentation update:
+
+  - Updates the custom.css to use Poppins font
+
+
+**June 24 2026 :: DART_LAB bug fix. Tag v11.24.1**
+
+Bug fix:
+
+  - DART_LAB del_q calculation ens_size + 1
+  
+Documentation update:
+
+  - Readthedocs theme updated to allow server side search.
+
+Repo Infrastructure:
+
+  - quickbuilds added for outstanding DART executables.
+
+
 **May 27 2026 :: Copernicus Observation Converters. Tag v11.24.0**
 
 New Features:
