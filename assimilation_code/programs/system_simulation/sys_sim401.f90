@@ -82,8 +82,8 @@ do i = 1, n_samples
 
 ! Now, draw a single value from this distribution
 ! This is the revised clean version from 9 Nov., 2003
-   sample1(i) = random_gaussian(r, 1.0_r8, sd_ratio)
-   sample2(i) = random_gaussian(r, 1.0_r8, sd_ratio)
+   sample1(i) = random_gaussian(r, 1.d0, sd_ratio)
+   sample2(i) = random_gaussian(r, 1.d0, sd_ratio)
 end do
 
 ! For now, don't know how to really compute this derivative for minimization

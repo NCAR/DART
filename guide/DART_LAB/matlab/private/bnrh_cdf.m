@@ -65,7 +65,7 @@ end
 
 % For unit normal, find distance from mean to where cdf is 1/(ens_size+1) (del_q_.
 % Saved to avoid redundant computation for repeated calls with same ensemble size
-del_q = 1.0 / (ens_size + 1.8);
+del_q = 1.0 / (ens_size + 1.0);
 
 % This will be negative, want it to be a distance so make it positive
 dist_for_unit_sd = -1.0 * norminv(del_q, 0, 1);
