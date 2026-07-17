@@ -31,7 +31,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_begin_define_mode, nc_end_define_mode, &
                                  nc_open_file_readonly, nc_close_file, &
                                  nc_get_variable, nc_get_variable_size, &
-                                 NF90_MAX_NAME, nc_get_attribute_from_variable
+                                 NF90_MAX_NAME, nc_get_attribute_from_variable, &
+                                 nc_variable_exists
 
 use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
                                    set_quad_coords, quad_lon_lat_locate, &
@@ -1057,6 +1058,8 @@ sensible_temp = t
 end function sensible_temp
 
 !--------------------------------------------------------------------
+! restart files use Time
+! history files use time
 function read_model_time(filename)
 
 character(len=*), intent(in) :: filename
@@ -1064,22 +1067,29 @@ type(time_type) :: read_model_time
 
 integer :: ncid
 character(len=*), parameter :: routine = 'read_model_time'
-real(r8) :: days
-type(time_type) :: mom6_time
-integer :: dart_base_date_in_days, dart_days
+real(r8) :: days, seconds
+integer :: dart_base_date_in_days, dart_days, dart_seconds
 
 dart_base_date_in_days = 584388 ! 1601 1 1 0 0
 ncid = nc_open_file_readonly(filename, routine)
 
-call nc_get_variable(ncid, 'Time', days, routine)
+if (nc_variable_exists(ncid, 'Time')) then
+   call nc_get_variable(ncid, 'Time', days, routine)
+else
+   call nc_get_variable(ncid, 'time', days, routine)
+endif
 
 call nc_close_file(ncid, routine)
 
-! MOM6 counts days from year 1
-! DART counts days from 1601 
-dart_days = int(days) - dart_base_date_in_days
+! MOM6 counts days from year 1 as a real number
+! DART counts days from 1601 as integer days integer seconds
+dart_days = floor(days)
+seconds = (days - real(dart_days, r8)) * 86400.0_r8
 
-read_model_time = set_time(0,dart_days)
+dart_days = dart_days - dart_base_date_in_days
+dart_seconds = int(seconds)
+
+read_model_time = set_time(dart_seconds,dart_days)
 
 end function read_model_time
 
