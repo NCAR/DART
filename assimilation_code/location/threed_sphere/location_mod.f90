@@ -43,9 +43,7 @@ public :: location_type, get_location, set_location, &
           set_vertical, is_vertical, get_vertical_localization_coord, get_close, &
           set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
           VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
-          VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type, &
-          do_strongly_coupled_localization, get_close_state_strongly_coupled
-
+          VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type
 
 character(len=*), parameter :: source = 'threed_sphere/location_mod.f90'
 
@@ -77,7 +75,7 @@ end type location_type
 ! Derived type to facilitate efficient computation of locations close to a given observation.
 
 type get_close_type_by_type
-   private
+   !private
    integer               :: num
    real(r8)              :: maxdist              ! furthest separation between "close" locations
    integer, allocatable  :: lon_offset(:, :)     ! (nlat, nlat), lon box indices searched (nlat 2x IS correct)
@@ -213,18 +211,13 @@ real(r8) :: special_vert_normalization_heights(MAX_ITEMS)
 real(r8) :: special_vert_normalization_levels(MAX_ITEMS)
 real(r8) :: special_vert_normalization_scale_heights(MAX_ITEMS)
 
-! Turn on strongly coupled get_close computation
-logical :: strongly_coupled = .false.
-
-
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
    vert_normalization_height, vert_normalization_level,               &
    vert_normalization_scale_height, approximate_distance, nlon, nlat, &
    output_box_info, print_box_level, &
    special_vert_normalization_obs_types, special_vert_normalization_pressures, &
    special_vert_normalization_heights, special_vert_normalization_levels, &
-   special_vert_normalization_scale_heights, strongly_coupled
-
+   special_vert_normalization_scale_heights
 
 !-----------------------------------------------------------------
 
@@ -1361,16 +1354,6 @@ end subroutine get_close_init
 
 !----------------------------------------------------------------------------
 
-function do_strongly_coupled_localization()
-
-logical do_strongly_coupled_localization
-
-do_strongly_coupled_localization = strongly_coupled
-
-end function do_strongly_coupled_localization
-
-!----------------------------------------------------------------------------
-
 subroutine get_close_destroy(gc)
 
 type(get_close_type), intent(inout) :: gc
@@ -1635,84 +1618,6 @@ endif
 !--------------------End of verify by comparing to exhaustive search --------------
 
 end subroutine get_close
-
-
-!--------------------------------------------------------------------------
-
-subroutine get_close_state_strongly_coupled(gc, base_loc, base_type, &
-   locs, loc_qtys, loc_indx, num_close, close_ind, dist, ensemble_handle)
-
-type(get_close_type),          intent(in)  :: gc
-type(location_type),           intent(in)  :: base_loc, locs(:)
-integer,                       intent(in)  :: base_type, loc_qtys(:)
-integer(i8),                   intent(in)  :: loc_indx(:)
-integer,                       intent(inout) :: num_close, close_ind(:)
-real(r8),            optional, intent(inout) :: dist(:)
-type(ensemble_type), optional, intent(in)  :: ensemble_handle
-
-! Template for applying localization for strongly coupled 
-real(r8):: obs_loc(3)
-real(r8):: state_loc(3), maxdist
-integer:: i, bt
-
-! Find the maximum distance for this observation base_type
-bt = gc%type_to_cutoff_map(base_type)
-
-! Local variable for what the maxdist is in this particular case.
-maxdist = gc%gtt(bt)%maxdist
-
-! Look at the obs location
-obs_loc = get_location(base_loc)
-write(*, *) 'obs_loc ', obs_loc
-
-! Have looked at doing localization of CLM obs as function of CAM model level or
-! normalized scale height. To get normalized scale height, in cam model_nml
-! set vertical_localization_coord to SCALEHEIGHT and 
-! no_normalization_of_scale_heights to .false. 
-! This means the scale height of ps is 0 and values decrease as one moves up from the
-! ps value.
-! JLA CURRENTLY HARDCODING TO FORCE THE CONVERSION IN ASSIM_TOOLS
-! What to do for missing_r8 for vertical location value?
-
-! Loop through state variables that are horizontally close and add in some vertical localizattion
-do i = 1, num_close
-   state_loc = get_location(locs(close_ind(i)))   
-
-   ! Add on some additional distances 
-   ! Add on 20% of the maxdist just for being across the model boundary
-   dist(i) = dist(i) + 0.2_r8 * maxdist
-
-   if(.false.) then
-
-      !------------------------------------------------------------------------------
-      ! This block is an example for vertical localization as function of model level
-      ! Surface variables have missing_r8 for vertical location for now
-      ! No additonal cost for surface
-      if(state_loc(3) >= 0.0_r8) then
-         ! Add on additional distance that is function of model level
-         ! Even more cheating by knowing the model has 32 levels and level 32 is at the surface
-         dist(i) = dist(i) + maxdist * (32 - state_loc(3)) / 10.0_r8
-      endif
-      !------------------------------------------------------------------------------
-   
-   else
-   
-      !------------------------------------------------------------------------------
-      ! This block is an example for vertical localization as function of 
-      ! normalized scale height
-      ! Surface variables have missing_r8 for vertical location for now
-      ! No additonal cost for surface
-      if(state_loc(3) >= 0.0_r8) then
-         ! Add on additional distance that is function of normalized scale height
-         dist(i) = dist(i) + maxdist * state_loc(3) / 4.0_r8
-      endif
-      !------------------------------------------------------------------------------
-   endif
-
-enddo
-
-end subroutine get_close_state_strongly_coupled
-
 
 !--------------------------------------------------------------------------
 

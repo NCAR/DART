@@ -29,7 +29,7 @@ public :: location_type, get_location, set_location, &
           operator(==), operator(/=), get_dist, has_vertical_choice, vertical_localization_on, &
           set_vertical, is_vertical, get_vertical_localization_coord, &
           set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
-          do_strongly_coupled_localization, get_close_state_strongly_coupled
+          get_close_state_strongly_coupled
 
 character(len=*), parameter :: source = 'oned/location_mod.f90'
 
@@ -483,6 +483,9 @@ real(r8), parameter :: different_extra_distance = 0.2
 
 integer :: s_model, o_model
 
+! If strongly coupled is false, just return
+if(.not. strongly_coupled) return
+
 ! Simple demonstration of low order model strongly coupled DA
 ! Make distance 'across the boundary' an extra addition
 ! Could update num_close and close_ind for additional efficiency
@@ -651,17 +654,6 @@ end subroutine convert_vertical_state
 
 !----------------------------------------------------------------------------
 
-function do_strongly_coupled_localization()
-
-logical do_strongly_coupled_localization
-
-do_strongly_coupled_localization = strongly_coupled
-          
-end function do_strongly_coupled_localization
-          
-!----------------------------------------------------------------------------
-
-!----------------------------------------------------------------------------
 ! end of location/oned/location_mod.f90
 !----------------------------------------------------------------------------
 

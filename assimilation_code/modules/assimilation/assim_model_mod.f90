@@ -30,9 +30,9 @@ use     model_mod, only : get_model_size, static_init_model, get_state_meta_data
 
 use ensemble_manager_mod, only : ensemble_type
 
-use location_mod, only  : get_close_type, location_type,    &
-                          do_strongly_coupled_localization, &
-                          get_close_state_strongly_coupled
+use location_mod, only  : get_close_type, location_type
+
+use strongly_coupled_localization_mod, only : get_close_state_strongly_coupled
 
 implicit none
 private
@@ -105,10 +105,9 @@ type(ensemble_type), optional, intent(in)  :: ens_handle
 call model_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                            num_close, close_ind, dist, ens_handle)
 
-! If strongly coupled localization is being applied, compute it
-if(do_strongly_coupled_localization()) &
-   call get_close_state_strongly_coupled(gc, base_loc, base_type, locs, &
-      loc_qtys, loc_indx, num_close, close_ind, dist, ens_handle)
+! If strongly coupled localization is being applied, it will be done here
+call get_close_state_strongly_coupled(gc, base_loc, base_type, locs, &
+   loc_qtys, loc_indx, num_close, close_ind, dist, ens_handle)
 
 ! Vertical localization MUST be off in threed-sphere when doing strongly-coupled localization
 ! Can force vertical localization to be off if doing two different components
