@@ -2,16 +2,13 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-!> Implements 
+!> Implements strongly coupled localization for threed_sphere locations
 
 module strongly_coupled_localization_mod
 
-use      types_mod, only : r8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD, OBSTYPELENGTH, i8
-use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, & 
-                           E_MSG, open_file, close_file, set_output,                 &
-                           logfileunit, nmlfileunit, find_namelist_in_file,          &
-                           check_namelist_read, do_output, do_nml_file,              &
-                           do_nml_term, is_longitude_between
+use      types_mod, only : r8, i8
+use  utilities_mod, only : error_handler, E_ERR, nmlfileunit, find_namelist_in_file, &
+                           check_namelist_read, do_nml_file, do_nml_term
 use   location_mod, only : get_close_type, location_type, get_location, write_location
 use   ensemble_manager_mod, only : ensemble_type
 
