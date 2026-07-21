@@ -84,6 +84,12 @@ The namelist options for DART-MOM6 are as follows:
        assimilation_period_seconds  = 0
        use_pseudo_depth = .false. ! use pseudo depth instead of sum(layer thickness) for vertical location
        layer_name = 'Layer' ! name of the layer variable in the restart file
+       reference_year   = 1 ! reference year
+       reference_month  = 1 ! reference month
+       reference_day    = 1 ! reference day
+       reference_hour   = 0 ! reference hour
+       reference_minute = 0 ! reference minute
+       reference_second = 0 ! reference second
        /
 
 * ``template_file`` is a MOM6 restart file. The size and shape of the state variables will be read from this netCDF file.
@@ -111,6 +117,17 @@ The namelist options for DART-MOM6 are as follows:
     - **Clamping lower bound**: Minimum allowed value for the variable when writing out restarts (use 'NA' for no bound).
     - **Clamping upper bound**: Maximum allowed value for the variable when writing out restarts (use 'NA' for no bound).
     - **UPDATE or NO_COPY_BACK**: Use 'UPDATE' to allow DART to update this variable during assimilation, or 'NO_COPY_BACK' to prevent updates (variable will be read but not written back).
+
+* ``reference_year``, ``reference_month``, ``reference_day``, ``reference_hour``, ``reference_minute``, ``reference_second``
+  give the reference date used to interpret the restart file's ``Time`` (or history file's ``time``) variable, which is "days
+  since that reference date". The default is to use the MOM6's own reference date of 0001-01-01. However, if you require a
+  different reference date, you can set these values accordingly and read_model_time will read 'days' from the restart
+  file as 'days since reference date'.
+  
+  .. note:: 
+  
+      If ``reference_year`` is set to a value other than 1, it must be >= 1601, because DART's internal Gregorian calendar
+      uses 1601-01-01 as its reference date.
 
 
 Vertical Coordinate
