@@ -205,6 +205,9 @@ character(len=256) :: output_state_file_list(MAX_NUM_DOMS) = ''
 ! Read in a single file and perturb this to create an ensemble
 logical  :: perturb_from_single_instance = .false.
 real(r8) :: perturbation_amplitude       = 0.2_r8
+! Perturb all variables uniformly for clean test of observation localization
+! Must have perturb_from_single_instance true also to do this
+logical  :: perturb_for_localization_test = .false.
 
 ! File options.  Single vs. Multiple.  really 'unified' or 'combination' vs 'individual'
 logical  :: single_file_in  = .false. ! all copies read  from 1 file
@@ -297,6 +300,7 @@ namelist /filter_nml/ async,     &
    single_file_out,              &
    perturb_from_single_instance, &
    perturbation_amplitude,       &
+   perturb_for_localization_test,&
    compute_posterior,            &
    stages_to_write,              &
    input_state_files,            &
@@ -391,6 +395,13 @@ call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
+
+! perturb_for_localization_test can only be true if perturb_from_single_instance is true
+if(perturb_for_localization_test .and. .not. perturb_from_single_instance) then
+   write(msgstring, *) 'perturb_for_localization_test cannot be true unless  &
+      perturb_from_single_instance is also true in filter_nml'
+   call error_handler(E_ERR,'filter_main', msgstring, source)
+endif  
 
 call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
    inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
@@ -2117,9 +2128,15 @@ if (get_missing_ok_status()) then
    where(ens_handle%copies(1, :) == missing_r8) miss_me = .true.
 endif
 
-call pert_model_copies(ens_handle, ens_size, perturbation_amplitude, interf_provided)
-if (.not. interf_provided) then
-   call perturb_copies_task_bitwise(ens_handle)
+! Uniform perturbation used for localization verification tests
+if(perturb_for_localization_test) then
+   call perturb_copies_uniform(ens_handle)
+else
+   ! Let model do perturbations if it is prepared to do so
+   call pert_model_copies(ens_handle, ens_size, perturbation_amplitude, interf_provided)
+   if (.not. interf_provided) then
+      call perturb_copies_task_bitwise(ens_handle)
+   endif
 endif
 
 ! Restore the missing_r8
@@ -2171,6 +2188,27 @@ do i = 1, ens_handle%num_vars
 enddo
 
 end subroutine perturb_copies_task_bitwise
+
+!------------------------------------------------------------------
+! Perturb the copies array uniformly for localization tests
+! The covariance between an observation and any state variable should be
+! the same.
+
+subroutine perturb_copies_uniform(ens_handle)
+
+type(ensemble_type), intent(inout) :: ens_handle
+
+integer               :: i, j ! loop variables
+   
+! Perturbation magnitude is the constant perturbation_amplitude from namelist
+do i = 1, ens_handle%my_num_vars
+   do j = 2, ens_size
+      ens_handle%copies(j, i) = ens_handle%copies(1, i) + &
+         (j - 1.0_r8) * perturbation_amplitude
+   end do
+end do
+
+end subroutine perturb_copies_uniform
 
 !------------------------------------------------------------------
 !> Set the time on any extra copies that a pe owns
