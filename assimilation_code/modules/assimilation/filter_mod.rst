@@ -155,9 +155,9 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | ``pert_model_copies``, falling back to a  |
 |                              |                     | perturbation that is bitwise across any   |
 |                              |                     | number of tasks if the model does not     |
-|                              |                     | provide that interface. 'uniform' gives   |
-|                              |                     | every state variable the same set of      |
-|                              |                     | member perturbations, so the covariance   |
+|                              |                     | provide that interface. 'uniform' sets    |
+|                              |                     | ensemble perturbations the same for every |
+|                              |                     | state variable, so the covariance         |
 |                              |                     | of an observation with any state variable |
 |                              |                     | is identical. This leaves the             |
 |                              |                     | localization as the only thing causing    |
@@ -170,7 +170,7 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | x, x_i is the value of the ith perturbed  |
 |                              |                     | member and pa is                          |
 |                              |                     | ``perturbation_amplitude``. Ignored if    |
-|                              |                     | perturb_from_single_instance = .false.    |
+|                              |                     | ``perturb_from_single_instance = .false.``|
 +------------------------------+---------------------+-------------------------------------------+
 | stages_to_write              | character(len=10),  | Controls diagnostic and restart output.   |
 |                              | dimension(6)        | Valid values are: 'input', 'forecast',    |
