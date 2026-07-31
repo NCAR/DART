@@ -33,7 +33,7 @@ namelist.
       init_time_seconds            = 0,
       perturb_from_single_instance = .false.,
       perturbation_amplitude       = 0.2,
-      perturbation_localization_test = .false.,
+      perturb_for_localization_test = .false.,
 
       stages_to_write              = 'output'
 
@@ -146,9 +146,9 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | ``pert_model_copies``. For more,          |
 |                              |                     | see pert_model_copies_  below.            |
 |                              |                     | Ignored if                                |
-|                              |                     | ``perturb_from_single_instance= .false.`` | 
+|                              |                     | ``perturb_from_single_instance = .false.``|
 +------------------------------+---------------------+-------------------------------------------+
-| perturbation_amplitude       | logical             | Can only be true if                       |
+| perturb_for_localization_test| logical             | Can only be true if                       |
 |                              |                     | ``perturb_from_single_instance = .true.`` |
 |                              |                     | If both are true, ensemble perturbations  |
 |                              |                     | are the same for every state variable.    |

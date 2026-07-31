@@ -6,7 +6,7 @@
    init_time_seconds            = 0,
    perturb_from_single_instance = .false.,
    perturbation_amplitude       = 0.2,
-   perturbation_locatlization_test = .false.,
+   perturb_for_localization_test = .false.,
 
    stages_to_write              = 'output'
 
