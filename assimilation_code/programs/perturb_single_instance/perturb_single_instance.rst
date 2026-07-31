@@ -24,7 +24,7 @@ namelist.
       output_files           = ''
       output_file_list       = ''
       perturbation_amplitude = 0.0
-      perturb_for_localization_test = .false.
+      perturbation_method    = 'model'
       single_restart_file_in = .false.
      /
 
@@ -49,17 +49,22 @@ namelist.
    |                               |                                           | simply add gaussian noise to the entire     |
    |                               |                                           | state, and this is the standard deviation.  |
    +-------------------------------+-------------------------------------------+---------------------------------------------+
-   | perturb_for_localization_test | logical                                   | If true, every state variable is given the  |
-   |                               |                                           | same set of member offsets, so the          |
-   |                               |                                           | covariance of an observation with any state |
-   |                               |                                           | variable is identical. That leaves the      |
-   |                               |                                           | localization as the only source of          |
-   |                               |                                           | variability in the increments, which makes  |
-   |                               |                                           | it easy to display the details of the       |
-   |                               |                                           | localization. In this case                  |
-   |                               |                                           | perturbation_amplitude is a spacing rather  |
-   |                               |                                           | than a standard deviation: the perturbed    |
-   |                               |                                           | values are                                  |
+   | perturbation_method           | character(len=32)                         | How to perturb. Case insensitive. 'model'   |
+   |                               |                                           | lets the model_mod perturb via              |
+   |                               |                                           | pert_model_copies, falling back to a        |
+   |                               |                                           | perturbation that is bitwise across any     |
+   |                               |                                           | number of tasks if the model does not       |
+   |                               |                                           | provide that interface. 'uniform' gives     |
+   |                               |                                           | every state variable the same set of member |
+   |                               |                                           | perturbations, so the covariance of an      |
+   |                               |                                           | observation with any state variable is      |
+   |                               |                                           | identical. That leaves the localization as  |
+   |                               |                                           | the only source of variability in the       |
+   |                               |                                           | increments, which makes it easy to display  |
+   |                               |                                           | the details of the localization. For        |
+   |                               |                                           | uniform, perturbation_amplitude is a        |
+   |                               |                                           | spacing rather than a standard deviation:   |
+   |                               |                                           | the perturbed values are                    |
    |                               |                                           | x_i=x_1+(i-1)*perturbation_amplitude, so    |
    |                               |                                           | the spread grows with the ensemble size.    |
    +-------------------------------+-------------------------------------------+---------------------------------------------+

@@ -33,7 +33,7 @@ namelist.
       init_time_seconds            = 0,
       perturb_from_single_instance = .false.,
       perturbation_amplitude       = 0.2,
-      perturb_for_localization_test = .false.,
+      perturbation_method          = 'model',
 
       stages_to_write              = 'output'
 
@@ -148,22 +148,29 @@ prior inflation and the second controls the posterior inflation.
 |                              |                     | Ignored if                                |
 |                              |                     | ``perturb_from_single_instance = .false.``|
 +------------------------------+---------------------+-------------------------------------------+
-| perturb_for_localization_test| logical             | Can only be true if                       |
-|                              |                     | ``perturb_from_single_instance = .true.`` |
-|                              |                     | If both are true, ensemble perturbations  |
-|                              |                     | are the same for every state variable.    |
-|                              |                     | This means that the covariance of an      |
-|                              |                     | observation with any state variable is    |
-|                              |                     | identical. This leaves the localization   |
-|                              |                     | as the only thing causing variability in  |
-|                              |                     | increments making it easy to display      |
-|                              |                     | the details of the localization. The      |
-|                              |                     | perturbed state variable values are       |
-|                              |                     | x_i = x_1 + (i-1) * pa where x_1 is the   |
-|                              |                     | value of the single member being          |
-|                              |                     | perturbed for state variable x, x_i is    |
-|                              |                     | the value of the ith perturbed member     |
-|                              |                     | and pa is ``perturbation_amplitude``.     |
+| perturbation_method          | character(len=32)   | How to perturb when                       |
+|                              |                     | perturb_from_single_instance = .true.     |
+|                              |                     | Case insensitive. 'model' lets the        |
+|                              |                     | model_mod perturb via                     |
+|                              |                     | ``pert_model_copies``, falling back to a  |
+|                              |                     | perturbation that is bitwise across any   |
+|                              |                     | number of tasks if the model does not     |
+|                              |                     | provide that interface. 'uniform' gives   |
+|                              |                     | every state variable the same set of      |
+|                              |                     | member perturbations, so the covariance   |
+|                              |                     | of an observation with any state variable |
+|                              |                     | is identical. This leaves the             |
+|                              |                     | localization as the only thing causing    |
+|                              |                     | variability in increments, making it easy |
+|                              |                     | to display the details of the             |
+|                              |                     | localization. The perturbed state         |
+|                              |                     | variable values are x_i=x_1+(i-1)*pa      |
+|                              |                     | where x_1 is the value of the single      |
+|                              |                     | member being perturbed for state variable |
+|                              |                     | x, x_i is the value of the ith perturbed  |
+|                              |                     | member and pa is                          |
+|                              |                     | ``perturbation_amplitude``. Ignored if    |
+|                              |                     | perturb_from_single_instance = .false.    |
 +------------------------------+---------------------+-------------------------------------------+
 | stages_to_write              | character(len=10),  | Controls diagnostic and restart output.   |
 |                              | dimension(6)        | Valid values are: 'input', 'forecast',    |

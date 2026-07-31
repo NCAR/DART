@@ -64,7 +64,7 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
 
-use perturb_mod,           only : perturb_ensemble, PERT_MODEL_MOD, PERT_UNIFORM
+use perturb_mod,           only : perturb_ensemble
 
 use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state, &
                                   set_stage_to_write, get_stage_to_write
@@ -205,9 +205,12 @@ character(len=256) :: output_state_file_list(MAX_NUM_DOMS) = ''
 ! Read in a single file and perturb this to create an ensemble
 logical  :: perturb_from_single_instance = .false.
 real(r8) :: perturbation_amplitude       = 0.2_r8
-! Perturb all variables uniformly for clean test of observation localization
-! Must have perturb_from_single_instance true also to do this
-logical  :: perturb_for_localization_test = .false.
+! How to perturb: 
+!    'model' lets the model_mod do it, falling back to a
+! perturbation that is bitwise across any number of tasks.
+!    'uniform' perturbs every state variable identically, used when testing
+! observation localization.  
+character(len=32) :: perturbation_method = 'model' !  Ignored unless perturb_from_single_instance.
 
 ! File options.  Single vs. Multiple.  really 'unified' or 'combination' vs 'individual'
 logical  :: single_file_in  = .false. ! all copies read  from 1 file
@@ -300,7 +303,7 @@ namelist /filter_nml/ async,     &
    single_file_out,              &
    perturb_from_single_instance, &
    perturbation_amplitude,       &
-   perturb_for_localization_test,&
+   perturbation_method,          &
    compute_posterior,            &
    stages_to_write,              &
    input_state_files,            &
@@ -346,7 +349,6 @@ integer                 :: OBS_VAR_START, OBS_VAR_END, TOTAL_OBS_COPIES
 integer                 :: input_qc_index, DART_qc_index
 integer                 :: num_state_ens_copies
 logical                 :: read_time_from_file
-integer                 :: pert_method ! how to perturb a single instance
 
 integer :: num_extras ! the extra ensemble copies
 
@@ -386,19 +388,6 @@ call timestamp_message('Filter start')
 if(ens_size < 2) then
    write(msgstring, *) 'ens_size in namelist is ', ens_size, ': Must be > 1'
    call error_handler(E_ERR,'filter_main', msgstring, source)
-endif
-
-! perturb_for_localization_test can only be true if perturb_from_single_instance is true
-if(perturb_for_localization_test .and. .not. perturb_from_single_instance) then
-   write(msgstring, *) 'perturb_for_localization_test cannot be true unless  &
-      perturb_from_single_instance is also true in filter_nml'
-   call error_handler(E_ERR,'filter_main', msgstring, source)
-endif
-
-if(perturb_for_localization_test) then
-   pert_method = PERT_UNIFORM
-else
-   pert_method = PERT_MODEL_MOD
 endif
 
 ! informational message to log
@@ -601,7 +590,7 @@ if (perturb_from_single_instance) then
 
    ! Only zero has the time, so broadcast the time to all other copy owners
    call broadcast_time_across_copy_owners(state_ens_handle, time1)
-   call perturb_ensemble(state_ens_handle, ens_size, perturbation_amplitude, pert_method)
+   call perturb_ensemble(state_ens_handle, ens_size, perturbation_amplitude, perturbation_method)
 else
    call error_handler(E_MSG,'filter_main:', &
       'Reading in initial condition/restart data for all ensemble members from file(s)')

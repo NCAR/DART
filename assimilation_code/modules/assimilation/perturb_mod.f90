@@ -26,7 +26,7 @@ module perturb_mod
 
 use types_mod,            only : r8, i8, missing_r8
 
-use utilities_mod,        only : error_handler, E_ERR
+use utilities_mod,        only : error_handler, E_ERR, to_upper
 
 use options_mod,          only : get_missing_ok_status
 
@@ -41,30 +41,25 @@ private
 
 public :: perturb_ensemble, &
           perturb_uniform,  &
-          perturb_bitwise,  &
-          PERT_MODEL_MOD,   &
-          PERT_UNIFORM
+          perturb_bitwise
 
 character(len=*), parameter :: source = 'perturb_mod.f90'
-
-! Perturbation methods
-integer, parameter :: PERT_MODEL_MOD = 1 ! model_mod does it, bitwise fallback
-integer, parameter :: PERT_UNIFORM   = 2 ! uniform ladder, for localization tests
 
 contains
 
 !------------------------------------------------------------------
 !> Create an ensemble from the single instance held in copy 1.
 !>
-!> Copy 1 is copied to the other members and then perturbed.  For
-!> PERT_MODEL_MOD the model_mod is given the chance to do the perturbing
-!> via pert_model_copies; if it does not provide that interface,
-!> perturb_bitwise is used instead.
-!>   if no model perturb is provided, perturb_copies_task_bitwise is called.
-!> Note: Not enforcing a model_mod to produce a
-!> pert_model_copies that is bitwise across any number of
-!> tasks, although there is enough information in the
-!> ens_handle to do this.
+!> Copy 1 is copied to the other members and then perturbed.  method selects
+!> how, and is matched case insensitively:
+!>
+!>   'model'   - the model_mod is given the chance to perturb via
+!>               pert_model_copies.  If it does not provide that interface,
+!>               perturb_bitwise is used instead.  Note: not enforcing a
+!>               model_mod to produce a pert_model_copies that is bitwise
+!>               across any number of tasks, although there is enough
+!>               information in the ens_handle to do this.
+!>   'uniform' - perturb_uniform, for localization tests.
 !>
 !> Some models allow missing_r8 in the state vector.  If missing_r8 is
 !> allowed the locations of missing_r8s are stored before the perturb,
@@ -75,12 +70,13 @@ subroutine perturb_ensemble(ens_handle, ens_size, amplitude, method)
 type(ensemble_type), intent(inout) :: ens_handle
 integer,             intent(in)    :: ens_size
 real(r8),            intent(in)    :: amplitude
-integer,             intent(in)    :: method
+character(len=*),    intent(in)    :: method
 
-integer               :: i
-logical               :: interf_provided ! model does the perturbing
-logical, allocatable  :: miss_me(:)
-integer               :: partial_state_on_my_task ! the number of elements ON THIS TASK
+integer                     :: i
+logical                     :: interf_provided ! model does the perturbing
+logical, allocatable        :: miss_me(:)
+integer                     :: partial_state_on_my_task ! the number of elements ON THIS TASK
+character(len=len(method))  :: uc_method ! method, upper case for comparison
 
 ! Copy from ensemble member 1 to the other copies
 do i = 1, ens_handle%my_num_vars
@@ -97,12 +93,15 @@ if (get_missing_ok_status()) then
    where(ens_handle%copies(1, :) == missing_r8) miss_me = .true.
 endif
 
-select case (method)
+uc_method = adjustl(method)
+call to_upper(uc_method)
 
-   case (PERT_UNIFORM)
+select case (trim(uc_method))
+
+   case ('UNIFORM')
       call perturb_uniform(ens_handle%copies, ens_size, amplitude)
 
-   case (PERT_MODEL_MOD)
+   case ('MODEL')
       ! Let model do perturbations if it is prepared to do so
       call pert_model_copies(ens_handle, ens_size, amplitude, interf_provided)
       if (.not. interf_provided) then
@@ -112,7 +111,8 @@ select case (method)
 
    case default
       call error_handler(E_ERR,'perturb_ensemble', &
-         'unknown perturbation method', source)
+         'unknown perturbation_method "'//trim(adjustl(method))// &
+         '", must be "model" or "uniform"', source)
 
 end select
 

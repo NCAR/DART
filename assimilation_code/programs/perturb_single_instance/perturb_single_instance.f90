@@ -45,7 +45,7 @@ use mpi_utilities_mod,    only : initialize_mpi_utilities, task_count, &
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_copy_mean, &
                                  end_ensemble_manager
 
-use perturb_mod,          only : perturb_ensemble, PERT_MODEL_MOD, PERT_UNIFORM
+use perturb_mod,          only : perturb_ensemble
 
 implicit none
 
@@ -60,8 +60,11 @@ character(len=256)    :: output_file_list(MAX_NUM_DOMS) = ''
 character(len=256)    :: output_files(MAX_FILES)        = '' 
 real(r8)              :: perturbation_amplitude         = 0.0
 logical               :: single_restart_file_in         = .false.
-! Perturb all variables uniformly for a clean test of observation localization
-logical               :: perturb_for_localization_test  = .false.
+! How to perturb: 'model' lets the model_mod do it, falling back to a
+! perturbation that is bitwise across any number of tasks.  'uniform'
+! perturbs every state variable identically, for a clean test of
+! observation localization.
+character(len=32)     :: perturbation_method            = 'model'
 
 namelist /perturb_single_instance_nml/  &
    ens_size,                &
@@ -69,7 +72,7 @@ namelist /perturb_single_instance_nml/  &
    output_files,            &
    output_file_list,        &
    perturbation_amplitude,  &
-   perturb_for_localization_test, &
+   perturbation_method,     &
    single_restart_file_in
 
 !----------------------------------------------------------------
@@ -82,7 +85,6 @@ character(len=512)              :: msgstring, msgstring1
 character(len=256)              :: my_base, my_desc
 integer                         :: idom, imem, iunit, io
 integer                         :: ndomains
-integer                         :: pert_method ! how to perturb the single instance
 integer(i8)                     :: model_size
 type(time_type)                 :: member_time
 type(file_info_type)            :: file_info_input, file_info_output
@@ -108,12 +110,6 @@ if (single_restart_file_in) then
    write(msgstring,  *) 'single_restart_file_in is not supported.'
    write(msgstring1, *) 'Please contact DART if you would like to use this capability.'
    call error_handler(E_ERR,msgstring,msgstring1)
-endif
-
-if (perturb_for_localization_test) then
-   pert_method = PERT_UNIFORM
-else
-   pert_method = PERT_MODEL_MOD
 endif
 
 !----------------------------------------------------------------------
@@ -200,7 +196,7 @@ call read_state(ens_handle, file_info_input, read_time_from_file=.true., model_t
 ! provides no pert_model_copies, perturb_ensemble falls back to a
 ! perturbation that is bitwise across any number of tasks.
 !----------------------------------------------------------------------
-call perturb_ensemble(ens_handle, ens_size, perturbation_amplitude, pert_method)
+call perturb_ensemble(ens_handle, ens_size, perturbation_amplitude, perturbation_method)
 
 
 !----------------------------------------------------------------------
