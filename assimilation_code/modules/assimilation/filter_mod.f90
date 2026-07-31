@@ -586,7 +586,8 @@ call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior', singl
 
 if (perturb_from_single_instance) then
    call error_handler(E_MSG,'filter_main:', &
-      'Reading in a single member and perturbing data for the other ensemble members')
+      'Reading in a single member and perturbing data for the other ensemble members', &
+      text2='perturbation_method = '//trim(perturbation_method))
 
    ! Only zero has the time, so broadcast the time to all other copy owners
    call broadcast_time_across_copy_owners(state_ens_handle, time1)
