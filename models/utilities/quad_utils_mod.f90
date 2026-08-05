@@ -1300,6 +1300,15 @@ do ind_x = reg_lon_ind(1), reg_lon_ind(2)
    do ind_y = reg_lat_ind(1), reg_lat_ind(2)
       index_y = ind_y
       if(index_y > nry) index_y = index_y - nry
+
+      if ((index_x < 1 .or. index_x > nrx) .or. (index_y < 1 .or. index_y > nry)) then
+         string1 = 'unable to find right box'
+         write(string2,*) 'index_x may be out-of-range: ', 1, index_x, nrx
+         write(string3,*) 'index_y may be out-of-range: ', 1, index_y, nry
+         call error_handler(E_ERR,'count_reg_overlaps',string1, &
+                 source, revision, revdate, text2=string2, text3=string3)
+      endif
+
       grid_num(index_x, index_y) = grid_num(index_x, index_y) + 1
    enddo
 enddo
