@@ -13,7 +13,7 @@ use types_mod,     only : r8, i8
 use utilities_mod, only : initialize_utilities, finalize_utilities
 use perturb_mod,   only : perturb_uniform, perturb_bitwise
 
-use test
+use test,          only : ok, plan, isabs, pass
 
 implicit none
 

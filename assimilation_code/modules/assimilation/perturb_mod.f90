@@ -40,7 +40,7 @@ implicit none
 private
 
 public :: perturb_ensemble, &
-          perturb_uniform,  &
+          perturb_uniform, &
           perturb_bitwise
 
 character(len=*), parameter :: source = 'perturb_mod.f90'
@@ -104,6 +104,7 @@ select case (trim(uc_method))
    case ('MODEL')
       ! Let model do perturbations if it is prepared to do so
       call pert_model_copies(ens_handle, ens_size, amplitude, interf_provided)
+      ! Otherwise perturb with Gaussian random draws here
       if (.not. interf_provided) then
          call perturb_bitwise(ens_handle%copies, ens_size, ens_handle%my_vars, &
                               ens_handle%num_vars, amplitude)
@@ -182,7 +183,7 @@ integer               :: my_num_vars
 
 my_num_vars = size(copies, 2)
 
-! If a task owns no part of the state, so it has nothing to write.  Return
+! If a task owns no part of the state, it has nothing to write.  Return
 ! before local_index is used to index copies, which would be out of bounds.
 ! I think DART currently does not allow num_procs > num_vars, but this is
 ! not an expensive safety check for perturbs (called once).
@@ -200,7 +201,7 @@ do i = 1, num_vars
 
    do j = 1, ens_size
      ! Can use copies here because the random number
-     ! is only relevant to the task than owns element i.
+     ! is only relevant to the task that owns element i.
      random_array(j)  =  random_gaussian(r(j), copies(j, local_index), amplitude)
    enddo
 
