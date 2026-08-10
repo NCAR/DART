@@ -294,7 +294,7 @@ it can ingest these directly.  If not, an additional step is needed to copy
 over the updated values for the next model run.
 
 
-Testing Localization for a New Model or New Forward Operator
+Testing Localization Using a Single Observation and An Idealized Ensemble
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 One suggested step for testing the implementation of a new model or a new 
