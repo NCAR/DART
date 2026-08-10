@@ -295,7 +295,7 @@ over the updated values for the next model run.
 
 
 Testing Localization Using a Single Observation and An Idealized Ensemble
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 One suggested step for testing the implementation of a new model or a new 
 observation forward operator with DART is to examine the impact of assimilating 
