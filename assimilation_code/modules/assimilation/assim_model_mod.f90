@@ -1,3 +1,4 @@
+! DART software - Copyright UCAR. This open source software is provided
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
@@ -110,9 +111,6 @@ call get_close_state_strongly_coupled(gc, base_loc, base_type, locs, &
    loc_qtys, loc_indx, num_close, close_ind, dist, ens_handle)
 
 ! Vertical localization MUST be off in threed-sphere when doing strongly-coupled localization
-! Can force vertical localization to be off if doing two different components
-! Will have to specify the different components in the threed-sphere localization
-! module. Intercept there.
 
 end subroutine get_close_state
 

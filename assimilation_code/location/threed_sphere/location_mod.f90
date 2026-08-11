@@ -28,7 +28,7 @@ use  utilities_mod, only : error_handler, E_ERR, ascii_file_format, &
                            do_nml_term, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use   obs_kind_mod, only : get_num_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
-use mpi_utilities_mod, only : my_task_id, task_count, iam_task0
+use mpi_utilities_mod, only : my_task_id, task_count
 use ensemble_manager_mod, only : ensemble_type
 
 implicit none
@@ -44,6 +44,7 @@ public :: location_type, get_location, set_location, &
           set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
           VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
           VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type
+
 
 character(len=*), parameter :: source = 'threed_sphere/location_mod.f90'
 
@@ -211,6 +212,7 @@ real(r8) :: special_vert_normalization_heights(MAX_ITEMS)
 real(r8) :: special_vert_normalization_levels(MAX_ITEMS)
 real(r8) :: special_vert_normalization_scale_heights(MAX_ITEMS)
 
+
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
    vert_normalization_height, vert_normalization_level,               &
    vert_normalization_scale_height, approximate_distance, nlon, nlat, &
@@ -218,6 +220,7 @@ namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
    special_vert_normalization_obs_types, special_vert_normalization_pressures, &
    special_vert_normalization_heights, special_vert_normalization_levels, &
    special_vert_normalization_scale_heights
+
 
 !-----------------------------------------------------------------
 
