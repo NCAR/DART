@@ -22,6 +22,29 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 10 2026 :: Localization Test Perturbations. Tag v11.25.1**
+
+New Testing Utility:
+
+ - A ‘uniform’ perturb option for testing localization. Perturbs the ensemble so localization 
+   is the only source of variability in the increment.
+
+MOM6 read_model_time improvements: 
+
+ - Allow user to set a reference date different to the MOM6  reference time 0001-01-01:00:00:00.
+ - Allow ‘time’ dimension to be called 'Time' or 'time' (restart vs history).
+ - Allow fractions of days in the time, (variable in the file is real not int).
+
+Quad_utilties_mod improvements:
+
+ - Reduced memory usage for quad_utilities: 3D scratch arrays replaced with compressed sparse row format.
+ - Removed the hardcoded grid search dimensions, now calculated from the grid.
+
+Repo change:
+
+ -  .mailmap file to map various emails, author names and aliases to individual people.
+
+
 **July 16 2026 :: Remove fixsystem. Tag v11.25.0**
 
 New feature / build system update:
