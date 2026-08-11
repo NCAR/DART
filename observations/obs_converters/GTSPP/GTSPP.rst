@@ -1,3 +1,5 @@
+.. _gtspp:
+
 GTSPP Observations
 ==================
 

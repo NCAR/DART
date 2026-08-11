@@ -15,7 +15,7 @@ function dartversion() {
 
 local git_version
 
-if command -v git >/dev/null 2>&1 && [ -d "$DART/.git" ]; then
+if command -v git >/dev/null 2>&1 && [ -e "$DART/.git" ]; then
     git_version=$(cd "$DART" && git describe --tags --dirty --always 2>/dev/null || echo "version_unknown")
 else
     git_version="version_unknown"

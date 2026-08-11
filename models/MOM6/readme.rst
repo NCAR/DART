@@ -74,16 +74,22 @@ The namelist options for DART-MOM6 are as follows:
     &model_nml
        template_file = 'mom6.r.nc',
        ocean_geometry = 'ocean_geometry.nc',
-       static_file = 'c.e22.GMOM.T62_g16.nuopc.001.mom6.static.nc',
-       model_state_variables        = 'Salt ', 'QTY_SALINITY             ', 'UPDATE',
-                                      'Temp ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
-                                      'u    ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE',
-                                      'v    ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE',
-                                      'h    ', 'QTY_LAYER_THICKNESS      ', 'UPDATE',
+       static_file = 'static.nc',
+       model_state_variables        = 'Salt ', 'QTY_SALINITY             ', 'NA', 'NA', 'UPDATE',
+                                      'Temp ', 'QTY_POTENTIAL_TEMPERATURE', 'NA', 'NA', 'UPDATE',
+                                      'u    ', 'QTY_U_CURRENT_COMPONENT  ', 'NA', 'NA', 'UPDATE',
+                                      'v    ', 'QTY_V_CURRENT_COMPONENT  ', 'NA', 'NA', 'UPDATE',
+                                      'h    ', 'QTY_LAYER_THICKNESS      ', 'NA', 'NA', 'UPDATE',
        assimilation_period_days     = 1
        assimilation_period_seconds  = 0
        use_pseudo_depth = .false. ! use pseudo depth instead of sum(layer thickness) for vertical location
        layer_name = 'Layer' ! name of the layer variable in the restart file
+       reference_year   = 1 ! reference year
+       reference_month  = 1 ! reference month
+       reference_day    = 1 ! reference day
+       reference_hour   = 0 ! reference hour
+       reference_minute = 0 ! reference minute
+       reference_second = 0 ! reference second
        /
 
 * ``template_file`` is a MOM6 restart file. The size and shape of the state variables will be read from this netCDF file.
@@ -102,6 +108,26 @@ The namelist options for DART-MOM6 are as follows:
          
          geolon_v(:,:) Longitude of meridional velocity (Cv) points
          geolat_v(:,:) Latitude of meridional velocity (Cv) point
+
+
+* ``model_state_variables`` defines the list of model variables from the MOM6 restart file that will be included in the DART state. Each row in the table should have the following fields:
+
+    - **NetCDF variable name**: Name of the variable in the MOM6 restart file (e.g., 'Salt').
+    - **DART Quantity**: The DART quantity associated with the variable (e.g., 'QTY_SALINITY').
+    - **Clamping lower bound**: Minimum allowed value for the variable when writing out restarts (use 'NA' for no bound).
+    - **Clamping upper bound**: Maximum allowed value for the variable when writing out restarts (use 'NA' for no bound).
+    - **UPDATE or NO_COPY_BACK**: Use 'UPDATE' to allow DART to update this variable during assimilation, or 'NO_COPY_BACK' to prevent updates (variable will be read but not written back).
+
+* ``reference_year``, ``reference_month``, ``reference_day``, ``reference_hour``, ``reference_minute``, ``reference_second``
+  give the reference date used to interpret the restart file's ``Time`` (or history file's ``time``) variable, which is "days
+  since that reference date". The default is to use the MOM6's own reference date of 0001-01-01. However, if you require a
+  different reference date, you can set these values accordingly and read_model_time will read 'days' from the restart
+  file as 'days since reference date'.
+  
+  .. note:: 
+  
+      If ``reference_year`` is set to a value other than 1, it must be >= 1601, because DART's internal Gregorian calendar
+      uses 1601-01-01 as its reference date.
 
 
 Vertical Coordinate

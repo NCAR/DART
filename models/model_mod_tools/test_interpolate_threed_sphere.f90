@@ -34,9 +34,9 @@ use model_check_utilities_mod, only : test_single_interpolation, &
                                       count_error_codes, &
                                       verify_consistent_istatus
 
-use             model_mod, only : get_model_size, &
+use       assim_model_mod, only : get_model_size, &
                                   get_state_meta_data, &
-                                  model_interpolate
+                                  interpolate
 
 use netcdf
 
@@ -168,7 +168,7 @@ do ilon = 1, nlon
          vert(kvert) = interp_test_vertrange(1) + real(kvert-1,r8) * interp_test_dvert
          loc = set_location(lon(ilon), lat(jlat), vert(kvert), vertcoord)
 
-         call model_interpolate(ens_handle, ens_size, loc, quantity_index, &
+         call interpolate(ens_handle, ens_size, loc, quantity_index, &
                                 field(ilon,jlat,kvert,:), ios_out)
 
          call verify_consistent_istatus(ens_size, field(ilon,jlat,kvert,:), ios_out)

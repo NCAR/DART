@@ -1,3 +1,5 @@
+.. _creating-obs-seq-real:
+
 Creating an obs_seq file from real observations
 ===============================================
 

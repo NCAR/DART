@@ -37,7 +37,7 @@ use utilities_mod,         only : error_handler, E_ERR, E_MSG, E_DBG,           
                                   set_multiple_filename_lists, find_textfile_dims
 
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
-                                  end_assim_model,  pert_model_copies, get_state_meta_data
+                                  end_assim_model,  get_state_meta_data
 
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, test_state_copies
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
@@ -66,7 +66,7 @@ use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_rest
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
 
-use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
+use perturb_mod,           only : perturb_ensemble
 
 use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state, &
                                   set_stage_to_write, get_stage_to_write
@@ -207,6 +207,12 @@ character(len=256) :: output_state_file_list(MAX_NUM_DOMS) = ''
 ! Read in a single file and perturb this to create an ensemble
 logical  :: perturb_from_single_instance = .false.
 real(r8) :: perturbation_amplitude       = 0.2_r8
+! How to perturb: 
+!    'model' lets the model_mod do it, falling back to a
+! perturbation that is bitwise across any number of tasks.
+!    'uniform' perturbs every state variable identically, used when testing
+! observation localization.  
+character(len=32) :: perturbation_method = 'model' !  Ignored unless perturb_from_single_instance.
 
 ! File options.  Single vs. Multiple.  really 'unified' or 'combination' vs 'individual'
 logical  :: single_file_in  = .false. ! all copies read  from 1 file
@@ -306,6 +312,7 @@ namelist /filter_nml/ async,     &
    single_file_out,              &
    perturb_from_single_instance, &
    perturbation_amplitude,       &
+   perturbation_method,          &
    compute_posterior,            &
    output_sequential_prior_post, &
    use_sequential_prior_post,    &
@@ -611,11 +618,12 @@ call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior', singl
 
 if (perturb_from_single_instance) then
    call error_handler(E_MSG,'filter_main:', &
-      'Reading in a single member and perturbing data for the other ensemble members')
+      'Reading in a single member and perturbing data for the other ensemble members', &
+      text2='perturbation_method = '//trim(perturbation_method))
 
    ! Only zero has the time, so broadcast the time to all other copy owners
    call broadcast_time_across_copy_owners(state_ens_handle, time1)
-   call create_ensemble_from_single_file(state_ens_handle)
+   call perturb_ensemble(state_ens_handle, ens_size, perturbation_amplitude, perturbation_method)
 else
    call error_handler(E_MSG,'filter_main:', &
       'Reading in initial condition/restart data for all ensemble members from file(s)')
@@ -2466,100 +2474,6 @@ end do
 call close_file(forward_unit)
 
 end subroutine verbose_forward_op_output
-
-!------------------------------------------------------------------
-!> Produces an ensemble by copying my_vars of the 1st ensemble member
-!> and then perturbing the copies array.
-!> Mimicks the behaviour of pert_model_state:
-!> pert_model_copies is called:
-!>   if no model perturb is provided, perturb_copies_task_bitwise is called.
-!> Note: Not enforcing a model_mod to produce a
-!> pert_model_copies that is bitwise across any number of
-!> tasks, although there is enough information in the
-!> ens_handle to do this.
-!>
-!> Some models allow missing_r8 in the state vector.  If missing_r8 is
-!> allowed the locations of missing_r8s are stored before the perturb,
-!> then the missing_r8s are put back in after the perturb.
-
-subroutine create_ensemble_from_single_file(ens_handle)
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-integer               :: i
-logical               :: interf_provided ! model does the perturbing
-logical, allocatable  :: miss_me(:)
-integer               :: partial_state_on_my_task ! the number of elements ON THIS TASK
-
-! Copy from ensemble member 1 to the other copies
-do i = 1, ens_handle%my_num_vars
-   ens_handle%copies(2:ens_size, i) = ens_handle%copies(1, i)  ! How slow is this?
-enddo
-
-! If the state allows missing values, we have to record their locations
-! and restore them in all the new perturbed copies.
-
-if (get_missing_ok_status()) then
-   partial_state_on_my_task = size(ens_handle%copies,2)
-   allocate(miss_me(partial_state_on_my_task))
-   miss_me = .false.
-   where(ens_handle%copies(1, :) == missing_r8) miss_me = .true.
-endif
-
-call pert_model_copies(ens_handle, ens_size, perturbation_amplitude, interf_provided)
-if (.not. interf_provided) then
-   call perturb_copies_task_bitwise(ens_handle)
-endif
-
-! Restore the missing_r8
-if (get_missing_ok_status()) then
-   do i = 1, ens_size
-      where(miss_me) ens_handle%copies(i, :) = missing_r8
-   enddo
-   deallocate(miss_me)
-endif
-
-end subroutine create_ensemble_from_single_file
-
-
-!------------------------------------------------------------------
-! Perturb the copies array in a way that is bitwise reproducible
-! no matter how many task you run on.
-
-subroutine perturb_copies_task_bitwise(ens_handle)
-
-type(ensemble_type), intent(inout) :: ens_handle
-
-integer               :: i, j ! loop variables
-type(random_seq_type) :: r(ens_size)
-real(r8)              :: random_array(ens_size) ! array of random numbers
-integer               :: local_index
-
-! Need ens_size random number sequences.
-do i = 1, ens_size
-   call init_random_seq(r(i), i)
-enddo
-
-local_index = 1 ! same across the ensemble
-
-! Only one task is going to update per i.  This will not scale at all.
-do i = 1, ens_handle%num_vars
-
-   do j = 1, ens_size
-     ! Can use %copies here because the random number
-     ! is only relevant to the task than owns element i.
-     random_array(j)  =  random_gaussian(r(j), ens_handle%copies(j, local_index), perturbation_amplitude)
-   enddo
-
-   if (ens_handle%my_vars(local_index) == i) then
-      ens_handle%copies(1:ens_size, local_index) = random_array(:)
-      local_index = local_index + 1 ! task is ready for the next random number
-      local_index = min(local_index, ens_handle%my_num_vars)
-   endif
-
-enddo
-
-end subroutine perturb_copies_task_bitwise
 
 !------------------------------------------------------------------
 !> Set the time on any extra copies that a pe owns

@@ -255,7 +255,6 @@ References
    guide/verifying-installation
 
 .. toctree::
-   :hidden:
    :caption: DART Python tools
 
    guide/pytools
@@ -310,7 +309,6 @@ References
    guide/detailed-structure-obs-seq
    guide/creating-obs-seq-synthetic
    guide/creating-obs-seq-real
-   guide/available-observation-converters
    guide/manipulating-with-obs-sequence-tool
    guide/difference-between-type-and-quantity
    guide/adding-support-new-type
@@ -321,6 +319,7 @@ References
    :caption: Observation Converters
 
    observations/obs_converters/README
+   guide/available-observation-converters
 
 
 .. toctree::
@@ -333,9 +332,11 @@ References
    observations/obs_converters/AVISO/AVISO
    observations/obs_converters/Ameriflux/fluxnetfull_to_obs
    observations/obs_converters/Ameriflux/level4_to_obs
-   observations/obs_converters/CHAMP/work/README
+   observations/obs_converters/CHAMP/README
    observations/obs_converters/BATS/readme
    observations/obs_converters/cice/cice_to_obs
+   observations/obs_converters/cmems_ssh_l3/readme
+   observations/obs_converters/cmems_sst_l3s/readme
    observations/obs_converters/CONAGUA/README
    observations/obs_converters/COSMOS/COSMOS_to_obs
    observations/obs_converters/COSMOS/COSMOS_development
@@ -471,6 +472,7 @@ References
    models/wrf/WRF_DART_utilities/replace_wrf_fields
    models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess
    models/utilities/default_model_mod
+   models/utilities/quad_utils_mod
 
 
 .. toctree::

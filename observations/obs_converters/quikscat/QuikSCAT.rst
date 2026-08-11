@@ -1,3 +1,5 @@
+.. _quikscat:
+
 QuikSCAT SeaWinds Data
 ======================
 

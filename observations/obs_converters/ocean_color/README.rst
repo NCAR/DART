@@ -1,3 +1,5 @@
+.. _ocean_color:
+
 VIIRS/AQUA Satellite Ocean Color
 ================================
 

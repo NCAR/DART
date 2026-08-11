@@ -12,14 +12,16 @@ module model_mod
 
 use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength
 
-use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type
+use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type, &
+                             get_time
 
 use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_obs => get_close_obs, &
                              loc_get_close_state => get_close_state, &
                              set_location, set_location_missing, &
                              get_location, query_location, VERTISLEVEL, &
-                             VERTISHEIGHT, set_vertical, get_dist
+                             VERTISHEIGHT, set_vertical, get_dist, &
+                             set_vertical_localization_coord
 
 use    utilities_mod, only : error_handler, E_ERR, E_MSG, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term,  &
@@ -30,7 +32,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_begin_define_mode, nc_end_define_mode, &
                                  nc_open_file_readonly, nc_close_file, &
                                  nc_get_variable, nc_get_variable_size, &
-                                 NF90_MAX_NAME, nc_get_attribute_from_variable
+                                 NF90_MAX_NAME, nc_get_attribute_from_variable, &
+                                 nc_variable_exists
 
 use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
                                    set_quad_coords, quad_lon_lat_locate, &
@@ -60,8 +63,8 @@ use default_model_mod, only : pert_model_copies, write_model_time, &
                               init_time => fail_init_time, &
                               init_conditions => fail_init_conditions, &
                               convert_vertical_obs, adv_1step, &
-                              parse_variables, &
-                              MAX_STATE_VARIABLE_FIELDS
+                              parse_variables_clamp, &
+                              MAX_STATE_VARIABLE_FIELDS_CLAMP
 
 implicit none
 private
@@ -127,13 +130,21 @@ character(len=256) :: static_file = 'c.e22.GMOM.T62_g16.nuopc.001.mom6.static.nc
 character(len=256) :: ocean_geometry = 'ocean_geometry.nc'
 integer  :: assimilation_period_days      = 1
 integer  :: assimilation_period_seconds   = 0
-character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS) = ' '
+character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '
 character(len=NF90_MAX_NAME) :: layer_name = 'Layer'
 logical :: use_pseudo_depth = .false. ! use pseudo depth instead of sum(layer thickness) for vertical location
+! reference date to use instead of "days since 0001-01-01 00:00:00"
+integer :: reference_year = 1 ! reference year
+integer :: reference_month = 1 ! reference month
+integer :: reference_day = 1! reference day
+integer :: reference_hour = 0 ! reference hour
+integer :: reference_minute = 0 ! reference minute
+integer :: reference_second = 0 ! reference second
 
 namelist /model_nml/ template_file, static_file, ocean_geometry, assimilation_period_days, &
                      assimilation_period_seconds, model_state_variables, layer_name, &
-                     use_pseudo_depth
+                     use_pseudo_depth, reference_year, reference_month, reference_day, &
+                     reference_hour, reference_minute, reference_second
 
 
 interface on_land
@@ -165,6 +176,7 @@ if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
 call set_calendar_type('gregorian')
+call set_vertical_localization_coord(VERTISHEIGHT)
 
 ! This time is both the minimum time you can ask the model to advance
 ! (for models that can be advanced by filter) and it sets the assimilation
@@ -178,7 +190,7 @@ assimilation_time_step = set_time(assimilation_period_seconds, &
 ! parse_variables converts the character table that was read in from
 ! model_nml:model_state_variables to a state_var_type that can be passed
 ! to add_domain
-dom_id = add_domain(template_file, parse_variables(model_state_variables))
+dom_id = add_domain(template_file, parse_variables_clamp(model_state_variables))
 
 model_size = get_domain_size(dom_id)
 
@@ -272,6 +284,7 @@ interp = get_interp_handle(qty)
 ! unpack the location type into lon, lat, vert, vert_type
 lon_lat_vert = get_location(location)
 which_vert   = nint(query_location(location))
+if (which_vert /= VERTISHEIGHT) call error_handler(E_ERR, 'model_interpolate', 'only supports VERTISHEIGHT')
 
 ! get the indices for the 4 corners of the quad in the horizontal
 call quad_lon_lat_locate(interp, lon_lat_vert(1), lon_lat_vert(2), &
@@ -290,7 +303,7 @@ endif
 if (use_pseudo_depth) then 
 
    ! Get the bounding vertical levels and the fraction between bottom and top
-   call find_level_bounds(lon_lat_vert(3), which_vert, levz, levz_fract, locate_status)
+   call find_level_bounds(lon_lat_vert(3), levz, levz_fract, locate_status)
    if (locate_status /= 0) then
       istatus(:) = locate_status
       return
@@ -306,7 +319,7 @@ else
    ! HK @todo Do you need to use t_grid interp for thickness four_ilons, four_ilats?
    found(:) = .false.
    depth_at_x(:) = 0
-   FIND_LAYER: do i = 2, nz
+   FIND_LAYER: do i = 1, nz
 
       do corner = 1, 4
          th_indx = get_dart_vector_index(four_ilons(corner), four_ilats(corner), i, dom_id, thick_id)
@@ -330,10 +343,17 @@ else
 
       do e = 1, ens_size
          if (lon_lat_vert(3) < depth_at_x(e)) then
-            lev(e,1) = i ! layer_below
-            lev(e,2) = i-1 ! layer_above
-            lev_fract(e) = (depth_at_x(e) - lon_lat_vert(3)) / thick_at_x(e)
-            found(e) = .true.
+            if (i ==1) then 
+              lev(e,1) = 1 ! in surface layer
+              lev(e,2) = 1 ! in surface layer
+              lev_fract(e) = 0.0_r8
+              found(e) = .true.
+            else
+               lev(e,1) = i ! layer_below
+               lev(e,2) = i-1 ! layer_above
+               lev_fract(e) = (depth_at_x(e) - lon_lat_vert(3)) / thick_at_x(e)
+               found(e) = .true.
+            endif
             if (all(found)) exit FIND_LAYER
          endif
       enddo
@@ -519,6 +539,7 @@ integer(i8) :: indx
 real(r8) :: depth(1)
 
 ! assert(which_vert == VERTISHEIGHT)
+if (which_vert /= VERTISHEIGHT) call error_handler(E_ERR,'model_mod convert_vertical_state', 'only supports VERTISHEIGHT')
 
 if (use_pseudo_depth) then
    do ii = 1, num
@@ -1046,6 +1067,8 @@ sensible_temp = t
 end function sensible_temp
 
 !--------------------------------------------------------------------
+! restart files use Time
+! history files use time
 function read_model_time(filename)
 
 character(len=*), intent(in) :: filename
@@ -1053,22 +1076,45 @@ type(time_type) :: read_model_time
 
 integer :: ncid
 character(len=*), parameter :: routine = 'read_model_time'
-real(r8) :: days
-type(time_type) :: mom6_time
-integer :: dart_base_date_in_days, dart_days
+real(r8) :: days, seconds
+integer :: ref_days, ref_seconds
+type(time_type) :: user_reference_time
+integer :: dart_base_date_in_days, dart_days, dart_seconds
 
-dart_base_date_in_days = 584388 ! 1601 1 1 0 0
+if ( .not. module_initialized ) call static_init_model
+
 ncid = nc_open_file_readonly(filename, routine)
 
-call nc_get_variable(ncid, 'Time', days, routine)
+if (nc_variable_exists(ncid, 'Time')) then
+   call nc_get_variable(ncid, 'Time', days, routine)
+else
+   call nc_get_variable(ncid, 'time', days, routine)
+endif
 
 call nc_close_file(ncid, routine)
 
-! MOM6 counts days from year 1
-! DART counts days from 1601 
-dart_days = int(days) - dart_base_date_in_days
+! DART counts days from 1601-01-01, MOM6 counts days from 0001-01-01
+! However, user may want a different reference date for MOM6 set from model_nml
+if (reference_year == 1) then
+   ! Convert straight to DART's 1601-01-01 epoch using the fixed calendar offset.
+   dart_base_date_in_days = 584388 ! 1601 1 1 0 0, expressed as days since 0001-01-01
+   dart_days = floor(days) - dart_base_date_in_days
+   seconds = (days - floor(days)) * 86400.0_r8
+else
+   if (reference_year < 1601) then
+      call error_handler(E_ERR, routine, 'reference_year must be >= 1601 to use a year, or 1 to use MOM6 reference date of 0001-01-01')
+   endif
+   ! days from file is days since user supplied reference date.
+   user_reference_time = set_date(reference_year, reference_month, reference_day, &
+                        reference_hour, reference_minute, reference_second)
+   call get_time(user_reference_time, ref_seconds, ref_days) ! ref time in seconds and days since 1601-01-01
+   dart_days = ref_days + floor(days) ! add days read from file to days since 1601-01-01
+   seconds = real(ref_seconds, r8) + (days - floor(days)) * 86400.0_r8
+endif
 
-read_model_time = set_time(0,dart_days)
+dart_seconds = int(seconds)
+
+read_model_time = set_time(dart_seconds,dart_days)
 
 end function read_model_time
 
@@ -1081,26 +1127,30 @@ end function read_model_time
 !                    --- 1 i=3
 !
 
-subroutine find_level_bounds(vert_loc, which_vert, lev, lev_fract, istatus)
+subroutine find_level_bounds(vert_loc, lev, lev_fract, istatus)
 
 real(r8), intent(in) :: vert_loc   ! observation location
-integer,  intent(in) :: which_vert ! obs vertical coordinate
 integer,  intent(out) :: lev(2)    ! bottom, top
 real(r8), intent(out) :: lev_fract
 integer,  intent(out) :: istatus
 
 integer :: i
 
-! HK assert(which_vert == height meters) ?
-
-do i = 2, nz
+do i = 1, nz
    if(vert_loc < zstar(i)) then
-      lev(1) = i   ! bottom
-      lev(2) = i-1 ! top
-
-      lev_fract = (zstar(lev(1)) - vert_loc) / (zstar(lev(2)) - zstar(lev(1)))
-      istatus = 0
-      return
+      if (i == 1) then
+         lev(1) = 1 ! obs is in surface layer
+         lev(2) = 1 ! obs is in surface layer
+         lev_fract = 0.0_r8
+         istatus = 0
+         return
+      else
+         lev(1) = i   ! bottom
+         lev(2) = i-1 ! top
+         lev_fract = (zstar(lev(1)) - vert_loc) / (zstar(lev(1)) - zstar(lev(2)))
+         istatus = 0
+         return
+      endif
    endif
 enddo
 

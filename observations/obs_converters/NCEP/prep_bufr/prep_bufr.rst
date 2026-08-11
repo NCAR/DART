@@ -1,3 +1,5 @@
+.. _ncep_prepbufr:
+
 PROGRAM ``prepbufr``
 ====================
 

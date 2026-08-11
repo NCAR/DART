@@ -61,8 +61,7 @@ use io_filenames_mod,     only : get_restart_filename, file_info_type, &
                                  assert_restart_names_initialized, &
                                  single_file_initialized
 
-!>@todo FIXME This should go through assim_model_mod
-use model_mod,            only : read_model_time
+use assim_model_mod,            only : read_model_time
 
 use state_structure_mod,  only : get_num_domains
 
@@ -154,7 +153,6 @@ end subroutine state_vector_io_init
 !>   - Note the user must give both inflation handles or neither.
 !> perturb_from_single_copy is optional (used by filter, not by perfect_model_obs)
 !>   - only 1 restart file is read in. For netcdf read only one copy is transposed.
-!>     Still doing a full all vars to all copies for dart format read though.
 
 
 subroutine read_state(state_ens_handle, file_info, read_time_from_file, model_time, &
@@ -181,40 +179,29 @@ if ( present(prior_inflate_handle) .neqv. present(post_inflate_handle) ) then
            'must have both inflation handles or neither', source)
 endif
 
-!>@todo all-or-nothing WHY?
-if (present(prior_inflate_handle) .and. present(post_inflate_handle)) inflation_handles = .true.
-
-! inflation read from netcdf files only for state_space_inflation
-! Ideally would only do a read transpose for VARYING state_space_inflation
-!>@todo FIXME do we need a separate file_info for inflation
-
-!>@todo FIXME understand this ... what is it doing and why.
-! Filling copies array for single state space inflation values if required.
-if (inflation_handles) then
-
-   !>@todo just a print at the moment
-   !>@todo FIXME: the print code should all be in the inflation module.
-   !> this code may be needed to figure out the filename but the actual
-   !> output should come from a routine in adaptive_inflate_mod.f90
-   call print_inflation_source(file_info, prior_inflate_handle, 'Prior')
-   call print_inflation_source(file_info, post_inflate_handle,  'Posterior')
-
-   ! If inflation is single state space read from a file, the copies array is filled here.
-   call fill_single_inflate_val_from_read(state_ens_handle, prior_inflate_handle, post_inflate_handle)
-
-   ! If inflation is from a namelist value it is set here.
-   !>@todo FIXME: ditto here - the output should be from a routine
-   !> in the adaptive_inflate_mod.f90 code
-   call fill_inf_from_namelist_value(state_ens_handle, prior_inflate_handle)
-   call fill_inf_from_namelist_value(state_ens_handle, post_inflate_handle)
-
-endif
-
 if (get_single_file(file_info)) then
    ! NOTE: single file is set only in filter, and pmo
    call read_single_file(state_ens_handle, file_info, read_time_from_file, model_time, perturb_from_single_copy)
 else
    call read_restart_direct(state_ens_handle, file_info, read_time_from_file, model_time)
+endif
+
+if (present(prior_inflate_handle) .and. present(post_inflate_handle)) inflation_handles = .true.
+
+! Filling copies array for single state space inflation values if required.
+if (inflation_handles) then
+
+   call print_inflation_source(file_info, prior_inflate_handle, 'Prior')
+   call print_inflation_source(file_info, post_inflate_handle,  'Posterior')
+
+   ! If inflation is single state space read from a file, the copies array is filled here
+   ! from the 1st element of the state.
+   call fill_single_inflate_val_from_read(state_ens_handle, prior_inflate_handle, post_inflate_handle)
+
+   ! If inflation is from a namelist value it is set here.
+   call fill_inf_from_namelist_value(state_ens_handle, prior_inflate_handle)
+   call fill_inf_from_namelist_value(state_ens_handle, post_inflate_handle)
+
 endif
 
 end subroutine read_state
@@ -343,7 +330,6 @@ end subroutine write_restart_direct
 !> or sd is read from file.  If one is set from a namelist the copies 
 !> array is overwritten in fill_inf_from_namelist_value()
 
-!>@todo We need to refactor this, not sure where it is being used
 subroutine fill_single_inflate_val_from_read(ens_handle, &
                 prior_inflate_handle, post_inflate_handle)
 
@@ -354,13 +340,9 @@ type(adaptive_inflate_type), intent(in)    :: post_inflate_handle
 integer :: owner, owners_index
 integer(i8) :: first_element
 real(r8), allocatable :: inf_array(:) ! 2 or 4 values
-integer :: inf_count
+integer :: copy_list(4) ! inflation copy indices needing a single ss value
+integer :: n, i
 logical :: return_me ! flag to return if not read any inflation values from files
-
-integer :: PRIOR_INF_MEAN
-integer :: PRIOR_INF_SD
-integer :: POST_INF_MEAN
-integer :: POST_INF_SD
 
 ! Return if not doing single state space inflation
 if (.not. do_single_ss_inflate(prior_inflate_handle) .and. &
@@ -379,72 +361,47 @@ endif
 if (return_me) return
 
 ! At least some single state space inflation values are being read from files.
-inf_count = 0
-if (do_single_ss_inflate(prior_inflate_handle)) inf_count = 2
-if (do_single_ss_inflate(post_inflate_handle))  inf_count = inf_count + 2
+! Build the list of inflation copies that need a single state space value.
+! Both mean and sd are filled for an active handle, which is 
+! * wasteful if only one of mean or sd is read from a file 
+! * fragile since fill_inf_from_namelist_value must be called after this routine. 
 
-allocate(inf_array(inf_count)) ! for sending and recveiving inflation values
+n = 0
+if (do_single_ss_inflate(prior_inflate_handle)) then
+   n = n + 1  
+   copy_list(n) = get_inflation_mean_copy(prior_inflate_handle)
+   n = n + 1 
+   copy_list(n) = get_inflation_sd_copy(prior_inflate_handle)
+endif
+if (do_single_ss_inflate(post_inflate_handle)) then
+   n = n + 1
+   copy_list(n) = get_inflation_mean_copy(post_inflate_handle)
+   n = n + 1
+   copy_list(n) = get_inflation_sd_copy(post_inflate_handle)
+endif
 
-! Find out who owns the first element of vars array
+allocate(inf_array(n)) ! for sending and receiving inflation values
+! Find out who owns the first element of the vars array - this is the
+! single value used for the inflation.
 first_element = 1
 call get_var_owner_index(ens_handle, first_element, owner, owners_index)
 
-PRIOR_INF_MEAN  = get_inflation_mean_copy(prior_inflate_handle)
-PRIOR_INF_SD    = get_inflation_sd_copy(  prior_inflate_handle)
-POST_INF_MEAN   = get_inflation_mean_copy(post_inflate_handle)
-POST_INF_SD     = get_inflation_sd_copy(  post_inflate_handle)
-
 if (ens_handle%my_pe == owner) then
-   if (do_single_ss_inflate(prior_inflate_handle) .and. &
-       do_single_ss_inflate(post_inflate_handle)) then
-      inf_array(1) = ens_handle%copies(PRIOR_INF_MEAN, owners_index)
-      inf_array(2) = ens_handle%copies(PRIOR_INF_SD,   owners_index)
-      inf_array(3) = ens_handle%copies(POST_INF_MEAN,  owners_index)
-      inf_array(4) = ens_handle%copies(POST_INF_SD,    owners_index)
-
-   elseif (do_single_ss_inflate(post_inflate_handle) .and. &
-     .not. do_single_ss_inflate(post_inflate_handle)) then
-
-      inf_array(1) = ens_handle%copies(PRIOR_INF_MEAN, owners_index)
-      inf_array(2) = ens_handle%copies(PRIOR_INF_SD,   owners_index)
-
-   elseif(.not. do_single_ss_inflate(post_inflate_handle) .and. &
-                do_single_ss_inflate(post_inflate_handle)) then
-
-      inf_array(1) = ens_handle%copies(POST_INF_MEAN, owners_index)
-      inf_array(2) = ens_handle%copies(POST_INF_SD,   owners_index)
-
-   endif
-
+   do i = 1, n
+      inf_array(i) = ens_handle%copies(copy_list(i), owners_index)
+   enddo
    call broadcast_send(map_pe_to_task(ens_handle, owner), inf_array)
-
 else
-
    call broadcast_recv(map_pe_to_task(ens_handle, owner), inf_array)
-
-   if (do_single_ss_inflate(prior_inflate_handle) .and. &
-       do_single_ss_inflate(post_inflate_handle)) then
-
-      ens_handle%copies(PRIOR_INF_MEAN, owners_index) = inf_array(1)
-      ens_handle%copies(PRIOR_INF_SD,   owners_index) = inf_array(2)
-      ens_handle%copies(POST_INF_MEAN,  owners_index) = inf_array(3)
-      ens_handle%copies(POST_INF_SD,    owners_index) = inf_array(4)
-
-   elseif (do_single_ss_inflate(prior_inflate_handle) .and. &
-     .not. do_single_ss_inflate(post_inflate_handle)) then
-
-      ens_handle%copies(PRIOR_INF_MEAN, owners_index) = inf_array(1)
-      ens_handle%copies(PRIOR_INF_SD,   owners_index) = inf_array(2)
-
-   elseif(.not. do_single_ss_inflate(prior_inflate_handle) .and. &
-                do_single_ss_inflate(post_inflate_handle)) then
-
-      ens_handle%copies(POST_INF_MEAN, owners_index) = inf_array(1)
-      ens_handle%copies(POST_INF_SD,   owners_index) = inf_array(2)
-
-   endif
-
 endif
+
+! Every task (including the owner) fills the whole copy row with the single
+! state space value so it is consistent across all local state elements.
+do i = 1, n
+   ens_handle%copies(copy_list(i), :) = inf_array(i)
+enddo
+
+deallocate(inf_array)
 
 end subroutine fill_single_inflate_val_from_read
 

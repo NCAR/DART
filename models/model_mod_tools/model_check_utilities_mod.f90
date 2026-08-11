@@ -24,9 +24,9 @@ use          obs_kind_mod, only : get_name_for_quantity, &
 
 use  ensemble_manager_mod, only : ensemble_type
 
-use             model_mod, only : get_model_size, &
+use       assim_model_mod, only : get_model_size, &
                                   get_state_meta_data, &
-                                  model_interpolate
+                                  interpolate
 
 implicit none
 private
@@ -83,7 +83,7 @@ if ( do_output() ) then
    write(*,'(A)') ''
 endif
 
-call model_interpolate(ens_handle, ens_size, location, quantity_index, interp_vals, ios_out)
+call interpolate(ens_handle, ens_size, location, quantity_index, interp_vals, ios_out)
 
 num_passed = 0
 do imem = 1, ens_size

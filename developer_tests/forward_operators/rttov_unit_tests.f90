@@ -144,6 +144,6 @@ else  ! module is already initialized, unit tests are not reliable
    failme = .true.
 endif
 
-if (failme) call exit(102)
+if (failme) stop 102
 
 end program rttov_unit_tests

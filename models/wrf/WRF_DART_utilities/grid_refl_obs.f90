@@ -121,19 +121,19 @@ call initialize_utilities('grid_refl_obs')
 
 if( COMMAND_ARGUMENT_COUNT() .ne. 7 ) then
   print*, 'INCORRECT # OF ARGUMENTS ON COMMAND LINE:  ', COMMAND_ARGUMENT_COUNT()
-  call exit(1)
+  stop 1
 else
 
   call GET_COMMAND_ARGUMENT(1,obs_seq_file,length,status)
   if( status .ne. 0 ) then
     print*, 'obs_seq_file NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   endif
 
   call GET_COMMAND_ARGUMENT(2,string,length,status)
   if( status .ne. 0 ) then
     print*,  'refl_min NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) refl_min
   endif
@@ -141,7 +141,7 @@ else
   call GET_COMMAND_ARGUMENT(3,string,length,status)
   if( status .ne. 0 ) then
     print*,  'days_begin NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) days_begin
   endif
@@ -149,7 +149,7 @@ else
   call GET_COMMAND_ARGUMENT(4,string,length,status)
   if( status .ne. 0 ) then
     print*,  'seconds_begin NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) seconds_begin
   endif
@@ -157,7 +157,7 @@ else
   call GET_COMMAND_ARGUMENT(5,string,length,status)
   if( status .ne. 0 ) then
     print*,  'days_end NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) days_end
   endif
@@ -165,7 +165,7 @@ else
   call GET_COMMAND_ARGUMENT(6,string,length,status)
   if( status .ne. 0 ) then
     print*,  'seconds_end NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) seconds_end
   endif
@@ -173,7 +173,7 @@ else
   call GET_COMMAND_ARGUMENT(7,wrf_file,length,status)
   if( status .ne. 0 ) then
     print*, 'wrf_file NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   endif
 
 endif
@@ -191,7 +191,7 @@ else
   write(msgstring,*)obs_seq_file,&
                     ' does not exist. Finishing up.'
   call error_handler(E_MSG,'grid_refl_obs',msgstring,source,revision,revdate)
-  call exit(1)
+  stop 1
 endif
 
 call read_obs_seq_header(obs_seq_file, &

@@ -22,6 +22,143 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 10 2026 :: Localization Test Perturbations. Tag v11.25.1**
+
+New Testing Utility:
+
+ - A ‘uniform’ perturb option for testing localization. Perturbs the ensemble so localization 
+   is the only source of variability in the increment.
+
+MOM6 read_model_time improvements: 
+
+ - Allow user to set a reference date different to the MOM6  reference time 0001-01-01:00:00:00.
+ - Allow ‘time’ dimension to be called 'Time' or 'time' (restart vs history).
+ - Allow fractions of days in the time, (variable in the file is real not int).
+
+Quad_utilties_mod improvements:
+
+ - Reduced memory usage for quad_utilities: 3D scratch arrays replaced with compressed sparse row format.
+ - Removed the hardcoded grid search dimensions, now calculated from the grid.
+
+Repo change:
+
+ -  .mailmap file to map various emails, author names and aliases to individual people.
+
+
+**July 16 2026 :: Remove fixsystem. Tag v11.25.0**
+
+New feature / build system update:
+
+  - Removes fixystem script from the build system and subsequently removes compiler dependencies in the code
+
+Bug-fix:
+
+  - Read state before broadcasting single value state space inflation
+  - Fixes logic in which files to read for prior and posterior inflation
+
+Documentation update:
+
+  - Updates the custom.css to use Poppins font
+
+
+**June 24 2026 :: DART_LAB bug fix. Tag v11.24.1**
+
+Bug fix:
+
+  - DART_LAB del_q calculation ens_size + 1
+  
+Documentation update:
+
+  - Readthedocs theme updated to allow server side search.
+
+Repo Infrastructure:
+
+  - quickbuilds added for outstanding DART executables.
+
+
+**May 27 2026 :: Copernicus Observation Converters. Tag v11.24.0**
+
+New Features:
+
+  - Copernicus SSH L3 NRT Observation Converter
+  - Copernicus SST L3S Observation Converter
+ 
+Bug fix:
+
+  - DART version in observation converter logs
+
+
+**May 15 2026 :: CIRRUS GitHub actions. Tag v11.23.1**
+
+New Repo Infrastructure:
+
+ - CIRRUS NCAR cloud GitHub actions for various compilers
+
+Bug fixes:
+
+ - Build functions fix for DART as a submodule
+ - Outstanding model_mod calls routed through assim_model_mod
+
+Documentation update:
+
+ - Identity observations documentation
+
+**April 29 2026 :: Quad Utilities Enhanced Stability & ROMS Memory Improvements. Tag v11.23.0**
+
+ - Improved numerical robustness of quadrilateral interpolation in quad_utils_mod
+ - User documentation for quad_utilities_mod
+ - ROMS_rutgers memory reduction for regular grids added as a quickdbuild.sh option
+
+**April 14 2026 :: WRF nested tutorial. Tag v11.22.0**
+
+New features:
+
+  - New WRF Tutorial with severe storm nested domain example
+  - Automatic downscaling for WRF nested domains
+  - Perturbation step (WRFDA CV3) within tutorial
+  - Assimilation and forecast modes in tutorial
+  - WRF shell scripting converted to function-based bash scripts
+
+Bug-fix:
+
+  - Imposes mandatory terrain-following coordinates to 
+    eliminate boundary condition bug during WRF perturbation step.
+
+Documentation updates:
+
+  - WRF tutorial rewritten for nested Kansas 2024 severe storm example
+
+
+
+**March 23 2026 :: CCE compiler flags. Tag v11.21.2**
+
+- Updated mkmf.template for CCE compiler 
+- Default qtys updated with land qtys
+
+Documentation updates:
+
+  - Removed duplicate list of observation converters
+  - Anchors for observation converter docs
+
+Bug-fix:
+
+  - Removed _r8 from .nml files
+
+**March 6 2026 :: MOM6 clamping. Tag v11.21.1**
+
+MOM6:
+
+  - Add clamping options to model_nml for MOM6
+  - Sets vertical localization coordinate
+  - Bug-fixes:
+
+     - vertical interpolation for thickness was missing first layer thickness
+     - vertical interpolation lev_fract fixed for pseudo-depth
+
+Documentation:
+
+  - pytools documentation added for pyfortran and pyqceff
+
 **February 27 2026 :: pywatershed. Tag v11.21.0**
 
 New features:

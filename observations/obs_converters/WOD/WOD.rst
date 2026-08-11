@@ -1,3 +1,5 @@
+.. _wod:
+
 WOD Observations
 ================
 

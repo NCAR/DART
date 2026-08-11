@@ -4,7 +4,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
-# Usage: run_all_quickbuilds.sh compiler [gcc intel nvhpc cce]
+# Usage: run_all_quickbuilds.sh compiler [gcc ifx nvhpc cce]
 
 if [ $# -eq 0 ]; then
    echo "ERROR: expecting at least one argument"
@@ -23,9 +23,7 @@ if [[ -z $PBS_ENVIRONMENT ]]; then
 fi
 
 # Specify the mkmf template for each compiler
-if [[ $compiler == "ifort" ]]; then
-  mkmf_template="mkmf.template.intel.linux"
-elif [[ $compiler == "ifx" ]]; then
+if [[ $compiler == "ifx" ]]; then
   mkmf_template="mkmf.template.ifx.linux"
 elif [[ $compiler == "gcc" ]]; then
   mkmf_template="mkmf.template.gfortran"
@@ -58,23 +56,11 @@ fi
 
 # mkmf for chosen compiler
 case $compiler in
-   ifx   ) module load intel-oneapi ;;
-   ifort ) module load intel-classic ;;
+   ifx   ) module load intel ;;
      *   ) module load $compiler ;;
 esac
 
 cp build_templates/$mkmf_template build_templates/mkmf.template
-
-# Run fixsystem to avoid all make commands from altering mpi_*_utilities_mod.f90 simultaneously
-cd assimilation_code/modules/utilities
-case $compiler in
-   ifort ) ./fixsystem ifort ;;
-     gcc ) ./fixsystem gfortran ;;
-     cce ) ./fixsystem ftn ;;
-   nvhpc ) ./fixsystem nvfortran ;;
-     ifx ) ./fixsystem ifx ;;
-esac
-cd -
 
 # Build preprocess once
 pp_dir=$DART/assimilation_code/programs/preprocess

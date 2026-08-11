@@ -16,57 +16,9 @@ program ftest_mpi
 
 use mpi
 
-! the NAG compiler needs these special definitions enabled.
-! the 'fixsystem' script in the assimilation_code/modules/utilities dir
-! should fix this for you.  please leave the BLOCK comment lines unchanged.
-
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-! !#ifdef __NAG__
-!
-! use F90_unix_proc, only : sleep, system, exit
-!
-! !! these are the calling sequences for NAG compiler
-! !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
-! !    INTEGER,INTENT(IN) :: SECONDS
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
-! !
-! !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
-! !    CHARACTER*(*),INTENT(IN) :: STRING
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
-! !
-! !!also used in exit_all outside this module
-! !  SUBROUTINE EXIT(STATUS)
-! !    INTEGER,OPTIONAL :: STATUS
-! !! end block
-!
-! !#endif
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-
 implicit none
 
 !include "mpif.h"
-
-
-
-! interface block for getting return code back from system() routine
-! the 'fixsystem' script in the assimilation_code/modules/utilities dir
-! should fix this for you.  please leave the BLOCK comment lines unchanged.
-
-
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !#endif
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
-
-
 
 ! integer variables
 integer :: ierror, myrank, totalprocs, rc
@@ -100,12 +52,10 @@ integer :: ierror, myrank, totalprocs, rc
    endif
    print *, "Total MPI tasks: ", totalprocs
 
-   ! This is not really an MPI test, but we do use the system() function to
-   ! start model advances in async=2 and async=4 modes, and to get this
-   ! program to compile may involve updating the fixsystem script and/or
-   ! the mpi_utilities_mod.f90 for new compilers.
-   call do_system("echo hello world", rc)
-   if (rc /= 0) print *, 'call to system() returned error'
+   ! This is not really an MPI test, but we do use execute_command_line to
+   ! start model advances in async=2 and async=4 modes
+   call do_execute_command_line("echo hello world", rc)
+   if (rc /= 0) print *, 'call to execute_command_line() returned error'
 
    ierror = -999
    call MPI_Finalize(ierror)
@@ -120,28 +70,19 @@ integer :: ierror, myrank, totalprocs, rc
 contains
 
 !> wrapper so you only have to make this work in a single place
-!> 'shell_name' is a namelist item and normally is the null string.
-!> on at least on cray system, the compute nodes only had one type
-!> of shell and you had to specify it.
 
-subroutine do_system(execute, rc)
+subroutine do_execute_command_line(execute, rc)
 
 character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
-! fill this in if an explicit shell name is required by your system
-character(len=32) :: shell_name = ''
+integer :: exitstat
 
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-!  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-! !!OTHER_BLOCK_EDIT START COMMENTED_IN
-    rc = system(trim(shell_name)//' '//trim(execute)//' '//char(0))
-! !!OTHER_BLOCK_EDIT END COMMENTED_IN
+    call execute_command_line(trim(execute), exitstat=exitstat)
 
-end subroutine do_system
+    rc = exitstat
 
+end subroutine do_execute_command_line
 
 
 end program ftest_mpi
-

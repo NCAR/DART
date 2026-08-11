@@ -1,3 +1,5 @@
+.. _ok_mesonet:
+
 Oklahoma Mesonet MDF Data
 =========================
 
