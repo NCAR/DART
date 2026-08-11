@@ -8,7 +8,7 @@ module strongly_coupled_localization_mod
 
 use      types_mod, only : r8, i8
 use  utilities_mod, only : error_handler, E_ERR, nmlfileunit, find_namelist_in_file, &
-                           check_namelist_read, do_nml_file, do_nml_term
+                           check_namelist_read, do_nml_file, do_nml_term, to_upper
 use   location_mod, only : get_close_type, location_type, get_location, write_location
 use   ensemble_manager_mod, only : ensemble_type
 
@@ -53,6 +53,8 @@ contains
 subroutine initialize_module()
 
 integer :: iunit, io, i, k, typecount, type_index
+character(len = len(state_model))   :: state_model_in
+character(len = len(obs_model))     :: obs_model_in
 
 if (module_initialized) return
 
@@ -67,26 +69,33 @@ call check_namelist_read(iunit, io, "strongly_coupled_localization_nml")
 if(do_nml_file()) write(nmlfileunit, nml=strongly_coupled_localization_nml)
 if(do_nml_term()) write(     *     , nml=strongly_coupled_localization_nml)
 
-! Only cases currently supported are Atmosphere and Land
-! Specify one for obs and one for state     
+! State and obs model in namelist currently limited to land and atmosphere
+! Error if it's something else
+state_model_in = adjustl(state_model)
+call to_upper(state_model_in)
 
-if(index('Atmosphere', trim(state_model)) > 0) then
-   s_model = ATMOSPHERE
-else if(index('Lorenz-63', trim(state_model)) > 0) then
-   s_model = LAND
-else
-   write(errstring,*) 'state_model in strongly_coupled_localization_nml must be Atmosphere or LAND'
-   call error_handler(E_ERR, 'get_close_state_strongly_coupled', errstring, source)
-endif
+select case (trim(state_model_in))
+   case('LAND')
+      s_model = LAND
+   case('ATMOSPHERE') 
+      s_model = ATMOSPHERE
+   case default
+      write(errstring,*) 'state_model in strongly_coupled_localization_nml must be Atmosphere or LAND'
+      call error_handler(E_ERR, 'get_close_state_strongly_coupled', errstring, source)
+end select
 
-if(index('Atmosphere', trim(obs_model)) > 0) then
-   o_model = ATMOSPHERE
-else if(index('Land', trim(obs_model)) > 0) then
-   o_model = LAND
-else
-   write(errstring,*) 'obs_model in strongly_coupled_localization_nml must be Atmosphere or Land'
-   call error_handler(E_ERR, 'get_close_state_strongly_coupled', errstring, source)
-endif
+obs_model_in   = adjustl(obs_model)
+call to_upper(obs_model_in)
+
+select case (trim(obs_model_in))
+   case('LAND')
+      o_model = LAND
+   case('ATMOSPHERE') 
+      o_model = ATMOSPHERE
+   case default
+      write(errstring,*) 'obs_model in strongly_coupled_localization_nml must be Atmosphere or LAND'
+      call error_handler(E_ERR, 'get_close_state_strongly_coupled', errstring, source)
+end select
 
 end subroutine initialize_module
 
@@ -165,7 +174,7 @@ write(*, *) 'obs_loc ', obs_loc
 ! Loop through state variables that are horizontally close and add in some vertical localizattion
 do i = 1, num_close
    state_loc = get_location(locs(close_ind(i)))
-write(*, *) 'stateloc', state_loc(1), state_loc(2), state_loc(3)
+!!!write(*, *) 'stateloc', state_loc(1), state_loc(2), state_loc(3)
 
    ! Add on some additional distances 
    ! Add on 20% of the maxdist just for being across the model boundary
