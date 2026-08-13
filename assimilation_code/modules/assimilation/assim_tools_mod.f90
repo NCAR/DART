@@ -614,11 +614,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    call get_obs_values(observation, obs, obs_val_index)
 
    ! Find out who has this observation and where it is
-   call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
+   call get_var_owner_index(obs_ens_handle, int(i,i8), owner, owners_index)
 
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------
-   if(ens_handle%my_pe == owner) then
+   if(obs_ens_handle%my_pe == owner) then
       ! each task has its own subset of all obs.  if they were converted in the
       ! vertical up above, then we need to broadcast the new values to all the other
       ! tasks so they're computing the right distances when applying the increments.
@@ -655,7 +655,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! vertvalue_obs_in_localization_coord and whichvert_real only used for vertical
       ! coordinate transformation
       whichvert_real = real(whichvert_obs_in_localization_coord, r8)
-      call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior,    &
+      call broadcast_send(map_pe_to_task(obs_ens_handle, owner), obs_prior,    &
          orig_obs_prior_mean, orig_obs_prior_var,                          &
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
@@ -663,7 +663,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Next block is done by processes that do NOT own this observation
    !-----------------------------------------------------------------------
    else
-      call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior,    &
+      call broadcast_recv(map_pe_to_task(obs_ens_handle, owner), obs_prior,    &
          orig_obs_prior_mean, orig_obs_prior_var,                          & 
          scalar1=obs_qc, scalar2=vertvalue_obs_in_localization_coord,      &
          scalar3=whichvert_real, scalar4=my_inflate, scalar5=my_inflate_sd)
