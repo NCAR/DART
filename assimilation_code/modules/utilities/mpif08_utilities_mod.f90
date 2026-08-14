@@ -791,9 +791,9 @@ if (itemcount <= BCAST_MAXSIZE) then
    if (.not. make_copy_before_broadcast) then
       call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
    else
-      if (my_task_id() == root) tmpdata = array
+      if (my_task_id() == root) tmpdata = array(1:itemcount)
       call MPI_Bcast(tmpdata, itemcount, datasize, root, my_local_comm, errcode)
-      if (my_task_id() /= root) array = tmpdata
+      if (my_task_id() /= root) array(1:itemcount) = tmpdata
    endif
 else
    offset = 1
