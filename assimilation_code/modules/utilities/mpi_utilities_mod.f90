@@ -764,6 +764,7 @@ endif
 ! and not the full array size.  (performance tested on an ibm machine.)
 ! calling code must determine if this is the case and pass in a length
 ! shorter than the array size.
+make_copy_before_broadcast = .true.
 if (present(icount)) then
    if (icount > size(array)) then
       write(errstring,  '(a,i12)') "number of items to broadcast: ", icount
@@ -783,6 +784,8 @@ if (verbose .and. myrank == root) write(*,*) "PE", myrank, ": bcast itemsize fro
 !if (verbose .and. myrank /= root) write(*,*) "PE", myrank, ": bcast itemsize ", itemcount, " root ", root
 
 if (make_copy_before_broadcast) allocate(tmpdata(min(itemcount,BCAST_MAXSIZE)))
+print*, 'Hello item count, make_copy_before_broadcast', itemcount,make_copy_before_broadcast
+
 
 ! at least one user has run into a limit in the MPI implementation where you
 ! cannot broadcast too large an array.  if the size of this array is too large,
@@ -791,10 +794,19 @@ if (itemcount <= BCAST_MAXSIZE) then
    if (.not. make_copy_before_broadcast) then
       call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
    else
+      ! only the first 'itemcount' items are being broadcast; 'array' itself
+      ! may be longer than that, so copy in and out of the matching section.
+      if (my_task_id() == root) print*, 'root before: tmp, arry', size(tmpdata), size(array)
+      !if (my_task_id() == root) tmpdata = array(1:itemcount)
       if (my_task_id() == root) tmpdata = array
+      if (my_task_id() == root) print*, 'root after: tmp, arry', size(tmpdata), size(array)
       call MPI_Bcast(tmpdata, itemcount, datasize, root, my_local_comm, errcode)
+      if (my_task_id() /= root) print*, "not root before: tmp, arry", size(tmpdata), size(array)
+      !if (my_task_id() /= root) array(1:itemcount) = tmpdata
       if (my_task_id() /= root) array = tmpdata
+      if (my_task_id() /= root) print*, 'not root after: tmp, arry', size(tmpdata), size(array)
    endif
+   stop
 else
    offset = 1
    do while (offset <= itemcount)
@@ -1011,6 +1023,7 @@ subroutine countup(array1, array2, array3, array4, array5, &
  logical,  intent(out)          :: morethanone, doscalar
 
 morethanone = .false.
+doscalar = .false.
 numitems = size(array1)
 
 if (present(array2)) then

@@ -791,9 +791,11 @@ if (itemcount <= BCAST_MAXSIZE) then
    if (.not. make_copy_before_broadcast) then
       call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
    else
-      if (my_task_id() == root) tmpdata = array
+      ! only the first 'itemcount' items are being broadcast; 'array' itself
+      ! may be longer than that, so copy in and out of the matching section.
+      if (my_task_id() == root) tmpdata = array(1:itemcount)
       call MPI_Bcast(tmpdata, itemcount, datasize, root, my_local_comm, errcode)
-      if (my_task_id() /= root) array = tmpdata
+      if (my_task_id() /= root) array(1:itemcount) = tmpdata
    endif
 else
    offset = 1
@@ -1011,6 +1013,7 @@ subroutine countup(array1, array2, array3, array4, array5, &
  logical,  intent(out)          :: morethanone, doscalar
 
 morethanone = .false.
+doscalar = .false.
 numitems = size(array1)
 
 if (present(array2)) then
