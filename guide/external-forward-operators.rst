@@ -139,9 +139,12 @@ File format
 In an ASCII observation sequence file the precomputed forward operator values
 are stored as an ``external_FO`` record after the observation type (and any
 type-specific metadata) and before the observation time. The ``external_FO``
-line contains the number of values (the ensemble size) and a key that
-identifies the observation, and is followed by the values themselves - one
-expected value per ensemble member, in ensemble member order:
+line contains the number of values (the ensemble size) and a key, and is
+followed by the values themselves - one expected value per ensemble member,
+in ensemble member order. The key is stored but not used by ``filter``; it is
+only an identifier for debugging and does not have to match the observation 
+number. Note when using binary observation sequence files the key is discarded
+and replaced with a local counter. 
 
 .. code-block:: none
 
