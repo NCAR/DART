@@ -224,14 +224,20 @@ Posterior forward operators and DART quality control
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The precomputed values are *prior* forward operators - they were computed
-from the ensemble of model states before assimilation. There is no way for
-``filter`` to compute a consistent *posterior* forward operator for these
-observations, since the real forward operator code is not being used. If
-posterior values are requested (``compute_posterior = .true.`` in
-``&filter_nml``), the posterior expected values for these observations are
-reported as missing, and the DART quality control value is set to 2
-(assimilated successfully, but the posterior forward operator failed) or 3
-(evaluated only, posterior forward operator failed).
+from the ensemble of model states before assimilation. ``filter`` can neither
+compute nor ingest a *posterior* forward operator for these observations: the
+internal forward operator code is not being used, and the precomputed values in
+the observation sequence file are used only for the prior. There is no way to
+supply posterior values through the observation sequence. If posterior values
+are requested (``compute_posterior = .true.`` in ``&filter_nml``), the
+posterior expected values for these observations are reported as missing, and
+the DART quality control value is set to 2 (assimilated successfully, but the
+posterior forward operator failed) or 3 (evaluated only, posterior forward
+operator failed).
+
+If you need posterior expected values for these observations, compute them
+outside DART by applying your external forward operator to the analysis
+ensemble written by ``filter``.
 
 All other DART quality control settings behave as usual; for example, an
 observation rejected by the outlier threshold still gets a DART QC of 7. See
