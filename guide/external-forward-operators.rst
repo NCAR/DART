@@ -204,6 +204,8 @@ description of ``&obs_kind_nml``.
 Requirements
 ~~~~~~~~~~~~
 
+- External forward operators are calculated from your forecast ensemble,
+  so must be added to your cycling workflow. 
 - Every observation of a type listed in
   ``use_precomputed_FOs_these_obs_types`` must contain precomputed values in
   the observation sequence file. It is a fatal error if ``filter`` needs a
