@@ -67,6 +67,15 @@ jobs:
           sed -i 's/LD = ftn/LD = nvfortran/' mkmf.template.nvhpc
           sed -i 's/FC = ftn/FC = nvfortran/' mkmf.template.nvhpc
 
+      # nvfortran 26.5 crashes its front end (fort1, SIGSEGV) under -C on an
+      # array section of a default-integer PARAMETER array passed to a module
+      # procedure. obs_diag hits this via nf90_put_att. Reported to NVIDIA;
+      # delete this step and .github/patches/ once a fixed nvhpc is in the
+      # container image.
+      - name: Work around nvfortran -C front-end crash in obs_diag
+        if: matrix.compiler == 'nvhpc'
+        run: git apply --verbose .github/patches/nvhpc-obs_diag-bounds.patch
+
       - name: Build and run lorenz_96
         uses: ./.github/actions/build_run_model
         with:
