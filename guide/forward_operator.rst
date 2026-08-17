@@ -82,6 +82,8 @@ allocate arrays of that size and call interpolate for
 the actual state vector fields required for this observation type.
 
 
+.. _op_pre_comp_fields:
+
 Optional Precomputed Fields
 ---------------------------
 
