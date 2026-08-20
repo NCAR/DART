@@ -255,6 +255,7 @@ sys_sim5
 sys_sim501
 sys_sim502
 test_sampling_err_table
+test_perturb
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables

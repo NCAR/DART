@@ -12,7 +12,8 @@ module model_mod
 
 use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength
 
-use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type
+use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type, &
+                             get_time
 
 use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_obs => get_close_obs, &
@@ -31,7 +32,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_begin_define_mode, nc_end_define_mode, &
                                  nc_open_file_readonly, nc_close_file, &
                                  nc_get_variable, nc_get_variable_size, &
-                                 NF90_MAX_NAME, nc_get_attribute_from_variable
+                                 NF90_MAX_NAME, nc_get_attribute_from_variable, &
+                                 nc_variable_exists
 
 use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
                                    set_quad_coords, quad_lon_lat_locate, &
@@ -131,10 +133,18 @@ integer  :: assimilation_period_seconds   = 0
 character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '
 character(len=NF90_MAX_NAME) :: layer_name = 'Layer'
 logical :: use_pseudo_depth = .false. ! use pseudo depth instead of sum(layer thickness) for vertical location
+! reference date to use instead of "days since 0001-01-01 00:00:00"
+integer :: reference_year = 1 ! reference year
+integer :: reference_month = 1 ! reference month
+integer :: reference_day = 1! reference day
+integer :: reference_hour = 0 ! reference hour
+integer :: reference_minute = 0 ! reference minute
+integer :: reference_second = 0 ! reference second
 
 namelist /model_nml/ template_file, static_file, ocean_geometry, assimilation_period_days, &
                      assimilation_period_seconds, model_state_variables, layer_name, &
-                     use_pseudo_depth
+                     use_pseudo_depth, reference_year, reference_month, reference_day, &
+                     reference_hour, reference_minute, reference_second
 
 
 interface on_land
@@ -1057,6 +1067,8 @@ sensible_temp = t
 end function sensible_temp
 
 !--------------------------------------------------------------------
+! restart files use Time
+! history files use time
 function read_model_time(filename)
 
 character(len=*), intent(in) :: filename
@@ -1064,22 +1076,45 @@ type(time_type) :: read_model_time
 
 integer :: ncid
 character(len=*), parameter :: routine = 'read_model_time'
-real(r8) :: days
-type(time_type) :: mom6_time
-integer :: dart_base_date_in_days, dart_days
+real(r8) :: days, seconds
+integer :: ref_days, ref_seconds
+type(time_type) :: user_reference_time
+integer :: dart_base_date_in_days, dart_days, dart_seconds
 
-dart_base_date_in_days = 584388 ! 1601 1 1 0 0
+if ( .not. module_initialized ) call static_init_model
+
 ncid = nc_open_file_readonly(filename, routine)
 
-call nc_get_variable(ncid, 'Time', days, routine)
+if (nc_variable_exists(ncid, 'Time')) then
+   call nc_get_variable(ncid, 'Time', days, routine)
+else
+   call nc_get_variable(ncid, 'time', days, routine)
+endif
 
 call nc_close_file(ncid, routine)
 
-! MOM6 counts days from year 1
-! DART counts days from 1601 
-dart_days = int(days) - dart_base_date_in_days
+! DART counts days from 1601-01-01, MOM6 counts days from 0001-01-01
+! However, user may want a different reference date for MOM6 set from model_nml
+if (reference_year == 1) then
+   ! Convert straight to DART's 1601-01-01 epoch using the fixed calendar offset.
+   dart_base_date_in_days = 584388 ! 1601 1 1 0 0, expressed as days since 0001-01-01
+   dart_days = floor(days) - dart_base_date_in_days
+   seconds = (days - floor(days)) * 86400.0_r8
+else
+   if (reference_year < 1601) then
+      call error_handler(E_ERR, routine, 'reference_year must be >= 1601 to use a year, or 1 to use MOM6 reference date of 0001-01-01')
+   endif
+   ! days from file is days since user supplied reference date.
+   user_reference_time = set_date(reference_year, reference_month, reference_day, &
+                        reference_hour, reference_minute, reference_second)
+   call get_time(user_reference_time, ref_seconds, ref_days) ! ref time in seconds and days since 1601-01-01
+   dart_days = ref_days + floor(days) ! add days read from file to days since 1601-01-01
+   seconds = real(ref_seconds, r8) + (days - floor(days)) * 86400.0_r8
+endif
 
-read_model_time = set_time(0,dart_days)
+dart_seconds = int(seconds)
+
+read_model_time = set_time(dart_seconds,dart_days)
 
 end function read_model_time
 
