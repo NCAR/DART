@@ -309,6 +309,7 @@ References
    guide/detailed-structure-obs-seq
    guide/creating-obs-seq-synthetic
    guide/creating-obs-seq-real
+   guide/external-forward-operators
    guide/manipulating-with-obs-sequence-tool
    guide/difference-between-type-and-quantity
    guide/adding-support-new-type
