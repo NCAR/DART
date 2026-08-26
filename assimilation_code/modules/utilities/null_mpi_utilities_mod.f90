@@ -26,66 +26,9 @@ use    utilities_mod, only : error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, finalize_utilities
 use time_manager_mod, only : time_type, set_time
 
-! We build on case-insensitive systems so we cannot reliably
-! count on having the build system run the fortran preprocessor
-! since the usual distinction is between bob.F90 and bob.f90
-! to decide what needs preprocessing.  instead we utilize a
-! script we provide called 'fixsystem' which looks for the
-! special XXX_BLOCK_EDIT comment lines and comments the blocks
-! in and out depending on the target compiler.
-
-! the NAG compiler needs these special definitions enabled.
-! the #ifdef lines are only there in case someday we can use
-! the fortran preprocessor.  they need to stay commented out.
-
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-! !#ifdef __NAG__
-!
-! use F90_unix_proc, only : sleep, system, exit
-!
-! !! NAG only needs the use statement above, but
-! !! these are the calling sequences if you need
-! !! to use these routines additional places in code.
-! !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
-! !    INTEGER,INTENT(IN) :: SECONDS
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
-! !
-! !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
-! !    CHARACTER*(*),INTENT(IN) :: STRING
-! !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
-! !
-! !!also used in exit_all outside this module
-! !  SUBROUTINE EXIT(STATUS)
-! !    INTEGER,OPTIONAL :: STATUS
-! !! end block
-!
-!  !#endif
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-
 
 implicit none
 private
-
-
-! BUILD TIP 
-! Some compilers require an interface block for the system() function;
-! some fail if you define one.  If you get an error at link time (something
-! like 'undefined symbol _system_') try running the fixsystem script in
-! this directory.  It is a sed script that comments in and out the interface
-! block below.  Please leave the BLOCK comment lines unchanged.
-
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !#endif
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 
 ! allow global sum to be computed for integers, r4, and r8s
@@ -475,14 +418,16 @@ end subroutine restart_task
 
 
 !-----------------------------------------------------------------------------
-! general system util wrappers.
+! general execute_command_line util wrappers.
 !-----------------------------------------------------------------------------
 
-!> Use the system() command to execute a command string.
-!> Will wait for the command to complete and returns an
-!> error code unless you end the command with & to put
-!> it into background.   Function which returns the rc
-!> of the command, 0 being all is ok.
+!> Use the execute_command_line() intrinsic subroutine
+!> to execute a command string. 
+
+!> Will wait for the
+!> command to complete and returns an error code unless
+!> you end the command with & to put it into background.
+!> Function which returns the rc of the command, 0 being all is ok.
 
 function shell_execute(execute_string, serialize)
  character(len=*), intent(in) :: execute_string
@@ -491,7 +436,7 @@ function shell_execute(execute_string, serialize)
 
 !DEBUG: print *, "in-string is: ", trim(execute_string)
 
-call do_system(execute_string, shell_execute)
+call do_execute_command_line(execute_string, shell_execute)
 
 !DEBUG: print *, "execution returns, rc = ", shell_execute
     
@@ -500,23 +445,30 @@ end function shell_execute
 !-----------------------------------------------------------------------------
 
 !> wrapper so you only have to make this work in a single place
-!> 'shell_name' is a namelist item and normally is the null string.
-!> on at least on cray system, the compute nodes only had one type
-!> of shell and you had to specify it.
 
-subroutine do_system(execute, rc)
+subroutine do_execute_command_line(execute, rc)
 
 character(len=*), intent(in)  :: execute
 integer,          intent(out) :: rc
 
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-!  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-! !!OTHER_BLOCK_EDIT START COMMENTED_IN
-    rc = system(trim(shell_name)//' '//trim(execute)//' '//char(0))
-! !!OTHER_BLOCK_EDIT END COMMENTED_IN
+integer            :: exitstat, cmdstat
+character(len=256) :: cmdmsg
 
-end subroutine do_system
+
+call execute_command_line(trim(execute), exitstat=exitstat, &
+                        cmdstat=cmdstat, cmdmsg=cmdmsg)
+
+if (cmdstat /= 0) then
+   write(errstring, '(3a,i0)') 'command "', trim(execute), &
+         '" could not be executed, cmdstat = ', cmdstat
+   call error_handler(E_WARN, 'do_execute_command_line', errstring, &
+                     source, text2=trim(cmdmsg))
+   rc = cmdstat
+else
+   rc = exitstat
+endif
+
+end subroutine do_execute_command_line
 
 !-----------------------------------------------------------------------------
 
@@ -529,14 +481,18 @@ subroutine sleep_seconds(naplength)
 
 real(r8), intent(in) :: naplength
 
-integer :: sleeptime
+ integer :: sleeptime
+ character(len=300) :: command
+ integer :: rc
 
-sleeptime = floor(naplength)
-if (sleeptime <= 0) sleeptime = 1
+ sleeptime = floor(naplength)
+ if (sleeptime <= 0) sleeptime = 1
 
-call sleep(sleeptime)
+ write(command, '("sleep ", i0)') sleeptime
+ call do_execute_command_line(trim(command), rc)
 
 end subroutine sleep_seconds
+
 
 !-----------------------------------------------------------------------------
 
@@ -662,15 +618,14 @@ end module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
-!> Call exit with the specified code.  NOT PART of the mpi_utilities_mod, so
+!> Call stop with the specified code.  NOT PART of the mpi_utilities_mod, so
 !> this can be called from any code in the system.
 
 subroutine exit_all(exit_code)
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-! use F90_unix_proc, only : exit
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
+
  integer, intent(in) :: exit_code
 
-   call exit(exit_code)
+   write(*, '("exit_all called with exit_code ", i0)') exit_code
+   stop -999
 
 end subroutine exit_all

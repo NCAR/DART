@@ -35,16 +35,6 @@ by default).  If your system uses the 'module' commands to select
 different versions, make sure you have consistent versions of the Fortran
 compiler, the netCDF libraries, and the MPI libraries.
 
-We provide a script that tries to fix compiler dependicies in the code,
-called 'fixsystem'.  It is in the assimilation_code/modules/utilities
-directory. It modifies the mpi_utilities_mod.f90 and null_mpi_utilities_mod.f90
-files as needed.  If you have a different compiler you may need to
-add cases to the script and/or to the modules.  You can debug here
-with ftest_mpi.f90 file which is a smaller, standalone test program.
-Once you get the right declarations, interface blocks, routine
-calling sequence, etc, you can make the same modifications to the
-mpi_utilities_mod.f90 file and then DART should build for you.
-
 
 
 HOW TO VERIFY AN INSTALLATION:
@@ -121,19 +111,10 @@ anything else is going to work.
 Some MPI installations supply a header file (a .h or .inc file) which
 define the parameters for the MPI library.  Others supply a Fortran 90
 module which contains the parameters and subroutine prototypes.  Use one
-or the other.  The code contains a commented out 'use' statement and
-comes by default expecting to use the include file.
+or the other.  
 
-2. Interface block for system() vs not
 
-While this isn't strictly an MPI issue, the system() function is used
-by some of the DART code and is called from the mpi module, so if you
-need to comment this block in or out, you are editing the same files.
-If you get an error trying to link your program and the message seems
-related to 'undefined external _system_' (or some close permutation of
-that message), check the comments related to this.
-
-3. Compiler wrappers
+2. Compiler wrappers
 
 Most MPI installations include compiler "wrapper" programs which you call
 instead of the actual compiler.  They add any needed compiler flags and they
@@ -147,7 +128,7 @@ path, or loading a new module with the 'module' command.
 Once you have a compiled executable, you have to run it.  This may mean
 dealing with the batch system.
 
-4. Batch systems
+3. Batch systems
 
 Most clusters have some form of batch control.  You login to one node on the
 cluster, but to execute a compute job you must run a command which adds the
