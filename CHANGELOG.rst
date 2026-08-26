@@ -22,6 +22,23 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**August 26 2026 :: pyjedi IODA QC Tag v11.25.2**
+
+Fixes:
+
+ - ObsQcName can be PreQC or QualityMarker depending on the IODA version.
+   *contributed by Shawn Murdzek, CIRES*
+ - Enforce terrain following coordinates in WRF scripting.
+
+Documentation:
+
+ - External (precomputed) Forward Operator documentation.
+
+Repo change:
+
+ - CIRRUS actions nvfortran compiler bug workaround.
+ - CIRRUS actions openmpi shared memory bug workaround.
+
 **August 10 2026 :: Localization Test Perturbations. Tag v11.25.1**
 
 New Testing Utility:
