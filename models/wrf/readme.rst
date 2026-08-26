@@ -34,7 +34,7 @@ Some important WRF-DART updates include:
 
    The mandatory use of terrain following coordinates was imposed given suboptimal performance
    of sigma hybrid coordinates when using pert_wrf_bc to generate a perturbed BC ensemble
-   based on standard WRF-DART scripting. See `Issue #807 https://github.com/NCAR/DART/issues/807>`__
+   based on standard WRF-DART scripting. See `Issue #807 <https://github.com/NCAR/DART/issues/807>`_
    Users may choose to use sigma hybrid coordinates if they provide a custom BC ensemble.
 
 It is always recommended that you update your DART version to the 
