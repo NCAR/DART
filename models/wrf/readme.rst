@@ -15,19 +15,27 @@ For more information on the interface changes required between
 different WRF versions, read through this documentation *and* the 
 WRF-DART tutorial link in the next section.  
 
-There have been several important updates to the WRF-DART interface starting
+There have been several significant updates to the WRF-DART interface starting
 with `DARTv11.5.0. <https://github.com/NCAR/DART/releases/tag/v11.5.0>`__ 
 Some important WRF-DART updates include:
 
-- Version 11.4.1: Detects use of the Hybrid Vertical Coordinate system
-  (terrain following at surface) and accounts for this in the forward
-  operator calculations.
 
 - Version 11.5.0: Improves compatibility with WRFv4+ versions where
   the prognostic 3D temperature variable is THM.  It is now mandatory to
   include THM instead of T in the ``wrf_state_variables`` namelist.
 
+- Version 11.22.0: New nested tutorial design based on 2024 severe storm event in 
+  Kansas. Shell scripting is refactored to use function based formatting. Several
+  new features were added including nested domain downscaling, perturbation bank, and
+  forecast mode. Imposed mandatory use of terrain following coordinates to avoid bug during
+  BC ensemble generation.    
 
+.. Note::
+
+   The mandatory use of terrain following coordinates was imposed given suboptimal performance
+   of sigma hybrid coordinates when using pert_wrf_bc to generate a perturbed BC ensemble
+   based on standard WRF-DART scripting. See `Issue #807 <https://github.com/NCAR/DART/issues/807>`_
+   Users may choose to use sigma hybrid coordinates if they provide a custom BC ensemble.
 
 It is always recommended that you update your DART version to the 
 `latest release <https://github.com/NCAR/DART/releases>`__ before beginning new research.
@@ -36,9 +44,13 @@ WRF-DART Tutorial
 -----------------
 
 This tutorial provides a real-world example of assimilating a wide variety of atmospheric
-observations during an extreme storm event for the United States during April 2017.
-**It is strongly recommended that you also review and perform the tutorial for 
-running a WRF-DART assimilation** `here. <https://docs.dart.ucar.edu/en/latest/models/wrf/tutorial/README.html>`__
+observations during an extreme Derecho storm event in Kansas during May 2024.  This
+tutorial leverages newly added features from DART release v11.22.0 including: 1) generation of the 
+perturbation bank using WRFDA CV3 methodology, 2) automatic downscaling of perturbations from outer
+to inner domains within nested setup, 3) use of both assimilation and forecast mode. 
+**It is strongly recommended that you review and perform the tutorial before 
+running your own customized WRF-DART assimilation** `here. <https://docs.dart.ucar.edu/en/latest/models/wrf/tutorial/README.html>`__
+
 
 
 WRF Interface Overview
