@@ -49,6 +49,25 @@ set paramfile = /glade/derecho/scratch/bmraczka/WRFv4.5_nested/scripts/param.csh
 echo "Sourcing parameter file"
 source $paramfile
 
+#################################################################################
+# Immediately check for terrain following coordinates
+#################################################################################
+
+cd ${ICBC_DIR}
+${COPY} ${TEMPLATE_DIR}/namelist.input.meso namelist.wps.check
+set hybrid_opt  = `grep "hybrid_opt"  namelist.wps.check | cut -d= -f2`
+set use_theta_m = `grep "use_theta_m" namelist.wps.check | cut -d= -f2`
+${REMOVE} namelist.wps.check
+
+if ( $hybrid_opt != 0 ) then
+   echo "ERROR: WRF-DART must use terrain following coordinates, hybrid_opt must be 0"
+   exit 1
+endif
+if ( $use_theta_m != 0 ) then
+   echo "ERROR: WRF-DART must assign WRF variable THM as T, use_theta_m must be 0"
+   exit 1
+endif
+
 cd ${ICBC_DIR}
 ${REMOVE} geo_*.nc namelist.wps namelist.input geogrid_done
 mkdir -p  geogrid
