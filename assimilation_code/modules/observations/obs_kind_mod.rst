@@ -1,3 +1,5 @@
+.. _obs_kind_mod:
+
 MODULE ``obs_kind_mod``
 =======================
 
