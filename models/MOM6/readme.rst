@@ -5,9 +5,13 @@ A new ocean component model based on the Modular Ocean Model version 6 (MOM6) ha
 `CESM <https://www.cesm.ucar.edu/>`_ and is anticipated to replace POP2 as the default ocean component in CESM3.
 An early functional release of the MOM6 ocean component has been made available to users beginning with CESM2.2.
 Instructions for using MOM6 in CESM are available on the `MOM_interface GitHub Wiki
-<https://github.com/ESCOMP/MOM_interface/wiki>`_.
+<https://github.com/ESCOMP/MOM_interface/wiki>`_. This DART-MOM6 model_mod was developed for the NCAR fork of
+`MOM6 <https://github.com/NCAR/MOM6>`_ .
 
-This DART-MOM6 interface was developed for `MOM6 <https://github.com/NCAR/MOM6>`_ within the CESM framework.
+A DART_interface to run DART as a CESM3 component is under active development as part of the CROCODILE project for
+both regional and global MOM6 configurations. Information is available in the
+`DART interface documentation <https://crocodile-cesm.github.io/DART_interface/>`_, and the
+`CrocoDash tutorial notebooks <https://crocodile-cesm.github.io/CrocoGallery/latest/>`_
 
 MOM6 time
 ---------
