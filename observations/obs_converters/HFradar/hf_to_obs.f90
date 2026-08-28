@@ -67,12 +67,17 @@ real(r8), parameter :: CM2M             = 1.0e-2_r8  ! Conversion from cm to met
 integer  :: num_copies = 1,   &   ! number of copies in sequence
             num_qc     = 1        ! number of QC entries
 
-character(len=30), dimension(3) :: obs_names = ['Eastward Sea Water Velocity ' , &
+character(len=30), dimension(3) :: obs_names = ['Eastward Sea Water Velocity ', &
                                                 'Northward Sea Water Velocity', & 
-                                                'Radial Sea Water Velocity   '   ]
+                                                'Radial Sea Water Velocity   '  ]
+
+character(len=35), dimension(3) :: new_obs_names = ['U component of current velocity', &
+                                                    'V component of current velocity', &
+                                                    'Radial current velocity        '  ]
 
 character(len=256)      :: next_infile, instrument
 character(len=512)      :: string1, string2, string3
+character(len=3)        :: hf_type
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: obs_time, prev_time
@@ -85,7 +90,7 @@ integer                 :: ix, iy, nx, ny
 
 logical                 :: from_list = .false., first_obs = .true.
 real(r8)                :: obs_qc, rmin_km, rmax_km 
-real(r8)                :: missing_u, missing_v
+real(r8)                :: missing_u, missing_v, missing_Vr
 
 ! Debugging counters
 integer :: totals_kept     = 0
@@ -115,6 +120,7 @@ integer  :: num_sd_u = 0           , num_sd_v = 0
 integer  :: n_uval   = 0           , n_vval   = 0
 
 ! Arrays for RADIAL velocities
+real(r8), allocatable :: rlon_1d(:), rlat_1d(:)
 real(r8), allocatable :: rlon(:, :), rlat(:, :) ! Cell geolocation
 real(r8), allocatable :: rvel(:, :)             ! Measured radial velocity (away from radar) 
 real(r8), allocatable :: rflg(:, :)             ! Vector (quality) flag: 0 <= good < 1024 
@@ -186,8 +192,8 @@ else
 endif
 
 call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
-call set_copy_meta_data(obs_seq, num_copies, 'HF radar observation')
-call set_qc_meta_data(obs_seq, num_qc, 'HF radar QC')
+call set_copy_meta_data(obs_seq, num_copies, 'observation')
+call set_qc_meta_data(obs_seq, num_qc, 'QC')
 
 ! Loop over the obs files
 filenum = 1
@@ -204,18 +210,18 @@ FILELOOP: do
   endif
   if (next_infile == '') exit FILELOOP  
   print * 
-  if (debug) write(*, '(A, i0, X, A)') 'Input file: #', filenum, next_infile
 
   ! Open it and configure it
   ! hf_kind = 0: Totals, 1: Radials 
-  call configure_HF_file(next_infile, ncid, hf_kind, obs_time)  
+  call configure_HF_file(next_infile, ncid, hf_kind, hf_type, obs_time) 
+  if (debug) write(*, '(A, i0, X, 4A)') 'Input file: #', filenum, trim(next_infile), ' [', hf_type, ' Radar]' 
 
   if (hf_kind == 0) then
      ! More straight-forward case:
      ! We have access to the total U & V. 
      ! Below, we read the obs locations, currents values
      ! and associated errors 
-     call read_hf_totals(ncid)
+     call read_hf_totals(ncid, hf_type)
      do ilon = 1, nlon
         do ilat = 1, nlat
            ! Adding a U obs
@@ -239,17 +245,27 @@ FILELOOP: do
   else
      ! Need to read radial velocities and extra metadata (e.g., angle)
      ! for forward operator calculations
-     call read_hf_radials(ncid)
+     call read_hf_radials(ncid, hf_type)
      do ix = 1, nx
         do iy = 1, ny
            ! Adding radial velocity obs
-           if (good_radial_obs(rvel(iy, ix), rflg(iy, ix), rnge(iy, ix))) then 
-              call fill_obs(obs, prev_obs, prev_time, obs_num, rlon(iy, ix), & 
-                   rlat(iy, ix), HFRADAR_RADIAL_VELOCITY, obs_time,          &
-                   rstd(iy, ix), rvel(iy, ix), obs_qc, phi(iy, ix))
-              call bump_radials(rvel(iy, ix), rstd(iy, ix))
-              radials_kept = radials_kept + 1
-           endif 
+           if (hf_type == 'OLD') then 
+              if (good_radial_obs(rvel(iy, ix), rflg(iy, ix), rnge(iy, ix))) then 
+                 call fill_obs(obs, prev_obs, prev_time, obs_num, rlon(iy, ix), & 
+                      rlat(iy, ix), HFRADAR_RADIAL_VELOCITY, obs_time,          &
+                      rstd(iy, ix), rvel(iy, ix), obs_qc, phi(iy, ix))
+                 call bump_radials(rvel(iy, ix), rstd(iy, ix))
+                 radials_kept = radials_kept + 1
+              endif 
+           elseif (hf_type == 'NEW') then 
+              if (good_new_radial_obs(rvel(ix, iy))) then 
+                 call fill_obs(obs, prev_obs, prev_time, obs_num, rlon_1D(ix), &
+                      rlat_1D(iy), HFRADAR_RADIAL_VELOCITY, obs_time,          &
+                      rstd(ix, iy), rvel(ix, iy), obs_qc, phi(ix, iy))
+                 call bump_radials(rvel(ix, iy), rstd(ix, iy))
+                 radials_kept = radials_kept + 1
+              endif
+           endif
         enddo
      enddo
   endif 
@@ -339,15 +355,35 @@ end subroutine finish_obs
 !------------------------------------------------------------
 ! Read the obs location plus vectors: U and V
 ! in addition to the obs error std
-subroutine read_hf_totals(ncid)
+subroutine read_hf_totals(ncid, hf_type)
 
 character(len=*), parameter :: routine = 'read_hf_totals'
 
-integer, intent(in) :: ncid
-real(r8)            :: uval, vval
-character(len=64)   :: vel_unit
+integer, intent(in)          :: ncid
+character(len=3), intent(in) :: hf_type
+real(r8)                     :: uval, vval
+character(len=64)            :: vel_unit
 
 if (debug) call print_date(obs_time, str= '   * Reading in TOTAL U and V data:')
+
+if (hf_type == 'OLD') then 
+   call read_old_totals(ncid)
+else
+   call read_new_totals(ncid)
+endif
+
+end subroutine read_hf_totals
+
+
+!---------------------------------------------------------------
+! Read total U and V components from the old radar sites
+subroutine read_old_totals(ncid)
+
+character(len=*), parameter :: routine = 'read_old_totals'
+
+integer, intent(in)         :: ncid
+real(r8)                    :: uval, vval
+character(len=64)           :: vel_unit
 
 nlat = nc_get_dimension_size(ncid, 'lat', routine)
 nlon = nc_get_dimension_size(ncid, 'lon', routine)
@@ -398,43 +434,135 @@ do ilon = 1, nlon
    do ilat = 1, nlat
       if (sd_u(ilon,ilat) /= sd_u(ilon,ilat)) sd_u(ilon,ilat) = OBS_ERROR_SD_MIN
       if (sd_v(ilon,ilat) /= sd_v(ilon,ilat)) sd_v(ilon,ilat) = OBS_ERROR_SD_MIN
-      
+
       uval = abs(u(ilon, ilat))
-      vval = abs(v(ilon, ilat)) 
+      vval = abs(v(ilon, ilat))
       if (uval /= missing_u .and. uval == uval) &
          sd_u(ilon, ilat) = obs_err_sd_check(sd_u(ilon, ilat))
       if (vval /= missing_v .and. vval == vval) &
          sd_v(ilon, ilat) = obs_err_sd_check(sd_v(ilon, ilat))
    enddo
-enddo 
+enddo
 
 if (debug) write(*,'(3X,A)') '* Clamped obs errors to configured min/max.'
 
-end subroutine read_hf_totals
+end subroutine read_old_totals
 
 
 !---------------------------------------------------------------
-! Real the lin-of-sight velocity component and assign obs errors. 
-subroutine read_hf_radials(ncid)
+! Read total U and V components from the new radar sites
+subroutine read_new_totals(ncid)
+
+character(len=*), parameter :: routine = 'read_new_totals'
+
+integer, intent(in)         :: ncid
+real(r8)                    :: uval, vval
+character(len=64)           :: vel_unit
+
+nlat = nc_get_dimension_size(ncid, 'latitude' , routine)
+nlon = nc_get_dimension_size(ncid, 'longitude', routine)
+
+if (debug) then
+   if (nc_get_dimension_size(ncid, 'time', routine) /= 1) then
+      string1 = '"time" dimension > 1 not supported.'
+      call error_handler(E_ERR, routine, string1, source)
+   endif
+endif
+
+allocate(lat(nlat), lon(nlon))
+allocate(u(nlon, nlat), v(nlon, nlat))
+allocate(sd_u(nlon, nlat), sd_v(nlon, nlat))
+
+call nc_get_variable(ncid, 'latitude', lat, routine)
+call nc_get_variable(ncid, 'longitude', lon, routine)
+where(lon < 0.0_r8) lon = lon + 360.0_r8
+
+call nc_get_attribute_from_variable(ncid, 'ewct', '_FillValue', missing_u, routine)
+call nc_get_attribute_from_variable(ncid, 'nsct', '_FillValue', missing_v, routine)
+
+! Read U, V and provided obs errors
+call nc_get_variable(ncid, 'ewct', u, routine)
+call nc_get_variable(ncid, 'nsct', v, routine)
+
+! Make sure the errors are in the netcdf file
+sd_u = OBS_ERROR_SD_MIN
+if (nc_variable_exists(ncid,'ewct_error')) then
+   call nc_get_variable(ncid, 'ewct_error', sd_u,routine)
+endif
+
+sd_v = OBS_ERROR_SD_MIN
+if (nc_variable_exists(ncid,'nsct_error')) then
+   call nc_get_variable(ncid,'nsct_error', sd_v, routine)
+endif
+
+if (debug) write(*, '(3X, A)') '* Read in U, V, stdU, and stdV from the input obs file.'
+
+! Make sure we get u and v in m/s
+call nc_get_attribute_from_variable(ncid, 'ewct', 'units', vel_unit)
+call velocity_units(adjustl(vel_unit), u, new_obs_names(1))
+call nc_get_attribute_from_variable(ncid, 'nsct', 'units', vel_unit)
+call velocity_units(adjustl(vel_unit), v, new_obs_names(2))
+
+! Adjust obs errors
+do ilon = 1, nlon
+   do ilat = 1, nlat
+      if (sd_u(ilon,ilat) /= sd_u(ilon,ilat)) sd_u(ilon,ilat) = OBS_ERROR_SD_MIN
+      if (sd_v(ilon,ilat) /= sd_v(ilon,ilat)) sd_v(ilon,ilat) = OBS_ERROR_SD_MIN
+
+      uval = abs(u(ilon, ilat))
+      vval = abs(v(ilon, ilat))
+      if (uval /= missing_u .and. uval == uval) &
+         sd_u(ilon, ilat) = obs_err_sd_check(sd_u(ilon, ilat))
+      if (vval /= missing_v .and. vval == vval) &
+         sd_v(ilon, ilat) = obs_err_sd_check(sd_v(ilon, ilat))
+   enddo
+enddo
+
+if (debug) write(*,'(3X,A)') '* Clamped obs errors to configured min/max.'
+
+end subroutine read_new_totals
+
+
+!---------------------------------------------------------------
+! Real the line-of-sight velocity component and assign obs errors. 
+subroutine read_hf_radials(ncid, hf_type)
 
 character(len=*), parameter :: routine = 'read_hf_radials'
 
-integer, intent(in) :: ncid
-real(r8)            :: sigma, r
-real(r8)            :: sigma0, grow
-character(len=64)   :: vel_unit, angle_unit
-logical             :: attin
-
-! Coastal CODAR radials 0.10 - 0.25
-! Source: IOOS, SEACOOS guidelines
-sigma0 = 0.15_r8  ! m/s, near-site error
-grow   = 1.0_r8   ! scaling factor
+integer, intent(in)          :: ncid
+character(len=3), intent(in) :: hf_type
 
 if (debug) call print_date(obs_time, str= '   * Reading in Radial Velocity:')
 
+if (hf_type == 'OLD') then
+   call read_old_radials(ncid)
+else
+   call read_new_radials(ncid)
+endif
+
+end subroutine read_hf_radials
+
+
+!---------------------------------------------------------------
+! Real Vr from old radar sites 
+subroutine read_old_radials(ncid)
+
+character(len=*), parameter :: routine = 'read_old_radials'
+
+integer, intent(in)         :: ncid
+real(r8)                    :: sigma, r
+real(r8)                    :: sigma0, grow
+character(len=64)           :: vel_unit, angle_unit
+logical                     :: attin 
+                   
+! Coastal CODAR radials 0.10 - 0.25
+! Source: IOOS, SEACOOS guidelines
+sigma0 = 0.15_r8  ! m/s, near-site error 
+grow   = 1.0_r8   ! scaling factor
+
 nx = nc_get_dimension_size(ncid, 'x', routine)
 ny = nc_get_dimension_size(ncid, 'y', routine)
-
+   
 allocate(rlat(ny, nx), rlon(ny, nx))
 allocate(rvel(ny, nx), rflg(ny, nx))
 allocate(rnge(ny, nx), phi(ny, nx))
@@ -455,7 +583,7 @@ if (debug) then
                    all(shape(rvel) == shape(rlon)) .and. &
                    all(shape(phi ) == shape(rlon)) .and. &
                    all(shape(rnge) == shape(rlon)) .and. &
-                   all(shape(rflg) == shape(rlon)) ) ) then 
+                   all(shape(rflg) == shape(rlon)) ) ) then
       string1 = 'Inconsistent 2-D dimensions'
       write(string2,'(A,2I6,A,2I6)') 'Mismatch: rlat ',shape(rlat), ' vs rlon ',shape(rlon)
       call error_handler(E_ERR, routine, string1, source, text2=string2)
@@ -464,7 +592,7 @@ endif
 
 ! Check the units of the angle from the instrument
 call nc_get_attribute_from_variable(ncid, 'bear', 'units', angle_unit)
-if (angle_unit(1:7) == 'degrees') then 
+if (angle_unit(1:7) == 'degrees') then
    ! Do nothing because the forward operator will do the conversion
    if (debug) write(*, '(5X, A)') 'Bear angle is in degrees. The FO will convert it to radians.'
 elseif  (angle_unit(1:7) == 'radians') then
@@ -483,15 +611,15 @@ call velocity_units(adjustl(vel_unit), rvel, obs_names(3))
 call range_limits()
 
 ! Compute range-dependent obs error sd
-rstd = sigma0 
+rstd = sigma0
 
 do ix = 1, nx
    do iy = 1, ny
       sigma = sigma0
       r     = rnge(iy, ix) ! distance in km 
-      if (r == r .and. rmax_km > 0.0_r8) then 
+      if (r == r .and. rmax_km > 0.0_r8) then
          sigma = sigma0 * (1.0_r8 + grow * (r / rmax_km))
-      endif          
+      endif
       rstd(iy, ix) = obs_err_sd_check(sigma)
    enddo
 enddo
@@ -499,9 +627,9 @@ enddo
 if (debug) write(*, '(3X, A)') '* Computed obs errors using a range-dependent strategy.'
 
 ! Assign an instrument
-attin = nc_global_attribute_exists(ncid, 'Site') 
+attin = nc_global_attribute_exists(ncid, 'Site')
 
-if (attin) then 
+if (attin) then
    call nc_get_global_attribute(ncid, 'Site', instrument)
    call clarify_instrument(instrument)
 else
@@ -509,20 +637,96 @@ else
 endif
 call register_instrument(instrument)
 
-end subroutine read_hf_radials
+end subroutine read_old_radials
+
+
+!---------------------------------------------------------------
+! Real Vr from new radar sites 
+subroutine read_new_radials(ncid)
+
+character(len=*), parameter :: routine = 'read_new_radials'
+
+integer, intent(in)         :: ncid
+integer                     :: varid
+character(len=64)           :: vel_unit, angle_unit
+character(len=11)           :: station
+logical                     :: attin
+
+nx = nc_get_dimension_size(ncid, 'longitude', routine)
+ny = nc_get_dimension_size(ncid, 'latitude' , routine)
+
+allocate(rlat_1D(ny), rlon_1D(nx))
+allocate(rvel(nx, ny), phi(nx, ny))
+allocate(rstd(nx, ny))
+
+call nc_get_variable(ncid, 'latitude' , rlat_1D, routine)
+call nc_get_variable(ncid, 'longitude', rlon_1D, routine)
+where(rlon_1D < 0.0_r8) rlon_1D = rlon_1D + 360.0_r8
+
+! Read  bearing angle and radial velocity
+call nc_get_variable(ncid, 'hcdt',  phi, routine)
+call nc_get_variable(ncid, 'hcsp', rvel, routine)
+
+call nc_get_attribute_from_variable(ncid, 'hcsp', '_FillValue', missing_Vr, routine)
+
+! Check the units of the angle from the instrument
+call nc_get_attribute_from_variable(ncid, 'hcdt', 'units', angle_unit)
+if (angle_unit(1:6) == 'degree') then
+   ! Do nothing because the forward operator will do the conversion
+   if (debug) write(*, '(5X, A)') 'Bear angle is in degrees. The FO will convert it to radians.'
+elseif  (angle_unit(1:6) == 'radian') then
+   phi = phi * rad2deg
+   if (debug) write(*, '(5X, A)') 'Incoming bearing is in radians.'
+else
+   write(*, string1) 'Unknown angle units: '//trim(adjustl(angle_unit))
+   call error_handler(E_ERR, routine, string1, source)
+endif
+
+! Make sure we get line-of-sight vel in m/s
+call nc_get_attribute_from_variable(ncid, 'hcsp', 'units', vel_unit)
+call velocity_units(adjustl(vel_unit), rvel, new_obs_names(3))
+
+! Read in radial velocity errors
+call nc_get_variable(ncid, 'hcsp_error', rstd, routine)
+
+do ix = 1, nx
+   do iy = 1, ny
+      rstd(ix, iy) = obs_err_sd_check(rstd(ix, iy))
+   enddo
+enddo
+
+if (debug) write(*, '(3X, A)') '* Read Obs errors from file.'
+
+! Assign an instrument
+attin = nc_variable_exists(ncid, 'station_name')
+
+if (attin) then
+   call nc_check(nf90_inq_varid(ncid, 'station_name', varid), routine)
+   call nc_check(nf90_get_var(ncid, varid, station), routine)
+
+   call clarify_instrument(station)
+else
+   instrument = 'UNKNOWN'
+endif
+
+instrument = station
+call register_instrument(instrument)
+
+end subroutine read_new_radials
 
 
 !------------------------------------------------------------
 ! Figure out the type of HF data that we have 
 ! and parse the time of the obs 
-subroutine configure_HF_file(hf_file, id, hf_kind, obs_time)
+subroutine configure_HF_file(hf_file, id, hf_kind, hf_type, obs_time)
 
 character(len=*), parameter  :: routine = 'configure_HF_file'
 
-character(len=*), intent(in) :: hf_file
-integer, intent(out)         :: id 
-integer, intent(out)         :: hf_kind
-type(time_type), intent(out) :: obs_time
+character(len=*), intent(in)  :: hf_file
+character(len=3), intent(out) :: hf_type
+integer, intent(out)          :: id 
+integer, intent(out)          :: hf_kind
+type(time_type), intent(out)  :: obs_time
 
 integer           :: year, month, day, hour, minute, second, ios
 real(digits12)    :: time_since_init
@@ -536,7 +740,18 @@ id = nc_open_file_readonly(hf_file)
 hf_kind = 0 ! HF U, V Totals
 
 ! Check if 'Bearing From Instrument' is available
-if (nc_variable_exists(id, 'bear')) hf_kind = 1   ! HF Radials case 
+if (nc_variable_exists(id, 'bear') .or. & 
+    nc_variable_exists(id, 'hcdt')) hf_kind = 1   ! HF Radials case 
+
+! Check if the radar site is old or new 
+! File format for new radar instruments is different 
+hf_type = 'OLD'
+select case (hf_kind)
+  case (1)
+     if (nc_variable_exists(id, 'station_name')) hf_type = 'NEW'
+  case (0)
+     if (nc_variable_exists(id, 'ewct')) hf_type = 'NEW'
+end select 
 
 ! Manage time
 call nc_get_variable(id, 'time', time_since_init)
@@ -660,6 +875,22 @@ endif
 
 end function good_total_obs
 
+
+
+!------------------------------------------------------------
+! Figure out good new radial velocities
+logical function good_new_radial_obs(val)
+
+real(r8), intent(in) :: val
+
+good_new_radial_obs = .true.
+
+if (val /= val .or. val == missing_Vr) then
+   drop_nan_radial = drop_nan_radial + 1
+   good_new_radial_obs = .false.
+endif
+
+end function good_new_radial_obs
 
 !------------------------------------------------------------
 ! Figure out whether we can use this radial obs or not
@@ -914,6 +1145,8 @@ if (allocated(sd_v)) deallocate(sd_v)
 
 if (allocated(rlon)) deallocate(rlon)
 if (allocated(rlat)) deallocate(rlat)
+if (allocated(rlon_1D)) deallocate(rlon_1D)
+if (allocated(rlat_1D)) deallocate(rlat_1D)
 if (allocated(rvel)) deallocate(rvel)
 if (allocated(rflg)) deallocate(rflg)
 if (allocated(rnge)) deallocate(rnge)
