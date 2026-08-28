@@ -23,26 +23,45 @@ by national and regional ocean observing networks, including:
   local installations at *BATU*, *DALI*, and *BADA* sites used for the **InaCAWO–ROMS**
   project with NSF NCAR.
 
-The converter supports two data families:
+The converter supports both **total (vector) currents** and **single-site radial currents**, 
+and can ingest NerCDF products from both the original and the new HF raadr systems. 
+The two radar generations use different NetCDF conventions, including different
+coordinate and observation variable names. The converter automatically determines 
+the observation type and file format from the contents of each NetCDF file; 
+no namelist option is required to select between the supported formats. 
 
-* **Totals (vector currents):** gridded eastward (``u``) and northward (``v``) surface currents
-  with optional per-cell standard deviations (``stdu``, ``stdv``).
+The supported observation products are:
+
+* **Totals (vector currents):** gridded eastward and northward surface current components.
 * **Radials (single-site line-of-sight currents):** curvilinear grids with
-  bearing angle (``bear``), range (``rnge``), QC flag (``vflg``), and radial velocity (``velo``).
+  bearing angle, range, QC flag, and radial velocity.
 
 Each observation is written with a DART kind and associated error variance.
 All locations are set to ``VERTISSURFACE``.
 
 Forward operators
 -----------------
-* ``HFRADAR_U_CURRENT_COMPONENT`` uses observed ``u``
-* ``HFRADAR_V_CURRENT_COMPONENT`` uses observed ``v``
+* ``HFRADAR_U_CURRENT_COMPONENT`` uses observed eastward surface-current
+* ``HFRADAR_V_CURRENT_COMPONENT`` uses observed northward surface-current
 * ``HFRADAR_RADIAL_VELOCITY`` with operator: :math:`U \cos(\phi) + V \sin(\phi)`,
   where :math:`\phi` is the beam bearing in **radians**.
 
 Input data expectations
 -----------------------
-**Totals files** (regular lat/lon):
+The converter supports two HF radar NetCDF formats, referred to below as the 
+**original** and **new** formats. Both formats can contain either total-current 
+or radial-current observations. 
+
+The format is detected automatically for every input file. Consequently, a
+``file_list`` may contain data using either supported format without requiring
+separate converter configurations.
+
+Original radar format
+^^^^^^^^^^^^^^^^^^^^^
+
+Totals
+~~~~~
+Original-format totals files use a regular latitude/longitude grid.
 
 - Dimensions: ``lat(nlat)``, ``lon(nlon)``
 
@@ -52,7 +71,9 @@ Input data expectations
    + optional ``stdu(lon,lat)``, ``stdv(lon,lat)`` having the same units as velocities
    + ``time`` dimension (length 1)
 
-**Radials files** (curvilinear x/y):
+Radials
+~~~~~~
+Original-format radial files use a two-dimensional curvilinear grid.
 
 - Dimensions: ``x(nx)``, ``y(ny)`` (2-D variables)
 
@@ -67,17 +88,67 @@ Input data expectations
 - Global attributes: ``Site`` (instrument/site name). If the attribute is not available, 
   the converter sets the instrument to "UNKNOWN".
 
-.. note::
- 
-  **Time handling (both types):**
-  The converter reads the time variable and units attribute, parses the
-  calendar reference, and constructs the DART time.  
-  Example accepted formats:
 
-  .. code-block:: text
+New radar format
+^^^^^^^^^^^^^^^^
+The newer HF radar products use one-dimensional ``latitude`` and ``longitude``
+coordinates and different observation variable names. Importantly, these files
+also provide observation-error estimates directly, including errors for radial
+current observations.
 
-    seconds since YYYY-MM-DD hh:mm:ss
-    hours since   YYYY-MM-DD hh:mm:ss
+Totals
+~~~~~
+- Dimensions: ``latitude(nlat)``, ``longitude(nlon)``
+
+- Variables:
+
+    + ``ewct``: eastward surface-current component.
+    + ``nsct``: northward surface-current component.
+    + ``ewct_error``: observation-error standard deviation associated with ``ewct``.
+    + ``nsct_error``: observation-error standard deviation associated with ``nsct``.
+
+Radials
+~~~~~~
+- Dimensions: ``latitude(nlat)``, ``longitude(nlon)``
+
+- Variables:
+
+    + ``hcsp``: radial surface-current velocity.
+    + ``hcdt``: direction/bearing associated with the radial velocity.
+    + ``hcsp_error``: observation-error standard deviation for ``hcsp``.
+    + ``station_name``: radar station identifier.
+
+- The radar site is identified from the ``station_name`` variable. If it is not
+  available, the instrument is reported as ``UNKNOWN``.
+
+Automatic format detection
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For every input file, ``configure_HF_file`` first determines whether the file
+contains totals or radials and then identifies the corresponding radar format.
+
+A file is identified as containing radial observations when either ``bear`` or
+``hcdt`` is present. Otherwise it is treated as a totals file.
+
+For radial data, the presence of ``station_name`` identifies the new format.
+For totals data, the presence of ``ewct`` identifies the new format. Files not
+matching these conditions are processed using the original format. This detection 
+is performed separately for every file, so both formats can be
+included in the same ``file_list``.
+
+Time handling
+^^^^^^^^^^^^^
+Time handling is common to both radar formats and both observation products.
+The converter reads the ``time`` variable and its ``units`` attribute, parses
+the calendar reference time, and constructs the corresponding DART
+``time_type`` object.
+
+Accepted time-unit formats are:
+
+.. code-block:: text
+
+   seconds since YYYY-MM-DD hh:mm:ss
+   hours since YYYY-MM-DD hh:mm:ss
 
 
 Build & run
@@ -90,21 +161,63 @@ The program writes a single output sequence defined by ``file_out``.
 
    ./hf_to_obs
 
+
 Observation Errors
-^^^^^^^^^^^^^^^^^^
-- Observation error standard deviations for totals U and V are 
-  read from input HF radar NetCDF file, if available. If the 
-  uncertainties are not part of the raw data, they are set 0.001 m/s.
-- Radial (single-site) files almost never include explicit per-cell
-  uncertainties, because each radial velocity comes from a spectral peak fit in the Doppler spectrum,
-  and the uncertainty often depends on SNR, spectral width, antenna pattern, and geometric precision.
-- The radial observation errors are set based on the `IOOS <https://ioos.noaa.gov/>`_,
-  `SEACOOS <https://sccoos.org/>`_ guidelines, where a typical :math:`\sigma_0`
-  range for a coastal CODAR radial is 0.15 m/s.
-- We also apply an error growth with range to mimic degradation:
-  :math:`\sigma(r) = \sigma_0 \left(1 + \alpha \frac{r}{r_{max}}\right)`;
-  :math:`\alpha \approx 1.0`
-- Finally, all error SD values are clamped to the range [0.001, 0.4] m/s.
+------------------
+Observation-error treatment depends on the radar format and observation
+product. Observation-error values supplied to DART are standard deviations;
+the converter squares these values when assigning the observation-error
+variance to the DART observation definition.
+
+Original radar format
+^^^^^^^^^^^^^^^^^^^^^
+For total-current observations, error standard deviations are read from
+``stdu`` and ``stdv`` when these variables are available. If the uncertainties
+are not included in the input file, the converter uses the minimum supported
+observation-error standard deviation of 0.001 m/s.
+
+Original radial-current files do not provide explicit per-cell uncertainty
+estimates. For these observations, the converter computes an observation-error
+standard deviation using a range-dependent parameterization.
+
+A baseline error standard deviation of
+
+.. math::
+
+   \sigma_0 = 0.15 \; \mathrm{m \, s^{-1}}
+
+is used. The uncertainty is increased with distance from the radar according to
+
+.. math::
+
+   \sigma(r) =
+   \sigma_0
+   \left(
+   1 + \alpha \frac{r}{r_{\max}}
+   \right), \quad \alpha = 1.0.
+
+
+New radar format
+^^^^^^^^^^^^^^^^
+The newer HF radar products provide observation-error estimates directly in
+the NetCDF files. Consequently, no range-dependent error parameterization is
+required for the new observations.
+
+For total-current observations, the converter reads ``ewct_error`` for the 
+eastward current component and ``nsct_error`` for the northward current component.
+
+For radial-current observations, the converter reads ``hcsp_error`` for the radial 
+current velocity.
+
+Error bounds
+^^^^^^^^^^^^
+For all supported radar products, observation-error standard deviations are
+constrained to
+
+.. math::
+
+   0.001 \leq \sigma \leq 0.4 \; \mathrm{m \, s^{-1}}.
+
 
 Namelist
 --------
@@ -185,25 +298,50 @@ with an ampersand '&' and terminate with a slash '/'.
 
 Key Routines
 ------------
-Below are brief descriptions of the main routines used in ``hf_to_obs``:
+Below are brief descriptions of the main routines used in ``hf_to_obs``.
 
 * **configure_HF_file:**
   Opens the NetCDF file, determines whether it contains totals or radials,
   reads the time variable and its units (seconds/hours since base date),
   and constructs a DART ``time_type`` object.
   Sets ``hf_kind = 0`` for totals and ``hf_kind = 1`` for radials.
+  The routine also sets ``hf_type`` to ``OLD`` or ``NEW`` based on 
+  the variables available in the file.
 
 * **read_hf_totals:**
-  Reads gridded totals: ``u(lon,lat)``, ``v(lon,lat)``, and optional
-  ``stdu``, ``stdv`` fields. Ensures units are in m/s and applies
-  lower/upper bounds to the observation error standard deviations.
-  Missing values are detected via NetCDF ``_FillValue``.
+  Dispatches total-current files to either ``read_old_totals`` or
+  ``read_new_totals`` according to the detected radar format.
+
+* **read_old_totals:**
+  Reads original-format gridded total currents:
+  ``lat``, ``lon``, ``u``, ``v``, optional ``stdu``, and 
+  optional ``stdv``. The routine handles unit conversion, missing values, 
+  and observation-error bounds.
+
+* **read_new_totals:**
+  Reads new-format total-current data:
+  ``latitude``, ``longitude``, ``ewct``, ``nsct``, ``ewct_error``, and 
+  ``nsct_error``. The supplied observation errors are read from the NetCDF 
+  file when available and constrained to the supported error range.
 
 * **read_hf_radials:**
-  Reads single-site radial velocities and supporting metadata including
-  bearing (``bear``), range (``rnge``), and QC flags (``vflg``).
-  Performs range-dependent error assignment and filters bad or out-of-range data.
-  The radar site name is obtained from the global ``Site`` attribute.
+  Dispatches radial-current files to either ``read_old_radials`` or
+  ``read_new_radials`` according to the detected radar format.
+
+* **read_old_radials:**
+  Reads original-format radial-current observations and associated metadata:
+  ``lat``, ``lon``, ``velo``, ``bear``, ``rnge``, and ``vflg``.
+  The routine applies the radial QC and range filters and computes
+  range-dependent observation-error standard deviations. The radar 
+  site is obtained from the global ``Site`` attribute.
+
+* **read_new_radials:**
+  Reads new-format radial-current observations and metadata:
+  ``latitude``, ``longitude``, ``hcsp``, ``hcdt``, ``hcsp_error``, 
+  and ``station_name``.
+  Unlike ``read_old_radials``, this routine reads the radial observation-error
+  standard deviation directly from ``hcsp_error`` rather than computing it from
+  radar range.
 
 * **fill_obs:**
   Populates and inserts a new observation into the DART ``obs_sequence``.
@@ -211,6 +349,7 @@ Below are brief descriptions of the main routines used in ``hf_to_obs``:
   For radials, it assigns a unique instrument ID and calls
   ``set_hf_radial_vel()`` to store the instrument geometry for use by
   the forward operator.
+
 
 Output
 ------
@@ -343,8 +482,12 @@ Troubleshooting
 * **Few radials kept**:
   Check ``vflg`` range conventions and adjust the keep rule in the code if your
   site encodes “bad/missing” differently. Also verify ``rnge`` units (km).
-* **Inconsistent 2-D dimensions**:
+* **Inconsistent original 2-D dimensions**:
   Confirm that ``lat, lon, velo, bear, rnge, vflg`` all share shape ``(y,x)``.
+* **File is identified as the wrong radar format**
+  The converter identifies a new totals file from the presence of ``ewct`` and
+  a new radial file from the presence of ``station_name``. Check that these
+  variables are present and correctly named in the input NetCDF file.
 
 Performance & other tips
 ^^^^^^^^^^^^^^^^^^^^^^^^
