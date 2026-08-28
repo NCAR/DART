@@ -17,7 +17,7 @@ within this file that drive the behavior of DART while using the Lorenz 63 model
 for assimilation. Within ``input.nml``, there is a section called *model_nml*,
 which contains the model-specific parameters:
 
-::
+.. code-block:: text
 
    &model_nml
       sigma  = 10.0,
@@ -39,7 +39,7 @@ The Lorenz 63 model code
 The Lorenz 63 model code, which is under
 ``DART/models/lorenz_63/model_mod.f90``, contains the lines:
 
-::
+.. code-block:: fortran
 
    subroutine comp_dt(x, dt)
 
@@ -70,7 +70,7 @@ Since the Lorenz 63 model is time invariant, the RK2 code to advance the ODE in
 time can be written as follows, again following the Lorenz 63 paper, for a
 ``fract`` fraction of a time-step (typically equal to 1):
 
-::
+.. code-block:: fortran
 
    !------------------------------------------------------------------
    !> does single time step advance for lorenz convective 3 variable model
@@ -134,7 +134,7 @@ the DART observation sequence files.
 To change the time-step, change the ``input.nml`` file in
 ``DART/models/lorenz_63/work`` to the following:
 
-::
+.. code-block:: text
 
    &model_nml
       sigma  = 10.0,
@@ -183,14 +183,17 @@ documentation.
 Let's now run the DART program *create_obs_sequence* to create the observation
 template that we will later replicate in time:
 
-   # Make sure you are in the DART/models/lorenz_63/work directory
+Make sure you are in the DART/models/lorenz_63/work directory
+
+.. code-block:: text
+   
    ./create_obs_sequence
 
 The program *create_obs_sequence* will ask for the number of observations. Since
 we plan to have 3 observations at each time step (one for each of the state
 variables), input **3**:
 
-::
+.. code-block:: text
 
    set_nml_output Echo NML values to log file only
 
@@ -211,7 +214,7 @@ variables), input **3**:
 For this experimental setup, we will not have any additional copies of the data,
 nor will we have any quality control fields. So use **0** for both.
 
-::
+.. code-block:: text
 
    Input number of copies of data (0 for just a definition)
    0
@@ -230,7 +233,7 @@ Finally, after inputting press enter to use the default output file
 
 Input your values as follows:
 
-::
+.. code-block:: text
 
    input a -1 if there are no more obs
    1
@@ -279,13 +282,16 @@ input. The interactive program ``create_fixed_network_seq`` is a helper tool
 that can be used to generate a DART observation sequence file made of a set of
 regularly repeating observations.
 
-   # Make sure you are in the DART/models/lorenz_63/work directory
+Make sure you are in the DART/models/lorenz_63/work directory
+
+.. code-block:: text
+
    ./create_fixed_network_seq
 
 We want to use the default ``set_def.out`` file, so press return. We also want a
 regularly repeating time sequence, so input **1**.
 
-::
+.. code-block:: text
 
    set_nml_output Echo NML values to log file only
 
@@ -329,7 +335,7 @@ so a total of 6000 observations will be generated.
 Enter **2000** for the number of observation times. The initial time will be **0
 0**, and the input period will be **0** days and **2160** seconds (36 minutes).
 
-::
+.. code-block:: text
 
    Input number of observation times in sequence
    2000
@@ -343,7 +349,7 @@ The numbers 1 to 2000 will then be output by ``create_fixed_network_seq``. Press
 return to accept the default output name of ``obs_seq.in``. The file suffix is
 ``.in`` as this will be the input to the next program, *perfect_model_obs*.
 
-::
+.. code-block:: text
 
       1
       2
@@ -366,12 +372,15 @@ and generate the observations as well as create the "perfect" model trajectory.
 the observations. Once noise is added (to represent observational uncertainty),
 the output is written to ``obs_seq.out``.
 
-   | # Make sure you are in the DART/models/lorenz_63/work directory
-   | ./perfect_model_obs
+Make sure you are in the DART/models/lorenz_63/work directory
+
+.. code-block:: text
+   
+    ./perfect_model_obs
 
 The output should look like the following:
 
-::
+.. code-block:: text
 
    set_nml_output Echo NML values to log file only
     initialize_mpi_utilities: Running single process
@@ -449,9 +458,13 @@ states, use the ensemble to estimate the prior distribution, compare to the
 "expected" observation of each member, and update the model state according to
 Bayes' rule.
 
-   # Make sure you are in the DART/models/lorenz_63/work directory ./filter
+Make sure you are in the DART/models/lorenz_63/work directory 
 
-::
+.. code-block:: text
+
+   ./filter
+
+.. code-block:: text
 
    set_nml_output Echo NML values to log file only
    initialize_mpi_utilities: Running single process
@@ -536,17 +549,21 @@ Verifying the nicer-looking results
 You can now run the verification scripts (as in the section
 :doc:`verifying-installation`) in Matlab with the following commands:
 
-   | >> addpath ../../../diagnostics/matlab
-   | >> plot_ens_time_series
+.. code-block:: matlab
+
+    >> addpath ../../../diagnostics/matlab
+    >> plot_ens_time_series
 
 Some additional commands to view the attractor from the ZY plane were used:
 
-   | >> set(findall(gca, ‘Type', ‘Line'),‘LineWidth',2);
-   | >> set(gca,‘FontSize',18)
-   | >> xlabel(‘x')
-   | >> ylabel(‘y')
-   | >> zlabel(‘z')
-   | >> view([90 0])
+.. code-block:: matlab
+
+    >> set(findall(gca, ‘Type', ‘Line'),‘LineWidth',2);
+    >> set(gca,‘FontSize',18)
+    >> xlabel(‘x')
+    >> ylabel(‘y')
+    >> zlabel(‘z')
+    >> view([90 0])
 
 We can now see the following smooth Lorenz 63 true state and ensemble mean
 comparison with a 6 minute model time step and assimilation every 36 minutes:
