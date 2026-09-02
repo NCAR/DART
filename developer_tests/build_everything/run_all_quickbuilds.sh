@@ -62,8 +62,10 @@ esac
 
 cp build_templates/$mkmf_template build_templates/mkmf.template
 
-# Build preprocess once
+# Build preprocess once, and get dart_version 
 pp_dir=$DART/assimilation_code/programs/preprocess
+source "$DART"/build_templates/buildpreprocess.sh
+dartversion
 cd $pp_dir
 $DART/build_templates/mkmf -x -p $pp_dir/preprocess \
       -a $DART $pp_dir/path_names_preprocess

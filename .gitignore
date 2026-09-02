@@ -23,6 +23,7 @@ Makefile
 !developer_tests/time_manager/Makefile
 !developer_tests/mpi_utilities/tests/Makefile
 build_templates/mkmf.template
+build_templates/version_mod.f90
 dart_log.*
 mkmf.template
 input.nml.*default
