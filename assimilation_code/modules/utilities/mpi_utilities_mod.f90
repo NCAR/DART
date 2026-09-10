@@ -1011,6 +1011,7 @@ subroutine countup(array1, array2, array3, array4, array5, &
  logical,  intent(out)          :: morethanone, doscalar
 
 morethanone = .false.
+doscalar = .false.
 numitems = size(array1)
 
 if (present(array2)) then
