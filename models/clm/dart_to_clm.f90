@@ -703,7 +703,7 @@ PARTITION: do icolumn = 1,ncolumn
                 ! For consistency  with updated dzsno_po (thickness)
                 ! also update zsno_po (middle depth) and zisno (top interface depth)
              
-                zisno_po(ilevel,icolumn) = sum(dzsno_po(ilevel:nlevsno,icolumn))*-1.0_r8
+                zisno_po(ilevel,icolumn) = sum(dzsno_po(ilevel:nlevsno,icolumn))*(-1.0_r8)
             
                 if (ilevel ==  nlevsno) then
                     zsno_po(ilevel,icolumn) = zisno_po(ilevel,icolumn)/2.0_r8 
