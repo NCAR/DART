@@ -34,6 +34,7 @@
 !WINDSAT_SOIL_MOISTURE_C,      volumetric soil moisture  percent
 
 ! BEGIN DART PREPROCESS TYPE DEFINITIONS
+!SOIL_CARBON_1m,                 QTY_SOIL_CARBON,                COMMON_CODE
 !SOIL_TEMPERATURE,               QTY_SOIL_TEMPERATURE,           COMMON_CODE
 !LPRM_SOIL_MOISTURE,             QTY_SOIL_MOISTURE,              COMMON_CODE
 !SMOS_A_SOIL_MOISTURE,           QTY_SOIL_MOISTURE,              COMMON_CODE
