@@ -51,6 +51,49 @@ Input files
 
 - Variable names in the namelist must match the netCDF variable names exactly.
 
+Filter input and output files with separate chemistry files
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``chemistry_separate_file = .true.``, each WRF domain contributes two DART
+state domains, so there are ``2 * num_domains`` in total. They are ordered with
+all the meteorological domains first, then all the chemistry domains:
+
+  #. ``wrfinput_d01`` ... ``wrfinput_d0N`` (meteorology)
+  #. ``wrfchem_d01`` ... ``wrfchem_d0N`` (chemistry)
+
+``filter`` needs a set of input and output files for each of these state
+domains, in that order. For example, with 2 WRF domains:
+
+.. code-block:: text
+
+   &filter_nml
+      input_state_file_list  = 'input_wrf_d01.txt',  'input_wrf_d02.txt',
+                               'input_chem_d01.txt', 'input_chem_d02.txt'
+      output_state_file_list = 'output_wrf_d01.txt',  'output_wrf_d02.txt',
+                               'output_chem_d01.txt', 'output_chem_d02.txt'
+   /
+
+Each text file lists one file per ensemble member. Alternatively, for a single
+member, use ``input_state_files`` and ``output_state_files`` with
+``num_domains * 2`` file names, in the same order.
+
+The model interface makes these assumptions:
+
+- The chemistry file for domain ``n`` is on the same grid as ``wrfinput_d0n``.
+  The grid, map projection and base state are read only from ``wrfinput_d0n``,
+  so these files must be present in the run directory even if they are not in
+  the state. The chemistry files are used only for the state variables.
+- The meteorological and chemistry files are listed in the order above, with
+  the same number of domains for each. A chemistry domain is needed for every
+  WRF domain, even if you list no chemistry variables for it.
+- A quantity should be listed in either the meteorological or the chemistry
+  variables, not both. When a quantity is needed, the meteorological domain is
+  searched first, then the chemistry domain.
+- Chemistry variables use the same domain selection strings (e.g. ``'999'``,
+  ``'12'``) as meteorological variables, but select which chemistry domains the
+  variable is in.
+- The same ``num_domains`` applies to both sets of files.
+
 .. note::
 
    ``PHB`` (base state geopotential) should be included in the state vector,
