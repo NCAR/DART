@@ -97,7 +97,7 @@ integer :: dom_id ! used to access the state structure
 integer(i8) :: model_size
 integer :: nfields ! number of fields in the state vector
 ! Grid parameters, nz is number of layers
-integer :: nx=-1, ny=-1, nz=-1     ! grid counts for each field
+integer :: nx=-1, ny=-1, nx_u=-1, ny_u=-1, nx_v=-1, ny_v=-1, nz=-1     ! grid counts for each field
 real(r8), allocatable :: geolon(:,:), geolat(:,:),     & ! T
                          geolon_u(:,:), geolat_u(:,:), & ! U
                          geolon_v(:,:), geolat_v(:,:)    ! V
@@ -712,22 +712,28 @@ character(len=*), parameter :: routine = 'read_horizontal_grid'
 
 ncid = nc_open_file_readonly(static_file)
 
+! T
 call nc_get_variable_size(ncid, 'geolon', nxy)
-nx = nxy(1)
-ny = nxy(2)
+nx = nxy(1); ny = nxy(2)
 allocate(geolon(nx,ny), geolat(nx,ny))      ! T grid
-allocate(geolon_u(nx,ny), geolat_u(nx,ny))  ! U grid
-allocate(geolon_v(nx,ny), geolat_v(nx,ny))  ! V grid
 allocate(mask(nx,ny))  ! missing values
-allocate(mask_u(nx,ny))  ! missing values
-allocate(mask_v(nx,ny))  ! missing values
-
 call nc_get_variable(ncid, 'geolon', geolon, routine)
-call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
-call nc_get_variable(ncid, 'geolon_v', geolon_v, routine)
-
 call nc_get_variable(ncid, 'geolat', geolat, routine)
+
+! U 
+call nc_get_variable_size(ncid, 'geolon_u', nxy)
+nx_u = nxy(1); ny_u = nxy(2)
+allocate(geolon_u(nx_u,ny_u), geolat_u(nx_u,ny_u))  ! U grid
+allocate(mask_u(nx_u,ny_u))  ! missing values
+call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
 call nc_get_variable(ncid, 'geolat_u', geolat_u, routine)
+
+! V
+call nc_get_variable_size(ncid, 'geolon_v', nxy)
+nx_v = nxy(1); ny_v = nxy(2)
+allocate(geolon_v(nx_v,ny_v), geolat_v(nx_v,ny_v))  ! V grid
+allocate(mask_v(nx_v,ny_v))  ! missing values
+call nc_get_variable(ncid, 'geolon_v', geolon_v, routine)
 call nc_get_variable(ncid, 'geolat_v', geolat_v, routine)
 
 ! mom6 has missing values in the grid
@@ -811,13 +817,19 @@ end subroutine read_ocean_geometry
 ! 0 is land
 function on_land_quad(ilon, ilat)
 
-integer :: ilon(4), ilat(4) ! these are indices into lon, lat
+integer, intent(in) :: ilon(4), ilat(4) ! these are indices into lon, lat
 logical ::  on_land_quad
 
-if ( wet(ilon(1), ilat(1)) + &
-     wet(ilon(2), ilat(2)) + &
-     wet(ilon(3), ilat(3)) + &
-     wet(ilon(4), ilat(4))  < 4) then
+integer :: ilon_t(4), ilat_t(4) ! these are indices into lon, lat
+! wet is only defined on the T grid.
+! Assume if nx is wet, nx_v and nx_u are wet.
+ilon_t = min(ilon, nx)
+ilat_t = min(ilat, ny)
+
+if ( wet(ilon_t(1), ilat_t(1)) + &
+     wet(ilon_t(2), ilat_t(2)) + &
+     wet(ilon_t(3), ilat_t(3)) + &
+     wet(ilon_t(4), ilat_t(4))  < 4) then
    on_land_quad = .true.
 else
    on_land_quad = .false.
@@ -831,7 +843,14 @@ function on_land_point(ilon, ilat)
 integer :: ilon, ilat ! these are indices into lon, lat
 logical :: on_land_point
 
-if ( wet(ilon, ilat) == 0) then
+integer :: ilon_t, ilat_t
+
+! wet is only defined on the T grid. 
+! u/v grids may have one extra point in the x and/or y direction.
+ilon_t = min(ilon, nx)
+ilat_t = min(ilat, ny)
+
+if ( wet(ilon_t, ilat_t) == 0) then
    on_land_point = .true.
 else
    on_land_point = .false.
@@ -852,11 +871,17 @@ logical :: on_basin_edge
 
 integer  :: i, e
 real(r8) :: d(4) ! basin depth at each corner
+integer  :: ilon_t(4), ilat_t(4)
 
-d(1) = basin_depth(ilon(1), ilat(1))
-d(2) = basin_depth(ilon(2), ilat(2))
-d(3) = basin_depth(ilon(3), ilat(3))
-d(4) = basin_depth(ilon(4), ilat(4))
+! basin_depth is only defined on the t grid
+! u/v grids may have one extra point in the x and/or y direction.
+ilon_t = min(ilon, nx)
+ilat_t = min(ilat, ny)
+
+d(1) = basin_depth(ilon_t(1), ilat_t(1))
+d(2) = basin_depth(ilon_t(2), ilat_t(2))
+d(3) = basin_depth(ilon_t(3), ilat_t(3))
+d(4) = basin_depth(ilon_t(4), ilat_t(4))
 
 do e = 1, ens_size
    do i = 1, 4
@@ -973,7 +998,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
 call set_quad_coords(interp_t_grid, geolon, geolat, mask)
 
 ! U
-call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx_u, ny_u, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_u_grid)
@@ -982,7 +1007,7 @@ call set_quad_coords(interp_u_grid, geolon_u, geolat_u, mask_u)
 
 
 ! V
-call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx_v, ny_v, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_v_grid)

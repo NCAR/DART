@@ -22,7 +22,22 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**August 26 2026 :: pyjedi IODA QC Tag v11.25.2**
+**September 10 2026 :: MOM6 regional grids. Tag v11.25.3**
+
+Bug fixes:
+
+- MOM6 regional grids may have different sizes for t,u,v grids.
+- end_ensemble_manager check before deallocating.
+- Bounds error fix in mpi utilities when make_copy_before_broadcast = .true.
+- Initialize do_scalar in mpi_utilities.
+
+Documentation:
+
+- CROCODILE (DART as a CESM component) added to MOM6 docs.
+- rst fixes in da-in-dart-with-lorenz-63 page.
+
+
+**August 26 2026 :: pyjedi IODA QC. Tag v11.25.2**
 
 Fixes:
 
