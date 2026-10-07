@@ -1,14 +1,20 @@
 &model_nml
    wrf_state_variables         = 'NULL'
    wrf_state_bounds            = 'NULL'
+   chemistry_separate_file     = .false.
+   chem_state_variables        = 'NULL'
+   chem_state_bounds           = 'NULL'
    num_domains                 = 1
    calendar_type               = 3
    assimilation_period_seconds = 21600
-   allow_obs_below_vol         = .false.
-   vert_localization_coord     = 3
    sfc_elev_max_diff           = -1.0
+   vert_localization_coord     = 3
+   allow_perturbed_ics         = .false.
+   allow_obs_below_vol         = .false.
+   log_vert_interp             = .true.
+   log_horz_interpM            = .false.
+   log_horz_interpQ            = .false.
    polar                       = .false.
    periodic_x                  = .false.
    periodic_y                  = .false.
-   allow_perturbed_ics         = .false.
  /

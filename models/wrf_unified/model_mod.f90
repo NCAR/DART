@@ -172,7 +172,6 @@ logical :: allow_obs_below_vol = .false.
 
 ! Do the interpolation of pressure values only after taking the log (.true.)
 ! vs doing a linear interpolation directly in pressure units (.false.)
-! HK @todo these are not in the namelist in main:wrf. Should they be?
 logical :: log_vert_interp  = .true.
 logical :: log_horz_interpM = .false.
 logical :: log_horz_interpQ = .false.
@@ -200,8 +199,12 @@ sfc_elev_max_diff, &
 vert_localization_coord, &
 allow_perturbed_ics, &
 allow_obs_below_vol, &
+log_vert_interp, &
 log_horz_interpM, &
-log_horz_interpQ
+log_horz_interpQ, &
+polar, &
+periodic_x, &
+periodic_y
 
 type grid_ll
   integer :: map_proj ! MAP_PROJ in wrf netcdf file
