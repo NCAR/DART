@@ -1481,8 +1481,8 @@ endif
 
 
 do e = 1, ens_size
-  iqv = get_dart_vector_index(i,j,k(e), wrf_dom(grid_id), var_idv)
-  it  = get_dart_vector_index(i,j,k(e), wrf_dom(grid_id), var_idt)
+  iqv(e) = get_dart_vector_index(i,j,k(e), wrf_dom(grid_id), var_idv)
+  it(e)  = get_dart_vector_index(i,j,k(e), wrf_dom(grid_id), var_idt)
 enddo
 
 call get_state_array(x_iqv, iqv, state_handle)
@@ -1795,9 +1795,9 @@ if (var_id_mu < 0 .or. var_id_ph < 0) then
 endif
 
 do e = 1, ens_size
-   imu   = get_dart_vector_index(i,j,1,      wrf_dom(id), var_id_mu)
-   iph   = get_dart_vector_index(i,j,k(e),   wrf_dom(id), var_id_ph)
-   iphp1 = get_dart_vector_index(i,j,k(e)+1, wrf_dom(id), var_id_ph)
+   imu(e)   = get_dart_vector_index(i,j,1,      wrf_dom(id), var_id_mu)
+   iph(e)   = get_dart_vector_index(i,j,k(e),   wrf_dom(id), var_id_ph)
+   iphp1(e) = get_dart_vector_index(i,j,k(e)+1, wrf_dom(id), var_id_ph)
 enddo
 
 call get_state_array(x_imu, imu, state_handle)
