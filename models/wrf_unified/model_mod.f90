@@ -32,7 +32,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  NF90_MAX_NAME, nc_get_variable_size, &
                                  nc_get_variable, nc_close_file, nc_check, &
                                  nc_open_file_readonly, nc_get_variable_size, &
-                                 nc_get_global_attribute, nc_get_dimension_size
+                                 nc_get_global_attribute, nc_get_dimension_size, &
+                                 nc_global_attribute_exists
 
 use state_structure_mod, only : add_domain, get_domain_size, get_model_variable_indices, &
                                 get_dim_name, get_num_dims, get_dart_vector_index, &
@@ -226,7 +227,10 @@ type static_data
    real(r8), allocatable :: mub(:,:)   ! base state dry air mass in column
    real(r8), allocatable :: hgt(:,:)   ! Terrain Height
    real(r8), allocatable :: dnw(:)     ! d(eta) values between full (w) level
-   real(r8), allocatable :: land(:,:)  ! land mask (1 for land, 2 for water)
+   real(r8), allocatable :: c1h(:)     ! hybrid coordinate coefficient on half (mass) levels
+   real(r8), allocatable :: c2h(:)     ! hybrid coordinate offset on half (mass) levels
+   integer               :: hybrid_opt ! WRF HYBRID_OPT global attribute (0 if absent)
+   real(r8), allocatable :: land(:,:) ! land mask (1 for land, 2 for water)
    real(r8), allocatable :: zs(:)      ! depths of center of soil layers
    real(r8)              :: p_top      ! Pressure top of the model
 end type static_data
@@ -240,6 +244,10 @@ real(r8), parameter :: rd_over_rv = gas_constant / gas_constant_v
 real(r8), parameter :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
 real(r8), parameter :: ts0 = 300.0_r8         ! Base potential temperature for all levels.
 real(r8), parameter :: kappa = 2.0_r8/7.0_r8  ! gas_constant / cp
+
+! hybrid_opt 2 is a hybrid coordinate - terrain following at the
+! surface, and straight pressure levels at the top.
+integer, parameter :: VERT_HYBRID = 2
 
 contains
 
@@ -1223,6 +1231,23 @@ do i = 1, num_domains
    allocate(stat_dat(i)%dnw(dim_size(1)))
    call nc_get_variable(ncid, 'DNW', stat_dat(i)%dnw, routine)
 
+   ! older WRF files do not have the HYBRID_OPT attribute; treat as terrain following
+   if (nc_global_attribute_exists(ncid, 'HYBRID_OPT')) then
+      call nc_get_global_attribute(ncid, 'HYBRID_OPT', stat_dat(i)%hybrid_opt)
+   else
+      stat_dat(i)%hybrid_opt = 0
+   endif
+
+   if (stat_dat(i)%hybrid_opt == VERT_HYBRID) then
+      call nc_get_variable_size(ncid, 'C1H', dim_size)
+      allocate(stat_dat(i)%c1h(dim_size(1)))
+      call nc_get_variable(ncid, 'C1H', stat_dat(i)%c1h, routine)
+
+      call nc_get_variable_size(ncid, 'C2H', dim_size)
+      allocate(stat_dat(i)%c2h(dim_size(1)))
+      call nc_get_variable(ncid, 'C2H', stat_dat(i)%c2h, routine)
+   endif
+
    call nc_get_variable_size(ncid, 'XLAND', dim_size)
    allocate(stat_dat(i)%land(dim_size(1), dim_size(2)))
    call nc_get_variable(ncid, 'XLAND', stat_dat(i)%land, routine)
@@ -1810,7 +1835,14 @@ do e = 1, ens_size
 enddo
 
 ! rho = - mu / dphi/deta
-model_rho_t(:) = - (stat_dat(id)%mub(i,j)+x_imu) / ph_e
+! for the hybrid coordinate the dry air mass in the layer is c1h*mu + c2h
+if (stat_dat(id)%hybrid_opt == VERT_HYBRID) then
+   do e = 1, ens_size
+      model_rho_t(e) = - (stat_dat(id)%c1h(k(e))*(stat_dat(id)%mub(i,j)+x_imu(e)) + stat_dat(id)%c2h(k(e))) / ph_e(e)
+   enddo
+else
+   model_rho_t(:) = - (stat_dat(id)%mub(i,j)+x_imu) / ph_e
+endif
 
 end function model_rho_t
 
