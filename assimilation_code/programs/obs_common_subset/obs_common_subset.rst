@@ -39,7 +39,8 @@ they can be in a set of separate text files. The latter may be easier when there
 compare.
 
 For experiments where there are multiple job steps, and so multiple output observation sequence files per experiment,
-the input to this tool would then be a list of lists of filenames. Each set of names must be put into a text file with
+the input to this tool would then be a list of files, one per experiment, each containing a list of the
+``obs_seq`` filenames of that experiment. Each set of names must be put into a text file with
 each filename on a separate line.
 
 If each experiment was run in a different set of directories, and if a list of observation sequence filenames was made
@@ -60,7 +61,7 @@ with the ``ls`` command:
    exp2/step3/obs_seq.final
    exp2/step4/obs_seq.final
    > ls exp3/*/obs_seq.final > exp3list
-   > cat exp2list
+   > cat exp3list
    exp3/step1/obs_seq.final
    exp3/step2/obs_seq.final
    exp3/step3/obs_seq.final
@@ -71,7 +72,7 @@ Then the namelist entries would be:
 ::
 
     filename_seq = ''
-    filename_seq_list = 'exp1list', 'exp2list', exp3list'
+    filename_seq_list = 'exp1list', 'exp2list', 'exp3list'
     num_to_compare_at_once = 3
 
 Namelist
@@ -132,9 +133,9 @@ namelist.
    |                          |                                     | output filenames.                                 |
    +--------------------------+-------------------------------------+---------------------------------------------------+
    | print_every              | integer                             | To indicate progress, a count of the successfully |
-   |                          |                                     | processed observations is printed every Nth set   |
-   |                          |                                     | of obs. To decrease the output volume set this to |
-   |                          |                                     | a larger number. To disable this output           |
+   |                          |                                     | processed observations is printed at multiples of |
+   |                          |                                     | print_every. To decrease the output volume set    |
+   |                          |                                     | this to a larger number. To disable this output   |
    |                          |                                     | completely set this to -1.                        |
    +--------------------------+-------------------------------------+---------------------------------------------------+
    | dart_qc_threshold        | integer                             | Observations with a DART QC value larger than     |
@@ -172,7 +173,7 @@ namelist.
 Building
 --------
 
-Most ``$DART/models/*/work`` directories will build the tool along with other executable programs. It is also possible
+Most ``$DART/models/*/work/quickbuild.sh`` scripts will build the tool along with the other executable programs. It is also possible
 to build the tool in the ``$DART/observations/utilities`` directory. The ``preprocess`` program must be built and run
 first, to define what set of observation types will be supported. See the
 :doc:`../../../assimilation_code/programs/preprocess/preprocess` for more details on how to define the list and run it.
