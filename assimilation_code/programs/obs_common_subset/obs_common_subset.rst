@@ -173,18 +173,14 @@ namelist.
 Building
 --------
 
-Most ``$DART/models/*/work/quickbuild.sh`` scripts will build the tool along with the other executable programs. It is also possible
-to build the tool in the ``$DART/observations/utilities`` directory. The ``preprocess`` program must be built and run
-first, to define what set of observation types will be supported. See the
-:doc:`../../../assimilation_code/programs/preprocess/preprocess` for more details on how to define the list and run it.
-The combined list of all observation types which will be encountered over all input files must be in the preprocess
-input list. The other important choice when building the tool is to include a compatible locations module. For the
-low-order models, the ``oned`` module should be used; for real-world observations, the ``threed_sphere`` module should
-be used.
+Most ``$DART/models/*/work/quickbuild.sh`` scripts build ``obs_common_subset`` along with the other
+executable programs. If ``obs_common_subset`` is not in the ``serial_programs`` list in the ``quickbuild.sh`` for the
+model you are using (``DART/models/MODEL/work/quickbuild.sh``), add it, then run ``./quickbuild.sh``.
 
-Generally the directories where executables are built will include a "quickbuild.sh" script which will build and run
-preprocess and then build the rest of the executables. The "input.nml" namelists will need to be edited to include all
-the required observation types first.
+``quickbuild.sh`` builds and runs the ``preprocess`` program first, which defines the set of
+observation types that will be supported. See :doc:`../preprocess/preprocess` for more details.
+The ``&preprocess_nml`` namelist in ``input.nml`` must list the definition files for all the
+observation types that will be encountered in the input obs_seq files.
 
 Modules used
 ------------
