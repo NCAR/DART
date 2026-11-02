@@ -257,12 +257,14 @@ RTTOV v12 Namelist
    | Item                   | Type               | Description                                                          |
    +========================+====================+======================================================================+
    | rttov_sensor_db_file   | character(len=512) | The location of the DART file with RTTOV sensor metadata. The format |
-   |                        |                    | is a comma-separated file. The columns are the DART                  |
-   |                        |                    | observation type, the platform/satellite/sensor ID, the              |
-   |                        |                    | wavelength band, the coefficient file, and a comma-separated list    |
-   |                        |                    | of RTTOV channels to use for this observation type. The default file |
-   |                        |                    | does not provide a list of channels, thus default behavior is to     |
-   |                        |                    | make all channels available.                                         |
+   |                        |                    | is a comma-separated file. The columns are the DART observation      |
+   |                        |                    | type, the platform/satellite/sensor ID, the wavelength band, the     |
+   |                        |                    | coefficient file, and a comma-separated list of RTTOV channels to    |
+   |                        |                    | use for this observation type. The 'rttov_sensor_db.csv' file        |
+   |                        |                    | provided by DART in                                                  |
+   |                        |                    | observations/forward_operators/rttov_sensor_db.csv does not provide  |
+   |                        |                    | a list of channels, thus default behavior is to make all channels    |
+   |                        |                    | available.                                                           |
    +------------------------+--------------------+----------------------------------------------------------------------+
    | first_lvl_is_sfc       | logical            | Whether the first level of the model represents the surface (true)   |
    |                        |                    | or the top of the atmosphere (false).                                |
@@ -487,6 +489,7 @@ RTTOV v13 namelist
 .. code-block:: text
 
   &obs_def_rttov_nml
+     rttov_sensor_db_file   = 'unspecified' ! Set to rttov_sensor_db.csv, example provided in DART/observations/forward_operators/rttov_sensor_db.csv
      first_lvl_is_sfc     = .true.   ! is level 1 the surface (true) or top of atmosphere (false)?
      mw_clear_sky_only    = .false.  ! only use clear-sky for MW (plus clw emission if clw_data is true) or full RTTOV-SCATT (false)?
      interp_mode          = 1        ! Interpolation mode: Rochon on OD (1), Log-linear (2), Rochon on log-linear OD (3), Rochon on WF (4), Rochon on log-linear WF (5)
