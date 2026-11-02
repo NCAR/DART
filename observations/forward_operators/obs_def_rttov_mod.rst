@@ -113,8 +113,8 @@ metadata refer to this GOES observation converter example here:
 RTTOV coefficient files
 -----------------------
 
-The RTTOV coefficent file (.dat) contains the parameter values for a specific satellite
-radiance observation. The DART file (``rttov_sensor_db.csv``) refers to the RTTOV coefficent
+The RTTOV coefficient file (.dat) contains the parameter values for a specific satellite
+radiance observation. The DART file (``rttov_sensor_db.csv``) refers to the RTTOV coefficient
 file.  For the ``HIMAWARI_9_AHI_RADIANCE`` observation type, for example, the following information
 is provided within ``rttov_sensor_db.csv``:
 
@@ -122,23 +122,23 @@ is provided within ``rttov_sensor_db.csv``:
 
    HIMAWARI_9_AHI	31	9	56	ir	rtcoef_himawari_9_ahi.dat
 
-The coefficent file (.dat) is included with the RTTOV installation and can be found at the
+The coefficient file (.dat) is included with the RTTOV installation and can be found at the
 path  ``${RTTOV_install}/rtcoef_rttov13/rttov9pred54L/rtcoef_himawari_9_ahi.dat``. This file
-should be included in your run folder at runtime. Additional coefficent files for a given
+should be included in your run folder at runtime. Additional coefficient files for a given
 satellite sensor may be required.
 
-It is good practice to always view your coefficent file (.dat) to confirm that the 
-channels listed in the file match the channel from the ``obs_seq.out`` file. The coefficent
+It is good practice to always view your coefficient file (.dat) to confirm that the 
+channels listed in the file match the channel from the ``obs_seq.out`` file. The coefficient
 file will include a list of channels (wavebands) with the associated wavelength (microns).
 
 
 .. Important ::
 
-  The RTTOV package includes multiple coefficent files (e.g. all wavelengths, IR only, etc.)  that 
+  The RTTOV package includes multiple coefficient files (e.g. all wavelengths, IR only, etc.)  that 
   contain the appropriate parameter data for each satellite/sensor/channel combination. Whether
   the file contains all wavelengths versus only IR wavelengths is **extremely important** because
   it will shift the value of the channel number. Recommended practice is to choose a coefficient file
-  with all channels included.  If, on the other hand, you subset your coefficent file to only include
+  with all channels included.  If, on the other hand, you subset your coefficient file to only include
   IR channels, you should edit your observation converter such that the channels match.
   If RTTOV always returns expected observations of radiance = 0, or if the prior expected radiance
   is unusually biased from your prior, this could be a sign there is a mismatch between the 
