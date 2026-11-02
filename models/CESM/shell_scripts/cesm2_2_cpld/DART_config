@@ -1,0 +1,199 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# https://docs.dart.ucar.edu/en/latest/guide/downloading-dart.html
+
+# ---------------------
+# Purpose
+# ---------------------
+
+# This script integrates DART with a pre-existing CESM multi-instance case.
+# This script enables assimilation with multiple active model components.
+# CESM starts and stops to allow for assimilation every 6 hours.
+
+# ---------------------
+# How to set up the script
+# ---------------------
+
+# It must be run from a valid CASEROOT directory. If the case was created
+# using one of the DART CESM component setup scripts, this script should be staged in the
+# CASEROOT directory automatically, and dartroot is set at that time in DART_params.
+
+# This script will not build DART executables.
+# It simply calls the assimilate.csh scripts of the assimilating components,
+# which must exist before this script is run.
+
+# -- Examine the whole script to identify things to change for your experiments.
+# -- Build the assimilating component cases; cam-fv, clm, ...
+#    using parameters in CESM's DART_params and the setup scripts in 
+#    models/*/shell_scripts/...setup... (which have been updated to handle coupled assimilation).
+# -- Provide any initial files needed by your run:
+#       state ensembles for the components active in the CESM hindcast
+#       inflation
+#       sampling error correction
+# -- Run this script.
+# -- Edit the DART input.nml that appears in the ${CASEROOT} directory.
+# -- Submit the job using ${CASEROOT}/${CASE}.submit
+
+# ==============================================================================
+# Get the environment of the case 
+# ==============================================================================
+
+source ./DART_params || exit 5
+
+# OBSROOT  has been replaced by DART_params:obspaths to locate obs for each assimilator.
+# dartroot should reference the base portion of the DART code tree.
+
+
+setenv CIMEROOT  `./xmlquery CIMEROOT  --value`
+setenv EXEROOT   `./xmlquery EXEROOT   --value`
+setenv RUNDIR    `./xmlquery RUNDIR    --value`
+setenv CASEROOT  `./xmlquery CASEROOT  --value`
+setenv CASE      `./xmlquery CASE      --value`
+setenv STOP_N    `./xmlquery STOP_N    --value`
+setenv NINST     `./xmlquery NINST     --value`
+
+# ==============================================================================
+
+# Now the script to be run is determined by
+# CESM's env_run.xml DATA_ASSIMILATION* variables.
+# If DATA_ASSIMILATION = false (default), then no DART scripts will be run.
+# So always set DATA_ASSIMILATION = TRUE.
+# This configure script manages the coupled assimilation,
+# so turn on assimilation for CPL. 
+# The component DATA_ASSIMILATION_comp variables will be turned on by 
+# each assimilator's DART_config (so this script doesn't need to translate
+# $assimilators from DART_params).
+
+# DATA_ASSIMILATION_CYCLES says how many cycles to run in each job.  
+# It's wise to set to 1 for the first cycle, so that successfull completion can be
+# verified before using lots of resources.
+# When the job (not each cycle) is finished the short_term archiver may run 
+# as a separate job.
+
+./xmlchange DATA_ASSIMILATION_CPL=TRUE
+./xmlchange DATA_ASSIMILATION_CYCLES=1
+
+if ( ${NINST} == 1 ) then
+   ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/perfect_model.csh
+else
+   ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/no_assimilate.csh
+   if ($#assimilators > 0) ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/multi_assim.csh
+endif
+
+# ==============================================================================
+# make sure the required directories exist
+# VAR is the shell variable name, DIR is the value
+# ==============================================================================
+
+# Make a place to store inflation restarts to protect from purging until
+# st_archive can make a home for them.
+if (! -d ${archdir}/esp/hist) mkdir -p ${archdir}/esp/hist
+
+foreach VAR ( CASEROOT dartroot )
+   set DIR = `eval echo \${$VAR}`
+   if ( ! -d $DIR ) then
+      echo "ERROR: directory '$DIR' not found"
+      echo "       In the setup script check the setting of: $VAR"
+      exit 10
+   endif
+end
+
+# ==============================================================================
+# Make sure the DART executables exist or build them if we can't find them.
+# The DART input.nml in the model directory IS IMPORTANT during this part
+# because it defines what observation types are supported.
+# ==============================================================================
+
+set missing = FALSE
+foreach MODEL ( $assimilators )
+   set targetdir = ${dartroot}/models/${MODEL}/work
+   if ( ! -x ${targetdir}/filter ) then
+
+      echo "ERROR: executable file $targetdir/filter not found."
+      echo "       An assimilation CASE must be setup for this assimilator"
+      echo "       Stopping prematurely."
+      set missing = TRUE
+   endif
+end
+if ($missing =~ 'TRUE') exit 20
+
+# ==============================================================================
+# Stage the required parts of DART in CASEROOT or RUNDIR.
+# ==============================================================================
+
+
+# ${COPY} ${dartroot}/models/CESM/shell_scripts/cesm2_2_cpld/perfect_model.csh . || exit 30
+# ${COPY} ${dartroot}/models/CESM/shell_scripts/cesm2_2_cpld/no_assimilate.csh . || exit 30
+${COPY} ${dartroot}/models/CESM/shell_scripts/cesm2_2_cpld/multi_assim.csh   . || exit 30
+
+#  Useful later if strongly-coupled is worth the cost.
+# if (-f ${DART_SCRIPTS_DIR}/compress.csh) then
+#    $COPY -f -${VERBOSE} ${DART_SCRIPTS_DIR}/compress.csh . || exit 43
+# else
+#    echo "ERROR: no compress.csh in  ${DART_SCRIPTS_DIR}"
+#    exit 45
+# endif
+
+# ==============================================================================
+# INFLATION : Initial setup for (default) adaptive state-space prior inflation
+# ==============================================================================
+# StrCpl; handled by each assimilator.
+
+# ==============================================================================
+# What to do next
+# ==============================================================================
+
+cat << EndOfText >! DART_instructions.txt
+
+-------------------------------------------------------------------------
+
+Check the DART configuration:
+
+1) Setup_assimilation does not run DART_config because the assimilators
+   must be set up between running setup_assimilation and DART_config, 
+   so run it manually.
+
+2) There is no 'stage_dart_files' for the CESM case, because multi_assim.csh
+   doesn't use any.  Each assimilator has its own.
+
+3) Modify what you need to in the DART namelist file, i.e. ${CASEROOT}/input.nml
+   It\'s probably helpful to make the assimilator\'s input.nmls
+   as consistent as possible.
+
+4) When you want to run the assimilation, check that the CESM assimilation script 
+   is correct and that data assimilation is turned on.
+   DART can be turned on or off using env_run.xml: DATA_ASSIMILATION_SCRIPT 
+   to specify which DART script to use after the model forecast;
+   multi_assim.csh, no_assimilate.csh, or perfect_model.csh.
+
+5) If your job has enough time to run multiple cycles in the same job, you
+   can avoid recompeting for the queue by requesting multiple assimilation
+   cycles in a single job. Each cycle will still use the same 'STOP_OPTION' and
+   'STOP_N'. This example requests two assimilation cycles instead of the
+   default 1 cycle. You can run as many cycles as you like given limits of
+   the queue and the amount of filespace you can afford.
+   
+   cd ${CASEROOT} 
+   ./xmlquery --partial ASSIMILATION 
+   ./xmlchange DATA_ASSIMILATION_CPL=TRUE
+   ./xmlchange DATA_ASSIMILATION_CYCLES=2
+
+6) Submit the CESM job using your preferred command or 
+   ./case.submit -M begin,end --skip-preview-namelist
+
+7) You can use ${CASEROOT}/stage_cesm_files to stage an ensemble of files 
+   to restart a run at a date for which you have a restart set.
+   to stage files to restart a run. Make sure you check the script to
+   specify the correct date to use for the restart. Pay attention to
+   updating the pointer files to use the desired inflation files.
+
+-------------------------------------------------------------------------
+
+EndOfText
+
+cat DART_instructions.txt
+
+exit 0
+

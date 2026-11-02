@@ -79,6 +79,8 @@
    inf_sd_initial              = 0.6,                     0.6
    inf_sd_lower_bound          = 0.6,                     0.6
    inf_sd_max_change           = 1.05,                    1.05
+   output_sequential_prior_post = .false.
+   use_sequential_prior_post = .false.
    /
 
 
@@ -269,6 +271,7 @@
 
 
 &location_nml
+   strongly_coupled            = .false.
    horiz_dist_only             = .true.
    vert_normalization_pressure = 100000.0
    vert_normalization_height   = 10000.0

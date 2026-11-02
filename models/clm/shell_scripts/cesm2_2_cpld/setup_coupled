@@ -1,0 +1,389 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# https://docs.dart.ucar.edu/en/latest/guide/downloading-dart.html
+#
+# ------------------------------------------------------------------------------
+# Purpose: Set up the clm assimilator within a coupled assimilation.
+#          The assumptions here are that there is an ensemble of CLM states available
+#          (as well as the CESM-required ROF states) 
+#          from a hindcast run in the CESM case directories.
+
+# This script can probably be run interactively, 
+# because it does not build the CESM executables.
+# It may make sense to use (on derecho) something like
+#   "qcmd -q develop -l select=1 -- <thisfilename>".
+# If it takes longer than is allowed for an interactive job,
+# it can be run as a batch job using the directives below.
+
+# The job name should be the name of this script(file), 
+# or this file may not be archived in $caseroot causing DART_config to fail.
+#--------------------------------------------
+#BSUB  -J setup_advanced
+#BSUB  -n 1 
+#BSUB  -R "span[ptile=1]"
+#BSUB  -q shared_node_queue_for_this_setup_script
+#BSUB  -P your_account_there
+#BSUB  -W 2:00
+#BSUB  -u you@email.org
+#BSUB  -N  
+#BSUB  -a poe 
+#BSUB  -o Test0.bld1
+#BSUB  -e Test0.bld1
+#--------------------------------------------
+#PBS  -N setup_coupled
+#PBS  -A P86850054
+# Derecho; main replaces premium, regular, and economy.
+#PBS  -q develop
+# Needed if queue "main" is used
+# #PBS  -l job_priority=premium
+#
+# Resources to specify:
+#    select=#nodes
+#    ncpus=#CPUs/node
+#    mpiprocs=#MPI_tasks/node
+#    mem=needed for develop queue (shared node)
+# Der; added omp...
+# normal; 
+#PBS  -l select=1:ncpus=4:mpiprocs=4:ompthreads=1:mem=5GB
+#PBS  -l walltime=01:00:00
+#PBS  -m ae
+#PBS  -M raeder@ucar.edu
+# Send standard output and error to this file.
+# Can't use the $casename here; it must be cam-fv.
+
+#PBS  -o StrCpl_cam-fv
+#PBS  -j oe 
+#
+# ---------------------
+#
+# This script is designed to set up, stage, but not build, a multi-instance,
+# multi-driver, CESM using an F compset, where CAM-FV, CLM and CICE are active.
+# It sets up the environment for doing
+# a CLM assimilation by setting up and running DART_config.
+# It is intended to be used after you have tested the basic set up
+# of CESM and DART for your case.
+# Some variables for the DART state come from the CLM restart file,
+# some from the .h0. file that has 30-minute values in it, 
+# some from a .h2. file that is still in the vector-based format.
+#
+# This script uses parameters from the models/CESM parameters file.
+# ${caseroot}/DART_config is automatically run by this script and will
+# augment the clm CASE with the required setup and configuration to use DART
+# to perform a cam-fv assimilation.
+#
+# ---------------------
+# How to use this script.
+# ---------------------
+#
+# -- You will have to read and understand the script in its entirety.
+#    You will have to modify things outside this script.
+#    Instructions for what to change to use the CAM-Chem or WACCM are
+#    outlined in the models/cam-fv/model_mod.html documentation.
+#
+# -- Examine the whole script to identify things to change for your experiments.
+#
+# -- Edit this script in the $DART/models/cam-fv/shell_scripts/cesm#_# directory
+#    or copy it and its dependent scripts to somewhere where it will be preserved.
+#    It archives itself to the $caseroot directory during its execution.
+#
+# -- Locate or create the initial ensemble files that CESM will need.
+#    The initial ensemble can come from a single- or multi-instance reference case.
+#
+# -- DOCN: The compsets required by this script use a single data ocean.
+#    This script can use a daily, 1/4 degree resolution, ocean data set,
+#    in place of the monthly, 1 or 2 degree set.
+#
+# -- Run this script. When it is executed, it will create:
+#    1) a CESM 'CASE' ($caseroot) directory, where the model will be built,
+#    2) a run directory, where each hindcast + assimilation cycle will take place,
+#    3) a bld directory for the executables.
+#    4) CESM's short term archiver (st_archive) will use a fourth directory for
+#    storage of model output until it can be moved to long term storage.
+#
+#    This script also executes ${caseroot}/DART_config which augments the case
+#    with all the pieces necessary to run DART in the first job.
+#    Read the instructions in that file too.
+#
+# -- Confirm the variable values in $caseroot/env_{build,run,batch,...}.xml.
+#
+# -- (if running filter) Edit the DART input.nml that appears in the ${caseroot}
+#    directory to replace default values with your preferred values.
+#
+# -- Submit the job using ${caseroot}/case.submit -M begin,end
+#
+# ---------------------
+# Important features
+# ---------------------
+#
+# If you want to change something in your case other than the runtime settings,
+# it is safest to delete everything and create the case from scratch.
+
+echo "==============================================================="
+date
+# ==============================================================================
+# Get the shared experiment parameters from the models/CESM parameters file.
+
+source ../../../CESM/shell_scripts/cesm2_2_cpled/DART_params
+
+# ==============================================================================
+# case options:
+#
+# case          The value of "case" is restricted to 'cam-fv' in CESM coupled assimilations.
+# caseroot      The CESM CASEROOT for the cam-fv CASE.  It will be created by create_newcase.
+#
+# ==============================================================================
+
+setenv case     'clm'
+setenv caseroot ${exproot}/${case}
+setenv exeroot  ${cime_output}/${case}/bld
+setenv rundir   ${cime_output}/${case}/run
+
+
+if ( -e ${caseroot} ) then
+   echo "WARNING : ${caseroot} already exists."
+   echo "EXISTING: ${caseroot}"
+   echo "EXISTING: ${exeroot}"
+   echo "EXISTING: ${rundir}"
+   echo "These directories need to be removed or the case must be renamed"
+   echo "WARNING : Stopping."
+   exit
+endif
+# This avoids using /var/tmp, which can be purged by other jobs while this
+# share queue job is running, which kills it.
+if ($?PBS_O_WORKDIR) then
+   setenv TMPDIR /glade/${mach}/scratch/$USER/temp
+   mkdir -p $TMPDIR
+endif
+
+if ($?LS_SUBCWD) then
+   cd $LS_SUBCWD
+else if ($?PBS_O_WORKDIR) then
+   cd $PBS_O_WORKDIR
+endif
+
+# Store the location of these setup scripts for use in DART_config.
+set DART_CESM_scripts = `pwd`
+
+# ==============================================================================
+# Create the case - this creates the caseroot directory.
+#
+# FATAL idea to make caseroot the same dir as where this setup script is
+# since the build process removes all files in the caseroot dir before
+# populating it.  Try to prevent shooting yourself in the foot.
+
+if ( ${caseroot} == `pwd` ) then
+   echo "ERROR: the setup script should not be located in the caseroot"
+   echo "directory, because all files in the caseroot dir will be removed"
+   echo "before creating the new case.  move the script to a safer place."
+   exit 1
+endif
+
+echo "removing old files from ${caseroot}"
+echo "removing old files from ${exeroot}"
+echo "removing old files from ${rundir}"
+
+${REMOVE} ${caseroot}
+${REMOVE} ${exeroot}
+${REMOVE} ${rundir}
+
+# Record which CIME is being used.
+cd ${CIMEROOT}
+echo "\n Using the starred branch, below, of $CIMEROOT "
+git branch | grep '*'
+echo " " 
+cd -
+
+# Record which CAM is being used.
+cd ${CIMEROOT}/../components/cam
+echo "Using CAM version"
+head -n 5 doc/ChangeLog | tail -n 3
+echo " " 
+cd -
+
+${CIMEROOT}/scripts/create_newcase \
+   --mach ${mach} \
+   --compset ${compset} \
+   --case ${caseroot} \
+   --res      $resolution     \
+   --project ${PROJECT} \
+   --run-unsupported \
+   --ninst ${num_instances} \
+   --multi-driver || exit 2
+
+# ==============================================================================
+# Preserve a copy of this script and the parameter file as it was run.
+# Copy the DART setup script (CESM_DART_config) to CASEROOT.
+
+# Preserve a copy of this script as it was run.
+# If submitted interactively or with 'qcmd', this is easy.
+# If submitted as a batch job, the jobname and this script name
+# must be identical. 
+
+if ($?LSB_JOBNAME) then
+   setenv setup_file_name $LSB_JOBNAME
+else if ($?PBS_JOBNAME) then
+   if ($PBS_JOBNAME == run/.qcmd) then
+      setenv setup_file_name $0:t
+   else
+      setenv setup_file_name $PBS_JOBNAME
+   endif
+else
+   setenv setup_file_name $0:t
+endif
+${COPY} -f ${VERBOSE} $setup_file_name ${caseroot}/${setup_file_name}.original || exit 30
+${COPY} DART_config    ${caseroot}
+${COPY} ../../../CESM/shell_scripts/${dartscripts}/DART_params  ${caseroot}
+
+# ==============================================================================
+cd ${caseroot}
+# ==============================================================================
+
+# StrCpl; not needed; done in CESM
+# # Save a copy for debug purposes
+# foreach FILE ( *xml )
+#    if ( ! -e          ${FILE}.original ) then
+#       ${COPY} ${FILE} ${FILE}.original
+#    endif
+# end
+
+# Get a bunch of environment variables.
+# If any of these are changed by xmlchange calls in this program,
+# then they must be explicty changed with setenv calls too.
+
+setenv COMPSET               `./xmlquery COMPSET               --value` || exit 3
+setenv COMP_ATM              `./xmlquery COMP_ATM              --value` || exit 3
+setenv COMP_OCN              `./xmlquery COMP_OCN              --value` || exit 3
+setenv CASEROOT              `./xmlquery CASEROOT              --value` || exit 3
+
+# Make sure the case is configured with a stub ocean and a data atmosphere.
+
+if ( ${COMP_OCN} != socn) then
+   echo " "
+   echo "ERROR: This script is not appropriate for active ocean."
+   exit 3
+endif
+
+./xmlchange STOP_OPTION=${stop_option}
+./xmlchange STOP_N=${stop_n}
+./xmlchange RESUBMIT=${resubmit}
+
+./xmlchange CALENDAR=GREGORIAN
+./xmlchange CIME_OUTPUT_ROOT=${cime_output}
+./xmlchange EXEROOT=${exeroot}
+./xmlchange RUNDIR=${rundir}
+
+# --- In a hybrid run the model is initialized as a startup, BUT uses
+# initialization datasets FROM A PREVIOUS case.  This
+# is somewhat analogous to a branch run with relaxed restart
+# constraints.  A hybrid run allows users to bring together combinations
+# of initial/restart files from a previous case (specified by
+# RUN_REFCASE) at a given model output date (specified by
+# RUN_REFDATE). Unlike a branch run, the starting date of a hybrid run
+# (specified by RUN_STARTDATE) can be modified relative to the reference
+# case. In a hybrid run, the model does not continue in a bit-for-bit
+# fashion with respect to the reference case. The resulting climate,
+# however, should be continuous provided that no model source code or
+# namelists are changed in the hybrid run.  In a hybrid initialization,
+# the ocean model does not start until the second ocean coupling
+# (normally the second day), and the coupler does a cold start without
+# a restart file.</desc>
+
+./xmlchange RUN_TYPE=hybrid
+./xmlchange RUN_REFCASE=${refcase}
+./xmlchange RUN_REFDATE=${refdate}
+./xmlchange RUN_REFTOD=${reftod}
+./xmlchange GET_REFCASE=FALSE
+
+./xmlchange RUN_STARTDATE=${startdate}
+./xmlchange START_TOD=${start_tod}
+
+# pnetcdf is default
+./xmlchange PIO_TYPENAME=pnetcdf
+
+# Task layout:
+# Set the nodes_per_instance below to match your case.
+# By computing task counts like we do below, we guarantee each instance uses
+# a whole number of nodes which is the recommended configuration.
+# CIME interprets a negative task count as representing the number of nodes.
+
+@ nthreads = ${number_of_threads}
+
+@ atm_tasks = -1 * ${nodes_per_instance}
+@ cpl_tasks = -1 * ${nodes_per_instance}
+@ ocn_tasks = -1 * ${nodes_per_instance}
+@ wav_tasks = -1 * ${nodes_per_instance}
+@ glc_tasks = -1 * ${nodes_per_instance}
+@ ice_tasks = -1 * ${nodes_per_instance}
+@ rof_tasks = -1 * ${nodes_per_instance}
+@ lnd_tasks = -1 * ${nodes_per_instance}
+@ esp_tasks = -1 * ${nodes_per_instance}
+
+./xmlchange ROOTPE_ATM=0,NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks
+./xmlchange ROOTPE_CPL=0,NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
+./xmlchange ROOTPE_OCN=0,NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks
+./xmlchange ROOTPE_WAV=0,NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks
+./xmlchange ROOTPE_GLC=0,NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks
+./xmlchange ROOTPE_ICE=0,NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks
+./xmlchange ROOTPE_ROF=0,NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks
+./xmlchange ROOTPE_LND=0,NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks
+./xmlchange ROOTPE_ESP=0,NTHRDS_ESP=$nthreads,NTASKS_ESP=$esp_tasks
+
+./xmlchange --subgroup case.run --id JOB_QUEUE          --val ${queue}
+./xmlchange JOB_PRIORITY=${priority}
+./xmlchange --subgroup case.run --id JOB_WALLCLOCK_TIME --val ${timewall}
+
+echo "setting up the case ... "
+
+./case.setup || exit 4
+
+echo "case setup finished."
+
+# ==============================================================================
+# StrCpl; this only sets up assimilatoin; no hindcast model
+# ./case.build --skip-provenance-check
+
+# ==============================================================================
+# What to do next
+# ==============================================================================
+
+cat << EndOfText >! CESM_instructions.txt
+
+-------------------------------------------------------------------------
+Time to check the case.
+
+1) cd ${rundir}
+   and check the compatibility between the namelists/pointer files
+   and the files that were staged.
+
+2) cd ${caseroot}
+
+3) check things
+
+4) run a single job (and send mail), verify that it works without assimilation
+   ./case.submit -M all
+
+5) IF NEEDED, compile all the DART executables by
+   cd  ${dartroot}/models/clm/work
+   ./quickbuild.sh
+
+6) Make sure the DART-related parts are appropriate.
+   Check the input.nml
+   Check the assimilate.csh or perfect_model.csh - as appropriate
+   Submit the ${exproot}/CESM job.
+
+7) If that works
+   ./xmlchange CONTINUE_RUN=TRUE
+   ./xmlchange RESUBMIT=<number_of_cycles_to_run>
+   and
+   ./case.submit -M all
+
+-------------------------------------------------------------------------
+
+EndOfText
+
+cat CESM_instructions.txt
+
+exit 0
+

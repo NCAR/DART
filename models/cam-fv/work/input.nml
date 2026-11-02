@@ -80,6 +80,8 @@
    obs_sequence_out_name    = 'obs_seq.final'
    num_output_obs_members   = 3
    compute_posterior        = .true.
+   output_sequential_prior_post = .false.
+   use_sequential_prior_post = .false.
 
    trace_execution          = .true.
    output_timestamps        = .true.
@@ -264,6 +266,7 @@
 !                       'soa_a1','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
 !                       'soa_a2','QTY_3D_PARAMETER',    'NA', 'NA', 'UPDATE'
 &location_nml
+   strongly_coupled                = .false.
    horiz_dist_only                 = .false.
    vert_normalization_pressure     = 20000.0
    vert_normalization_height       = 10000.0

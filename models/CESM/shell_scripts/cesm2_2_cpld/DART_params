@@ -1,0 +1,434 @@
+#!/bin/csh
+
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# https://docs.dart.ucar.edu/en/latest/guide/downloading-dart.html
+
+# Coupled assimilations are a collection of component assimilations,
+# each in a traditional CESM2 "CASE" directory, but all are controlled by
+# a CASE called "CESM", which runs the hindcast and manages the assimilations. 
+# The component directories will be named according to the chosen comp_names 
+# from DART/models/{comp_name}, including "CESM",
+# The hindcast CASE (CESM), and then assimilating CASEs ("assimilators"; cam-fv,...), 
+# will be built in an EXPeriment directory, defined by the user 
+# as part of the CESM2 CASE creation process.  This name (EXP) should be unique
+# (in contrast to the CASE names, which are restricted).
+# After setting up the cases, the CASEs directory structure should look like
+# CASEROOTs:
+#   .../your_cases/EXP/         (experiment directory, not a CASE)
+#       CESM/                   (hindcast and assimilation organizer CASE)
+#         case.submit           (Only this case is submitted) 
+#         multi_assim.csh       (calls the component assimilation.cshs)
+#         DART_config
+#         DART_params
+#       cam-fv/                 (an assimilator CASE)
+#         assimilation.csh
+#         DART_config
+#       clm/                    (another assimilator CASE)
+#         assimilation.csh
+#         DART_config
+#       ...
+#   
+#   CIME_OUTPUT_ROOTs:
+#   .../scratch/USER/EXP/
+#       CESM/
+#         run
+#         bld
+#       cam-fv/
+#         run
+#         bld
+#       ...
+
+# This resource file has configuration items needed 
+# when building and running CESM2 coupled assimilations with DART.
+# This file will be copied into the EXP CASEROOT directories to be used 
+# by the CESM CASE and the assimilators.
+# This does not contain all of the parameters you may want to set.
+# See the setup script, input.nml, and DART documentation.
+    
+# The workflow of setting up a coupled assimilation is:
+# 1) Edit DART_params (this file) to define the EXP and assimilationS.
+# 2) Edit and run the CESM component setup script (./setup_assimilation) 
+#    to create the CASE directory structure which is used in the next step.
+# 3) Edit and run the setup scripts (including DART_config) for each CESM component 
+#    which will assimilate observations (an "assimilator").
+#    Each assimilator CASE should be built parallel to the CESM CASE defined in 2).
+# 4) Edit and run the CESM DART_config, which will check for the correct setup
+#    of the assimilators.
+# 5) Run a cycle of this CESM case.
+#
+# All of CESM stops every 6 hours so that an ensemble of state files is available
+# for each assimilator at the frequency of typical atmospheric assimilations.
+# In the future each assimilator may have # its own frequency 
+# (e.g. ocean assimilated daily), but there are questions to be resolved
+# before that can happen:
+#   Which cross-assimilations should be run at those frequencies?
+#   Questions about inflation, etc..
+
+# ==============================================================================
+# Big picture parameters.
+#
+# EXP           A name for the whole assimilation (not a CASENAME).
+#               It will be used many ways; directory and file names
+#               both locally and (possibly) on the long-term archive, 
+#               and script names, so consider its length and information content.
+# cesmtag       The version of the CESM source code to use when building the code.
+#               The multi_assim.csh in this directory will handle only cesm2_1 and later.
+# compset       Defines the CESM model components, vertical resolution and physics packages to be used.
+#               For now must be a CAM-FV "F" compset, either supported, or use the
+#               --run-unsupported option.  Later B and other compsets may be accommodated.
+#               A compset defined specifically for CAM assimilations is
+#               FHIST_DARTC6 = HIST_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV
+#               For a list of the pre-defined component sets: $cesmtag/cime/scripts/query_config --compsets
+#               To create a variant compset, see the CESM documentation
+#               https://ncar.github.io/CAM/doc/build/html/users_guide/atmospheric-configurations.html
+#               and carefully incorporate any needed changes into the setup script.
+# resolution    Defines the horizontal resolution and dynamics; see CESM docs.
+#               see http://esmci.github.io/cime/users_guide/grids.html.
+#               f19_f19  ... FV core at ~ 2 degree (19 means 1.9 degrees of latitude).
+#               f09_f09  ... FV core at ~ 1 degree (the 2nd f09 means CLM uses a .9 degree latitude grid)
+#               To use the high resolution SST data ocean, use resolution "f09_d025" or "f19_d025"
+#               and the user_grid variable.
+#               This script handles CESM2 only.  CESM3 is not friendly to CAM-FV,
+#               and there is not yet (2026-9) an ne##_d025 grid for CAM-SE.
+# num_instances The number of ensemble members.
+
+# assimilators  Define the coupled assimilation by listing the assimilating components
+# cross_assims  and the cross-assimilations.  The self-assimilations will always be done
+#               because that's how the obs estimates and increments are generated
+#               for use by all assimilating components.
+#               Each assimilator will assimilate obs from other components as separate phases.
+#               The assimilation name format is "assimilator<obs_component",
+#               where both pieces are the names of models in DART: cam-fv, clm, ...
+#               (This allows the scripts to find files using parts of the assimilation names.)
+#               The list of cross_assims enables the script to do full strongly-coupled, weakly-coupled,
+#               and intermediate (e.g.;'clm<cam-fv' but not 'cam-fv<clm'), as the user selects.
+# comp_file_bits  The part of CESM file names which denotes the component.
+#                 These are hard-coded in the components' source code, so we can't query them.
+#                 The choices (cesm2_2) are: cam, clm2,  pop, mom,  rtm, mosart,  cice, cice5, (cice6?)
+
+# user_grid     Provides arguments to create_newcase enabling the use of hi-res SST data files.
+# compset_args  Like user_grid, but for non-standard compsets.
+
+# ==============================================================================
+
+setenv EXP            S-C_test0
+setenv cesmtag        my_cesm_sandbox
+setenv compset         HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SIAC
+# CLM setenv comp        2000_DATM%GSWP3v1_CLM50%BGC-CROP_SICE_SOCN_MOSART_SGLC_SWAV
+setenv resolution     f09_f09_mg17
+setenv num_instances  5
+
+setenv assimilators ('cam-fv' 'clm')
+setenv cross_assims ('cam-fv<clm' 'clm<cam-fv')
+setenv shared_input_nml 'input.nml.cam-fv+clm'
+setenv comp_file_bits ('cam' 'clm2')
+
+setenv user_grid      ''
+setenv compset_args "--compset $compset"
+# If cemstag >= cesm2_0_alpha10f and compset = FHIST_DARTC6 (or another non-supported):
+# and resolution is non-standard (e.g. d025)
+setenv compset_args "${compset_args} --run-unsupported"
+
+
+# ==============================================================================
+# Directories:
+# dartroot      Location of the root of _your_ DART installation.
+# dartscripts   The directories in models/{CESM models}/shell_scripts which have 
+#               the scripts required by this assimilation.
+#               WARNING; this assumes that the scripts directory for each model
+#                        has the same name.
+# COMP_obspath  Location of obs_seq.out files for component COMP
+#               User must provide one for each of the components listed as $assimilators (above).
+# obspaths      Locations of the obs used by $assimilators.  Must match 1-to-1.
+setenv dartroot       /glade/work/${USER}/DART/Manhattan_git
+setenv dartscripts    cesm2_2_cpld
+setenv atm_obspath    '/glade/p/cisl/dares/Observations/NCEP+ACARS+GPS' 
+setenv lnd_obspath    '/glade/campaign/cisl/dares/glade-p-dares-Oct2023/Observations/land' 
+setenv ocn_obspath    ''
+setenv ice_obspath    ''
+setenv obspaths       ($atm_obspath $lnd_obspath)
+                       
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cesmroot        Location of the CESM code base.  This version of the script
+#                 only supports version cesm2_1 or later, which is available from
+#                 https://github.com/ESCOMP/cesm.
+# use_SourceMods  DART mostly does not require a CESM SourceMods directory.
+#                 One exception is to use SIF obs in CLM.
+# SourceModDir    If you have modifications to CESM, they should be managed in your CESM git clone.
+# cesmdata     Location of some supporting CESM data files such as
+#              CAM external forcing files, which are specified in the setup script.  
+#              It's not common to change these (or easy to figure out which are 
+#              the most suitable; odd time series, averages, etc.)
+#              They are found in $cesmdata and can be added to the user_nl_cam_####.
+# caseroot     The CESM2 $CASEROOT directory, where the CESM+DART configuration files
+#              will be stored and the build commands will be executed.
+#              This is not defined here because it's different for CESM and each assimilator.
+#              This should probably not be on a fileystem that is scrubbed.
+#              This script WILL DELETE any existing caseroot, so this script,
+#              and other useful things should be kept elsewhere.
+# cime_output   $cime_output/$CASENAME is the directory where CESM's build and run directories will be created.
+#               Large amount of space needed, generally on a scratch partition.  
+#               CESM will define the following variables:
+#               RUNDIR:      The CESM run directory.  Needs large amounts of disk.
+#                            Default; $CIME_OUTPUT_ROOT/$CASE/run
+#               EXEROOT:     The CESM executable directory.
+#                            Default; $CIME_OUTPUT_ROOT/$CASE/bld
+#               DOUT_S_ROOT: The CESM short-term archive directory.
+#                            LARGE amount of disk.
+#                            Files remain here until you move them or they are purged.
+#                            Default; $CIME_OUTPUT_ROOT/archive/$CASE.
+#                            DART's preference is to define the archive directory to be;
+#                                     $CIME_OUTPUT_ROOT/$CASE/archive
+#                            This change of DOUT_S_ROOT may interfere with the ability to clone your case.
+# CIME_MODEL   Specifies the version of CESM to build.
+#              This will override the value that may be set in your ~/.cime/config.
+
+setenv cesmroot       /glade/work/${USER}/CESM/${cesmtag}
+setenv use_SourceMods TRUE
+setenv SourceModDir   ${dartroot}/models/clm/DART_SourceMods/cesm2_2_0/SourceMods
+setenv cesmdata       /glade/campaign/cesm/cesmdata/cseg/inputdata
+setenv exproot        /glade/work/raeder/Exp/${EXP}
+# conventional; setenv caseroot       /glade/work/${USER}/cases/${cesmtag}/${EXP}
+setenv cime_output    /glade/derecho/scratch/${USER}/${EXP}
+
+# This will override the value that may be set in your ~/.cime/config.
+setenv CIME_MODEL cesm
+setenv CIMEROOT   $cesmroot/cime
+
+# ==============================================================================
+# Dates 
+#
+# If the ICs for the various components come from different CASEs,
+# then the files must be renamed or linked to file names which use refcase
+# and the ref date parameters.
+
+# refcase    The name of the existing reference case from which this run will start.
+#            The default script setup expects the initial condition files to use this
+#            as the CASENAME part of the file names, and as the scratch directory name
+#            where they are stored.
+
+# NOTE:      All the ref* variables must be treated like strings and have
+#            the appropriate number of preceeding zeros. 
+# refyear    The specific date/time-of-day in the reference case that this
+# refmon     run will start from.  (Also see 'runtime settings' below for
+# refday     start_year, start_mon, start_day and start_tod.)
+# reftod
+#
+# stagedir        The directory location of the reference case files.
+# stage_inflation Whether the reference case files include inflation restart files
+#                 "all"; expect to find files for all assimilating components 
+#                 "some"; use what exists and let fill_inflation_restart provide the rest
+#                 "none"; don't try to stage existing files.
+#                 TODO; not implemented in stage_cesm_files yet.
+# base_member     If the initial ensemble will be created by filter by perturbing around a truth,
+#                 pick a member of the reference case ensemble.  
+#                 It can be beyond the ensemble size of this assimilation.
+#
+# ==============================================================================
+
+setenv refcase      clm5.0.06_f09_80
+setenv refyear      2011
+setenv refmon       01
+setenv refday       01
+setenv reftod       00000
+# useful combinations of time that we use below
+setenv refdate      ${refyear}-${refmon}-${refday}
+setenv reftimestamp ${refyear}-${refmon}-${refday}-${reftod}
+
+# Alternative reference case for different dates, cases, etc. may be kept in places like:
+# setenv stagedir /glade/scratch/${USER}/${refcase}/run
+setenv stagedir        /glade/derecho/scratch/${USER}/archive/${refcase}/rest/${reftimestamp}
+# setenv stagedir /glade/campaign/cisl/dares/glade-p-dares-Oct2023/RDA_strawman/CESM_ensembles/CLM/CLM5BGC-Crop/ctsm_${reftimestamp}
+setenv stage_inflation all
+
+setenv base_member 7
+
+# In a hybrid configuration, you can set the start_date to whatever you want.
+# It does not have to match the reference (although changing the month is risky).
+#
+# start_year           Generally this is the same as the reference case date, 
+# start_month          but it can be different if you want to start this run 
+# start_day            as if it was a different time.
+# start_tod
+# start_date           The date used as the starting date for the hybrid run.
+
+# stop_option          Units for determining the forecast length between assimilations
+# stop_n               Number of time units in each forecast
+# resubmit             How many times to resubmit a job if it fails.
+#                      Should almost always be 0, because a failed job requires cleanup
+#                      before continuing.
+# dtime                Nominal timestep of the model (seconds). 1800 is the default.
+#                      Component coupling times can be changed in the setup script,
+#                      but must be consistent with this value.
+
+setenv start_year    2011
+setenv start_month   01
+setenv start_day     01
+setenv start_tod     00000
+setenv start_date     ${start_year}-${start_month}-${start_day}
+
+setenv stop_option  nhours
+setenv stop_n       6
+setenv resubmit     0
+
+setenv dtime         1800
+
+# ==============================================================================
+# Archiving
+
+# short_term_archiver  Copies the files from each job step to an archive directory.
+# st_archive_queue     The short term archiver is a single process job,
+#                      so it should not be submitted to a queue which assigns whole nodes.
+# st_archive_time      Enough time for st_archive to finish.  Format HH:MM:SS
+#                      (Omitting a part lets st_archive interpret it in suboptimal ways.
+# save_restart_interval  Define how often sets of restart files will be archived,
+#                        in order to conserve disk space during a multi-cycle job.
+#                        Day-of-week or a number of days.
+# save_stages_freq     The frequency at which to save the stages' members;
+#                      NONE, RESTART_TIMES, ALL  (mean and sd always saved).
+# archdir              The CESM short-term archive directory.
+#                      Files will remain here until you move them to permanent storage or are purged.
+#                      Requires large amounts of disk space. 
+
+# ==============================================================================
+
+setenv short_term_archiver   off
+setenv st_archive_queue      develop
+setenv st_archive_time       06:00:00
+setenv save_restart_interval 3
+setenv archdir               ${cime_output}/archive
+#                            This translates into scratch.../$EXP/archive
+
+# ==============================================================================
+# OSSE/Perfect Model experiments only.
+# If there is an ensemble of CLM states to choose from, which one do you want as
+# the truth? There is an argument for picking an instance that will not be part
+# of the ensemble used for the assimilation experiment. 
+
+# setenv SingleInstanceRefcase FALSE
+# setenv TRUTHinstance 80
+
+# ==============================================================================
+# Data models
+
+# The default CAM sea surface temperature file is climatological,
+# which is less than ideal for atmospheric assimilations.
+# The supported alternative is time interpolation of a monthly SST+CICE data set.
+# Examples are provided here.
+# "2 degree":
+# setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_L30_1850_2022_c241003.nc
+# setenv sst_grid ${cesmdata}/share/domains/domain.ocn.fv1.9x2.5_gx1v7.170518.nc
+# "1 degree":
+# setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2016_c170525.nc
+# setenv sst_grid ${cesmdata}/share/domains/domain.ocn.fv0.9x1.25_gx1v7.151020.nc
+
+# "1/4 degree":
+# A better alternative is daily, 1/4-degree SSTs from Reynolds,...,Tomas
+# The file with the whole dataset is slow to read, so it has been divided into yearly files:
+# /glade/work/raeder/Models/CAM_init/SST_ssh/Yearly/avhrr_v2.1.YYYY_12Z_filled_c250709.nc
+# WARNING: if your assimilation sequence crosses a file timeseries limit you MUST change the 
+#          > filename in SSTICE_DATA_FILENAME
+#          > year in SSTICE_YEAR_{ALIGN,START,END}
+#          in the env_run.xml files.  
+#          CESM will likely make poor date choices if it can't find bracketing dates.
+
+# Namelist variable taxmode (./setup_assimilation) determines how it does that calculation.
+#   'cycle' (default) means calculate a stream time slot to use with a given model time.
+#           A year different from the model year might be chosen.
+#   'limit' means 'if stream data outside of the range _START to _END, then fail'
+#           Assimilations should use this value.
+
+# Specify the beginning and ending years of the data set.
+# ./DART_config will set SSTICE_YEAR_START and _ALIGN to the same value, 
+# which lines up the stream calendar with the model calendar.  
+# CESM will then calculate which stream time slot is needed for a given model time.
+# setenv sst_year_start 1850
+# setenv sst_year_end   2022
+
+setenv sst_dataset \
+   "/glade/work/raeder/Models/CAM_init/SST_ssh/Yearly/avhrr_v2.1.2018_12Z_filled_c250709.nc"
+   # "/glade/work/raeder/Models/CAM_init/SST_ssh/avhrr-only-v2.2011-202001_0Z_filled_c200810.nc"
+   # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc"
+   # "/glade/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20130101_cat_20130731_filled_c170223.nc"
+setenv sst_year_start 2018
+setenv sst_year_end   2018
+
+set list = `ncdump -h $sst_dataset | grep calendar`
+if ($list[3] !~ '"gregorian"') then
+   echo "ERROR: $sst_dataset"
+   echo "       must have the calendar attribute attached to the time variable."
+   echo "       Use: ncatted -a calendar,time,c,c,gregorian $sst_dataset"
+   exit 5
+endif
+set user_grid = "${user_grid} --gridfile /glade/work/raeder/Models/CAM_init/SST_ssh"
+set user_grid = "${user_grid}/config_grids2.1_oi0.25.xml"
+
+setenv sst_grid    /glade/work/raeder/Models/CAM_init/SST_ssh/domain.ocn.d025.120821.nc
+
+# ==============================================================================
+# machine-specific commands:
+# job settings:
+#
+# PROJECT    CESM2 preferred name for account used to charge core hours.
+#            Using setenv makes it available to utils/python/CIME/case.py/get_project
+# email        raeder@ucar.edu
+# machine    The name of the computer.  Used in create_newcase and some path names.
+# queue      On derecho the 'queue' passed to create_newcase can be "main" or "preempt".
+#            (if the preempt wrapper bash script assim_preempt.sh is available).
+# priority   If queue = main, the desired priority (economy, regular, premium)
+#            is passed to JOB_PRIORITY (env_run.xml)
+# timewall   can be changed during a series by changing the case.run
+#            Each batch system can have a different format (defined in config_batch.xml),
+#            so learn whether you're specifying %H:%M:%S or %D:%H:%M 
+#            and how short versions are interpreted.
+# nodes_per_instance  The (usually minimum) number of nodes required to run a single instance.
+#                     If you get 'out of memory' errors OR failures without any messages,
+#                     try increasing the nodes_per_instance.
+# use_tasks_per_node  The tasks/node to use.  Usually the number of physical processors.
+# number_of_threads   threads/task to use,
+#                     To be used by --pecount arg to create_namelist.
+#                     In cases where there are few observations but a large memory requirement,
+#                     it may be more efficient for DART to use fewer MPI tasks/node 
+#                     than the number of available processors/node.
+#                     But that would restrict the model to using fewer  MPI tasks per node.
+#                     That can be compensated by telling it to use >1 (OpenMP) threads per node.
+#                     E.g. change from 36 tasks x 1 thread  to  12 tasks x 3 threads.
+
+setenv PROJECT      P86850054
+setenv email        raeder@ucar.edu
+setenv machine      derecho
+setenv queue        main
+# setenv queue        preempt
+setenv priority     economy
+setenv timewall     0:20:00
+setenv nodes_per_instance  2
+setenv use_tasks_per_node  128
+setenv number_of_threads   1
+
+
+# ==============================================================================
+# standard commands:
+#
+# Make sure that this script is using standard system commands
+# instead of aliases defined by the user.
+# If the standard commands are not in the location listed below,
+# change the 'set' commands to use them.
+# The FORCE  options are not optional. You may need to specify full paths
+# to alternate locations that support the '-f' option.
+# The VERBOSE options are useful for debugging, but are optional because
+# some systems don't like the -v option to any of the following.
+
+# ==============================================================================
+set nonomatch       # suppress "rm" warnings if wildcard does not match anything
+
+set VERBOSE = '-v'
+set    MOVE = "/usr/bin/mv $VERBOSE"
+set    COPY = "/usr/bin/cp $VERBOSE --preserve=timestamps"
+set    LINK = "/usr/bin/ln $VERBOSE -s"
+set    LIST = "/usr/bin/ls "
+set  REMOVE = "/usr/bin/rm -r"
+
+# =============================================================================
+
+
