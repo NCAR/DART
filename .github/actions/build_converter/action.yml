@@ -1,0 +1,53 @@
+name: 'Build converter'
+description: 'Build a given observation converter'
+
+# All possible input parameters that can be specified when using this composite action
+inputs:
+  converters-directory:
+    description: 'path to top-level directory containing the converter to build'
+    type: string
+    required: false
+    default: 'observations/obs_converters/'
+  converter:
+    description: 'name of existing DART observation converter'
+    type: string
+    required: true
+    default: 'ocean_color'
+  compiler:
+    description: 'compiler to use when building the converter'
+    type: string
+    required: false
+    default: gfortran
+
+runs:
+  using: "composite"
+  steps:
+    # Steps to create Makefile template
+    - name: Creating Makefile template
+      run: |
+        cd build_templates
+        case ${{ inputs.compiler }} in
+          gfortran)
+            cp mkmf.template.gfortran mkmf.template
+            echo 'FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)' >> mkmf.template
+            ;;
+          nvhpc)
+            cp mkmf.template.nvhpc mkmf.template
+            echo 'FFLAGS = -g -C -traceback -Ktrap=fp -Mbackslash -Kieee $(INCS)' >> mkmf.template
+            ;;
+          ifx)
+            cp mkmf.template.ifx.linux mkmf.template
+            echo 'FFLAGS = -g -O0 -C -check noarg_temp_created -check nouninit -fpe0 -fp-model precise  -ftrapuv -traceback -warn declarations,uncalled,unused $(INCS)' >> mkmf.template
+            ;;
+          *)
+            echo "Unknown or unsupported compiler: ${{ inputs.compiler }}" >&2
+            exit 1
+            ;;
+        esac
+      shell: bash -elo pipefail {0}
+    # Step to compile converter
+    - name: Building ${{ inputs.converter }} converter
+      run: |
+        cd ${{ inputs.converters-directory }}/${{ inputs.converter }}/work
+        ./quickbuild.sh
+      shell: bash -elo pipefail {0}

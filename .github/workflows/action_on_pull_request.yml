@@ -60,3 +60,18 @@ jobs:
           run-program: ./filter
           use-mpi: mpif08
           mpi-n-tasks: 2
+
+  # Job 4
+  build-obs-converter:
+    runs-on: ubuntu-latest
+    container:
+      image: hkershaw/dart-dep:2.0
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+      - name: Set checked out repo as a safe git directory
+        run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      - name: Build obs converter
+        uses: ./.github/actions/build_converter
+        with:
+          converter: ocean_color
