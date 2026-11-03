@@ -2,13 +2,15 @@
 #   status : tap     = emits TAP (contrib/fortran-testanything)
 #            exit    = no TAP; pass if exit code is 0
 #            manual  = interactive / long-running / unverified; skipped unless named
+#   A driver script (e.g. qceff/work/runall.sh) can be listed as the executable
+#   with status tap: it must print TAP (see tap.sh) and exit non-zero on failure.
 #   options: needs=rttov|mpi (skipped by default), stdin=<file in work/>
 # Executables are built by <suite>/work/quickbuild.sh and run from <suite>/work.
 namelist          test_parse_variables         tap
 perturb           test_perturb                 tap
 window            test_window                  tap
 qceff             test_force_bounds            tap
-qceff             test_table_read              exit
+qceff             runall.sh                    tap     # driver: runs test_table_read per input.nml case
 utilities         parse_args_test              tap
 utilities         parse_csv_test               tap
 utilities         csv_read_test                tap
