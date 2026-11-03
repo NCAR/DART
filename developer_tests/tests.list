@@ -1,0 +1,42 @@
+# suite  executable  status  [options]
+#   status : tap     = emits TAP (contrib/fortran-testanything)
+#            exit    = no TAP; pass if exit code is 0
+#            manual  = interactive / long-running / unverified; skipped unless named
+#   options: needs=rttov|mpi (skipped by default), stdin=<file in work/>
+# Executables are built by <suite>/work/quickbuild.sh and run from <suite>/work.
+namelist          test_parse_variables         tap
+perturb           test_perturb                 tap
+window            test_window                  tap
+qceff             test_force_bounds            tap
+qceff             test_table_read              exit
+utilities         parse_args_test              tap
+utilities         parse_csv_test               tap
+utilities         csv_read_test                tap
+utilities         error_handler_test           manual
+utilities         file_utils_test              exit
+utilities         find_enclosing_indices_test  exit
+utilities         find_first_occurrence_test   exit
+utilities         nml_test                     exit
+utilities         sort_test                    exit
+utilities         stacktest                    manual
+utilities         PrecisionCheck               manual
+time_manager      timetest                     exit
+beta_dist         test_beta_dist               exit
+gamma_dist        test_gamma_dist              exit
+normal_dist       test_normal_dist             exit
+kde_dist          test_kde_dist                exit
+obs_sequence      obs_rwtest                   exit
+quad_interpolate  test_quad_irreg_interp       exit
+quad_interpolate  test_quad_reg_interp         exit
+random_seq        test_random                  exit
+random_seq        test_ran_unif                exit
+random_seq        test_gaussian                exit
+random_seq        test_gamma                   exit
+random_seq        test_inv_gamma               exit
+random_seq        test_exp                     exit
+random_seq        test_corr                    manual
+random_seq        test_diff                    manual
+random_seq        test_hist                    manual
+random_seq        test_reseed                  manual
+forward_operators rttov_unit_tests             manual  needs=rttov
+forward_operators rttov_test                   manual  needs=rttov
