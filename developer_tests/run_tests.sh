@@ -2,28 +2,59 @@
 # Build and run DART developer tests; emit aggregate TAP (one line per
 # executable), optionally piped through tapview.  See tests.list.
 #
-# Usage: run_tests.sh [-b] [-n] [-l] [-p] [-o dir] [-T file] [suite|suite/exe ...]
-#   -l  list tests and status        -b  build only
-#   -n  no build (use existing exes) -p  plain TAP, do not use tapview
-#   -o  results dir (default: developer_tests/test_results); build logs, test
-#       output and per-test sandbox copies of work/ go here, not into work/
-#   -T  mkmf template to copy to build_templates/mkmf.template if missing
-#   Builds are serial: suites share generated sources (obs_kind_mod, ...).
-#   Naming a manual test explicitly runs it.
+# Run with -h for usage.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 DART=$(cd "$here/.." && pwd)
 export DART
 build=1 run=1 list=0 plain=0 out="$here/test_results" template=""
+usage() {
+  cat <<'USAGE'
+Build and run DART developer tests and print TAP (one line per executable),
+piped through tapview if available.  Tests are listed in tests.list.
+
+Usage: run_tests.sh [options] [suite | suite/exe ...]
+
+With no arguments, runs every test that is not manual and needs nothing extra.
+A bare suite name runs that suite's non-manual tests; suite/exe runs one test,
+including manual ones.
+
+Options:
+  -l         list tests and their status, then exit
+  -b         build only, do not run
+  -n         do not build; run existing executables
+  -p         plain TAP, do not pipe through tapview
+  -o DIR     results directory (default: developer_tests/test_results);
+             build logs, test output and per-test copies of work/ go here
+  -T FILE    mkmf template to copy to build_templates/mkmf.template
+             if that file is missing
+  -h, --help show this help
+
+Requirements:
+  Builds are serial because suites share generated sources.
+
+Examples:
+  ./run_tests.sh -l
+  ./run_tests.sh perturb window
+  ./run_tests.sh -n -p utilities/sort_test
+  ./run_tests.sh -T ../build_templates/mkmf.template.gfortran
+
+Exit status: 0 all tests passed, 1 a test or build failed, 2 usage/setup error.
+USAGE
+}
+[ "${1:-}" = "--help" ] && { usage; exit 0; }
 while getopts "blnpo:T:h" o; do
   case $o in
     b) run=0 ;; n) build=0 ;; l) list=1 ;; p) plain=1 ;;
     o) out=$OPTARG ;; T) template=$OPTARG ;;
-    *) sed -n '2,10p' "$0"; exit 2 ;;
+    h) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
   esac
 done
 shift $((OPTIND-1))
 sel=("$@")
+# make the results dir absolute: the script cd's into suite directories
+case $out in /*) ;; *) out="$PWD/$out" ;; esac
 
 # ---- read manifest ----
 suites=() exes=() stat=() opts=()
@@ -61,7 +92,6 @@ done
 [ ${#want[@]} -gt 0 ] || { echo "no tests selected" >&2; exit 2; }
 
 # ---- build ----
-failed_build=" "
 if [ $build -eq 1 ]; then
   if [ ! -f "$DART/build_templates/mkmf.template" ]; then
     if [ -n "$template" ] && [ -f "$template" ]; then
@@ -73,11 +103,6 @@ if [ $build -eq 1 ]; then
       echo "  or pass -T <template> to have it copied for you." >&2
       exit 2
     fi
-  fi
-  if [ -z "${NETCDF:-}" ]; then
-    echo "ERROR: NETCDF is not set (the mkmf template uses \$NETCDF/include and /lib)." >&2
-    echo "  e.g. export NETCDF=/opt/local" >&2
-    exit 2
   fi
   build_one() {
     mkdir -p "$out/$1"
