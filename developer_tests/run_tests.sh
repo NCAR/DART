@@ -39,6 +39,10 @@ Examples:
   ./run_tests.sh -n -p utilities/sort_test
   ./run_tests.sh -T ../build_templates/mkmf.template.gfortran
 
+A test can also be a driver script that runs a program many times with
+different inputs (e.g. qceff/work/runall.sh). List it in tests.list with
+status tap; it must print TAP (see tap.sh) and exit non-zero on any failure.
+
 Exit status: 0 all tests passed, 1 a test or build failed, 2 usage/setup error.
 USAGE
 }
@@ -147,15 +151,15 @@ runtests() {
     if [ -n "$sp" ]; then out_txt=$(cd "$sb" && ./"$e" < "$sp" 2>&1); rc=$?
     else out_txt=$(cd "$sb" && ./"$e" < /dev/null 2>&1); rc=$?; fi
     printf '%s\n' "$out_txt" > "$out/$s/$e.out"
-    ok=1; why=""
+    ok=1; why=""; lines=""
     if [ $rc -ne 0 ]; then ok=0; why="exit code $rc"; fi
     if [ "$st" = tap ]; then
       lines=$(printf '%s\n' "$out_txt" | grep -c '^ok ')
       if printf '%s\n' "$out_txt" | grep -q '^not ok '; then ok=0; why="${why:+$why, }failed assertions"; fi
       printf '%s\n' "$out_txt" | grep -q '^1\.\.[0-9]' || { ok=0; why="${why:+$why, }no TAP plan"; }
-      why="${why:+$why }(${lines} passing assertions)"
+      [ $ok -eq 0 ] && why="${why:+$why }(${lines} passing assertions)"
     fi
-    if [ $ok -eq 1 ]; then echo "ok $n - $s/$e"
+    if [ $ok -eq 1 ]; then echo "ok $n - $s/$e${lines:+ # $lines assertions}"
     else
       bad=$((bad+1)); echo "not ok $n - $s/$e${why:+ # $why}"
       printf '%s\n' "$out_txt" | tail -n 40 | sed 's/^/# /'
