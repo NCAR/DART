@@ -92,6 +92,7 @@ done
 [ ${#want[@]} -gt 0 ] || { echo "no tests selected" >&2; exit 2; }
 
 # ---- build ----
+failed_builds=" "   # suites whose build failed; their tests are failed below
 if [ $build -eq 1 ]; then
   if [ ! -f "$DART/build_templates/mkmf.template" ]; then
     if [ -n "$template" ] && [ -f "$template" ]; then
@@ -106,12 +107,20 @@ if [ $build -eq 1 ]; then
   fi
   build_one() {
     mkdir -p "$out/$1"
-    ( cd "$here/$1/work" && ./quickbuild.sh nompi > "$out/$1/build.log" 2>&1 ) \
-      && echo "built $1" >&2 || echo "BUILD FAILED $1 (see $out/$1/build.log)" >&2
+    if ( cd "$here/$1/work" && ./quickbuild.sh nompi > "$out/$1/build.log" 2>&1 ); then
+      echo "built $1" >&2
+    else
+      echo "BUILD FAILED $1 (see $out/$1/build.log)" >&2
+      failed_builds="$failed_builds $1 "
+    fi
   }
   for s in "${want[@]}"; do build_one "$s"; done
 fi
-[ $run -eq 1 ] || exit 0
+# build-only: a failed build must fail the run
+if [ $run -eq 0 ]; then
+  [ -z "${failed_builds// /}" ] || exit 1
+  exit 0
+fi
 
 # ---- run, emit TAP ----
 mkdir -p "$out"
@@ -122,8 +131,14 @@ runtests() {
     selected $i || continue
     s=${suites[$i]} e=${exes[$i]} st=${stat[$i]} o=${opts[$i]}
     n=$((n+1)); d="$here/$s/work"
+    # a failed build fails every test in the suite, even if a stale
+    # executable from an earlier build is still in work/
+    case "$failed_builds" in *" $s "*)
+      echo "not ok $n - $s/$e # build failed"; echo "# see $out/$s/build.log"
+      bad=$((bad+1)); continue ;;
+    esac
     if [ ! -x "$d/$e" ]; then
-      echo "not ok $n - $s/$e"; echo "# executable not built (see $out/$s/build.log)"
+      echo "not ok $n - $s/$e # executable not built"; echo "# see $out/$s/build.log"
       bad=$((bad+1)); continue
     fi
     # run in a fresh copy of work/ so outputs never land in the source tree
