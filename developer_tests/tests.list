@@ -4,7 +4,8 @@
 #            manual  = interactive / long-running / unverified; skipped unless named
 #   A driver script (e.g. qceff/work/runall.sh) can be listed as the executable
 #   with status tap: it must print TAP (see tap.sh) and exit non-zero on failure.
-#   options: needs=rttov|mpi (skipped by default), stdin=<file in work/>
+#   options: needs=rttov|mpi (skipped by default), stdin=<file in work/>,
+#            loc=oned (library to link against; default threed_sphere)
 # Executables are built by <suite>/work/quickbuild.sh and run from <suite>/work.
 namelist          test_parse_variables         tap
 perturb           test_perturb                 tap
@@ -27,7 +28,7 @@ beta_dist         test_beta_dist               exit
 gamma_dist        test_gamma_dist              exit
 normal_dist       test_normal_dist             exit
 kde_dist          test_kde_dist                exit
-obs_sequence      obs_rwtest                   exit
+obs_sequence      obs_rwtest                   exit    loc=oned
 quad_interpolate  test_quad_irreg_interp       exit
 quad_interpolate  test_quad_reg_interp         exit
 random_seq        test_random                  exit

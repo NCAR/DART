@@ -1,0 +1,7 @@
+*/gen/
+*/*.log
+*/*.mod
+*/Makefile
+*/dart_log.*
+*/input.nml.*_default
+*/*.a
