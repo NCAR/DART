@@ -224,13 +224,20 @@ run_one() {
   printf '%s\n' "$out_txt" > "$out/$s/$e.out"
   ok=1; why=""; lines=""
   if [ $rc -ne 0 ]; then ok=0; why="exit code $rc"; fi
+  if [ "$st" = passfail ]; then
+    # tests in runtime modules that print PASS / FAIL lines but exit 0 on failure
+    lines=$(printf '%s\n' "$out_txt" | grep -c 'PASS')
+    if printf '%s\n' "$out_txt" | grep -q 'FAIL'; then ok=0; why="${why:+$why, }FAIL in output"; fi
+    [ "$lines" -gt 0 ] || { ok=0; why="${why:+$why, }no PASS in output"; }
+    [ $ok -eq 0 ] && why="${why:+$why }(${lines} PASS lines)"
+  fi
   if [ "$st" = tap ]; then
     lines=$(printf '%s\n' "$out_txt" | grep -c '^ok ')
     if printf '%s\n' "$out_txt" | grep -q '^not ok '; then ok=0; why="${why:+$why, }failed assertions"; fi
     printf '%s\n' "$out_txt" | grep -q '^1\.\.[0-9]' || { ok=0; why="${why:+$why, }no TAP plan"; }
     [ $ok -eq 0 ] && why="${why:+$why }(${lines} passing assertions)"
   fi
-  if [ $ok -eq 1 ]; then printf 'ok\n%s\n' "$s/$e${lines:+ # $lines assertions}" > "$r"
+  if [ $ok -eq 1 ]; then printf 'ok\n%s\n' "$s/$e${lines:+ # $lines $([ "$st" = passfail ] && echo PASS lines || echo assertions)}" > "$r"
   else
     { printf 'not ok\n%s\n' "$s/$e${why:+ # $why}"
       printf '%s\n' "$out_txt" | tail -n 40 | sed 's/^/# /'; } > "$r"

@@ -1,6 +1,9 @@
 # suite  executable  status  [options]
 #   status : tap     = emits TAP (contrib/fortran-testanything)
 #            exit    = no TAP; pass if exit code is 0
+#            passfail = prints PASS/FAIL lines but exits 0 on failure (checks that
+#                       are still in runtime modules); pass if exit code is 0, no
+#                       line contains FAIL, and at least one contains PASS
 #            manual  = interactive / long-running / unverified; skipped unless named
 #   A driver script (e.g. qceff/work/runall.sh) can be listed as the executable
 #   with status tap: it must print TAP (see tap.sh) and exit non-zero on failure.
@@ -24,15 +27,15 @@ utilities         sort_test                    exit
 utilities         stacktest                    manual
 utilities         PrecisionCheck               manual
 time_manager      timetest                     exit
-beta_dist         test_beta_dist               exit
-gamma_dist        test_gamma_dist              exit
-normal_dist       test_normal_dist             exit
-kde_dist          test_kde_dist                exit
+beta_dist         test_beta_dist               passfail
+gamma_dist        test_gamma_dist              passfail
+normal_dist       test_normal_dist             passfail
+kde_dist          test_kde_dist                passfail
 obs_sequence      obs_rwtest                   exit    loc=oned
 quad_interpolate  test_quad_irreg_interp       exit
 quad_interpolate  test_quad_reg_interp         exit
 random_seq        test_random                  exit
-random_seq        test_ran_unif                exit
+random_seq        test_ran_unif                passfail
 random_seq        test_gaussian                exit
 random_seq        test_gamma                   exit
 random_seq        test_inv_gamma               exit
