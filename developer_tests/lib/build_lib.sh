@@ -23,7 +23,7 @@ fi
 
 cd "$here/$loc"
 rm -rf gen; mkdir gen
-rm -f -- libdart.a *.o *.mod Makefile .cppdefs
+rm -f -- libdart.a *.o *.mod Makefile .cppdefs *.gcda *.gcno
 
 MODEL=none; LOCATION=$loc; mpisrc=null_mpi; m=""
 case $loc in
@@ -41,6 +41,8 @@ dartsrc=${dartsrc//$DART\/assimilation_code\/modules\/observations\/obs_kind_mod
 
 "$DART"/build_templates/mkmf -c "$version_def" -a "$DART" -p libdart.a \
     $dartsrc $EXTRA "$DART"/developer_tests/contrib/fortran-testanything/test.f90 > mkmf.log 2>&1
-make -j"$jobs" -f Makefile libdart.a > make.log 2>&1
+# DART_COVERAGE=1: instrument for gcov (OTHERFLAGS follows FFLAGS, so -O0 wins)
+extra=""; [ "${DART_COVERAGE:-0}" = 1 ] && extra="-O0 -g --coverage"
+make -j"$jobs" -f Makefile OTHERFLAGS="$extra" libdart.a > make.log 2>&1
 rm -f -- *.o
 echo "built lib/$loc/libdart.a"
