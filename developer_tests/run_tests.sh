@@ -40,6 +40,9 @@ Build strategy:
   a test with needs= still use their own work/quickbuild.sh, serially.
   A suite's location is "loc=oned" in tests.list; the default is threed_sphere.
 
+  Note: the function compile_one builds a test program from a suite, the quickbuild.sh is
+        not run.
+
 Examples:
   ./run_tests.sh -l
   ./run_tests.sh perturb window
@@ -113,6 +116,7 @@ locof() {  # location module of suite $1 (loc=... in tests.list; default threed_
 }
 
 # ---- build ----
+t_start=$SECONDS
 failed_builds=" "   # suites whose build failed; their tests are failed below
 if [ $build -eq 1 ]; then
   if [ ! -f "$DART/build_templates/mkmf.template" ]; then
@@ -189,6 +193,7 @@ if [ $build -eq 1 ]; then
   fi
   for s in "${legacy[@]-}"; do [ -n "$s" ] && build_one "$s"; done
 fi
+t_build=$((SECONDS - t_start))
 # build-only: a failed build must fail the run
 if [ $run -eq 0 ]; then
   [ -z "${failed_builds// /}" ] || exit 1
@@ -275,11 +280,15 @@ runtests() {
   [ $bad -eq 0 ]
 }
 
+t_run0=$SECONDS
 if [ $plain -eq 0 ] && command -v tapview >/dev/null 2>&1; then
-  runtests | tee "$out/results.tap" | tapview; exit ${PIPESTATUS[0]}
+  runtests | tee "$out/results.tap" | tapview; rc=${PIPESTATUS[0]}
 elif [ $plain -eq 0 ] && [ -x "$HOME/bin/tapview" ]; then
-  runtests | tee "$out/results.tap" | "$HOME/bin/tapview"; exit ${PIPESTATUS[0]}
+  runtests | tee "$out/results.tap" | "$HOME/bin/tapview"; rc=${PIPESTATUS[0]}
 else
   [ $plain -eq 1 ] || echo "# tapview not found; printing plain TAP" >&2
-  runtests | tee "$out/results.tap"; exit ${PIPESTATUS[0]}
+  runtests | tee "$out/results.tap"; rc=${PIPESTATUS[0]}
 fi
+# timing goes last, after tapview's summary
+echo "# run time: $((SECONDS - t_run0))s (${jobs} jobs)$([ $build -eq 1 ] && echo ", build time: ${t_build}s")" >&2
+exit $rc
