@@ -22,6 +22,22 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 4 2027 :: Build system and CI improvements. Tag v11.25.4**
+
+Bug fixes:
+
+- version string for dart now created in build rather than cppdefs
+  which had caused failure for some mpi wrappers.
+
+Documentation:
+
+- | obs_common_subset improvements
+  | *contributed by Yan Barros, PINNeAPPle Labs*
+
+CI:
+
+- GitHub action for obs converter build on pull request
+
 **September 10 2026 :: MOM6 regional grids. Tag v11.25.3**
 
 Bug fixes:
