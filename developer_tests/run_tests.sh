@@ -214,7 +214,17 @@ run_one() {
     printf 'not ok\n%s\n# see %s\n' "$s/$e # executable not built" "$bin/$e.log" > "$r"; return
   fi
   # run in a fresh copy of work/ so outputs never land in the source tree
-  sb="$out/$s/$e"; rm -rf "$sb"; mkdir -p "$sb"; cp -R "$d/." "$sb/"
+  sb="$out/$s/$e"; rm -rf "$sb"; mkdir -p "$sb"
+  # copy only inputs: skip build leftovers (Makefile, preprocess link, objects,
+  # logs, quickbuild.sh) and stale binaries; fresh executables come from build/
+  local f b
+  for f in "$d"/* "$d"/.[!.]*; do
+    [ -e "$f" ] || [ -L "$f" ] || continue
+    b=${f##*/}
+    case $b in Makefile|.cppdefs|preprocess|quickbuild.sh|*.o|*.mod|dart_log.*) continue ;; esac
+    if [ -f "$f" ] && [ -x "$f" ]; then case $b in *.sh) ;; *) continue ;; esac; fi
+    cp -R "$f" "$sb/"
+  done
   [ -d "$bin" ] && find "$bin" -maxdepth 1 -type f -perm -u+x -exec cp {} "$sb/" \;
   # tests may read ../data
   [ -d "$here/$s/data" ] && [ ! -e "$out/$s/data" ] && cp -R "$here/$s/data" "$out/$s/data"
