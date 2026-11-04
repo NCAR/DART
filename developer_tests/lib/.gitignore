@@ -5,3 +5,6 @@
 */dart_log.*
 */input.nml.*_default
 */*.a
+*/*.gcno
+*/*.gcda
+*/*.gcov

@@ -7,7 +7,7 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd)
 DART=$(cd "$here/.." && pwd)
 export DART
-build=1 run=1 list=0 plain=0 out="$here/test_results" template=""
+build=1 run=1 list=0 plain=0 cov=0 nogcovr=0 out="$here/test_results" template=""
 jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)
 usage() {
   cat <<'USAGE'
@@ -25,6 +25,11 @@ Options:
   -b         build only, do not run
   -n         do not build; run existing executables
   -p         plain TAP, do not pipe through tapview
+  -G         with -c, use plain gcov text summary even if gcovr is installed
+  -c         gfortran/gcov coverage: build with -O0 -g --coverage and print a
+             per-file line coverage summary after the run (HTML too if gcovr
+             is installed).  Reports go to DIR/coverage.  Rebuilds the library;
+             suites using needs= (built by quickbuild.sh) are not instrumented.
   -o DIR     results directory (default: developer_tests/test_results);
              build logs, test output and per-test copies of work/ go here
   -j N       run builds and tests N at a time (default: number of CPUs)
@@ -57,9 +62,9 @@ Exit status: 0 all tests passed, 1 a test or build failed, 2 usage/setup error.
 USAGE
 }
 [ "${1:-}" = "--help" ] && { usage; exit 0; }
-while getopts "blnpj:o:T:h" o; do
+while getopts "blnpcGj:o:T:h" o; do
   case $o in
-    b) run=0 ;; n) build=0 ;; l) list=1 ;; p) plain=1 ;;
+    b) run=0 ;; n) build=0 ;; l) list=1 ;; p) plain=1 ;; c) cov=1 ;; G) nogcovr=1 ;;
     j) jobs=$OPTARG ;; o) out=$OPTARG ;; T) template=$OPTARG ;;
     h) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
@@ -157,6 +162,7 @@ if [ $build -eq 1 ]; then
   libfail=" "
   if [ ${#locs[@]} -gt 0 ]; then
     mkdir -p "$out"
+    export DART_COVERAGE=$cov
     "$here/lib/build_lib.sh" pp > "$out/preprocess_build.log" 2>&1 || true
     for l in "${locs[@]}"; do
       ( "$here/lib/build_lib.sh" "$l" "$jobs" > "$out/lib_$l.log" 2>&1 ) &
@@ -174,6 +180,9 @@ if [ $build -eq 1 ]; then
     tmpl="$DART/build_templates/mkmf.template"
     flags=$(printf 'include %s\nshow:\n\t@echo $(FC)\n\t@echo $(FFLAGS)\n\t@echo $(LIBS)\n' "$tmpl" | make -f - show)
     FC=$(echo "$flags" | sed -n 1p); FFLAGS=$(echo "$flags" | sed -n 2p); LIBS=$(echo "$flags" | sed -n 3p)
+    if [ $cov -eq 1 ]; then
+      FFLAGS="${FFLAGS//-O[0-3s]/} -O0 -g --coverage"; LIBS="$LIBS --coverage"
+    fi
     compile_one() {  # suite prog loc
       local s=$1 p=$2 l=$3 d="$out/$1/build"
       if $FC $FFLAGS -I"$here/lib/$l" "$here/$s/$p.f90" "$here/lib/$l/libdart.a" $LIBS \
@@ -280,7 +289,48 @@ runtests() {
   [ $bad -eq 0 ]
 }
 
+# ---- coverage report (gcov) ----
+coverage_report() {
+  local cdir="$out/coverage" gc d f
+  gc=${GCOV:-gcov}
+  command -v "$gc" >/dev/null 2>&1 || { echo "# coverage: gcov not found" >&2; return; }
+  rm -rf "$cdir"; mkdir -p "$cdir"
+  if [ $nogcovr -eq 0 ] && command -v gcovr >/dev/null 2>&1; then
+    # --include-internal-functions: gfortran names module procedures __mod_MOD_x,
+    # which gcovr would otherwise drop as compiler-generated (giving 0 lines)
+    gcovr -r "$DART" --gcov-executable "$gc" --include-internal-functions --filter "$DART/assimilation_code" \
+      --filter "$DART/models/template" --html-details "$cdir/index.html" \
+      --txt "$cdir/summary.txt" "$here/lib" "$out" > "$cdir/gcovr.log" 2>&1
+    # gcovr tags 0% as coverage-none but colors it like coverage-low; make it
+    # stand out (edit the colors here)
+    cat >> "$cdir/index.css" <<'CSS'
+
+/* 0% coverage: distinct from low */
+table.legend span.coverage-none,
+table.coverage td.coverage-none,
+table.file-list td.coverage-none { background-color: #b30000 !important; color: #fff !important; }
+meter.coverage-none::-webkit-meter-optimum-value { background: #b30000; }
+CSS
+    echo "# coverage: $cdir/index.html, $cdir/summary.txt" >&2
+    return
+  fi
+  # fallback: plain gcov on the library objects; sources are DART core only
+  for d in "$here"/lib/*/; do
+    ls "$d"*.gcda >/dev/null 2>&1 || continue
+    mkdir -p "$cdir/$(basename "$d")"
+    ( cd "$cdir/$(basename "$d")" && for f in "$d"*.gcda; do "$gc" -o "$d" "$f"; done ) > "$cdir/$(basename "$d").gcov.log" 2>&1
+  done
+  # per-source "Lines executed" summary (skip system headers and test support)
+  awk '/^File /{gsub(/\x27/,"",$2); file=$2}
+       /^Lines executed:/{ if (file ~ /assimilation_code|models\/template/ && file !~ /testanything/) {
+         split($0,a,/[:% ]+/); print a[3] "%  of " a[5] " lines  " file } }' \
+    "$cdir"/*.gcov.log | sort -u > "$cdir/summary.txt"
+  echo "# coverage (line %, lines, file) -- $cdir/summary.txt" >&2
+  sed 's/^/# /' "$cdir/summary.txt" >&2
+}
+
 t_run0=$SECONDS
+[ $cov -eq 1 ] && find "$here/lib" "$out" -name '*.gcda' -delete 2>/dev/null
 if [ $plain -eq 0 ] && command -v tapview >/dev/null 2>&1; then
   runtests | tee "$out/results.tap" | tapview; rc=${PIPESTATUS[0]}
 elif [ $plain -eq 0 ] && [ -x "$HOME/bin/tapview" ]; then
@@ -289,6 +339,7 @@ else
   [ $plain -eq 1 ] || echo "# tapview not found; printing plain TAP" >&2
   runtests | tee "$out/results.tap"; rc=${PIPESTATUS[0]}
 fi
+[ $cov -eq 1 ] && coverage_report
 # timing goes last, after tapview's summary
 echo "# run time: $((SECONDS - t_run0))s (${jobs} jobs)$([ $build -eq 1 ] && echo ", build time: ${t_build}s")" >&2
 exit $rc
