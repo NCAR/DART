@@ -490,7 +490,6 @@ References
    guide/Manhattan_diffs_from_Lanai
    guide/forward_operator
    guide/state_structure
-   guide/filter_async_modes
    guide/distributed_state
 
 
