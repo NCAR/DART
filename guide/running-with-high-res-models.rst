@@ -33,12 +33,6 @@ the different namelist options that control the distribution of data across MPI 
 provide recommendations for requesting resources on multi-node systems to enable working with larger 
 model states. Ensure that the following namelist settings are set appropriately.
 
-.. warning::
-
-   Unless you are explicitly running into memory constraints, changing these namelist settings from their 
-   default values can significantly hurt your performance by increasing MPI communication overhead.
-   ^ REMOVE
-
 
 Distributed State
 ~~~~~~~~~~~~~~~~~
@@ -127,6 +121,10 @@ do not perform vertical coordinate conversions, it may be beneficial to set this
        distribute_mean = .true.,
     /
 
+.. warning::
+
+   Unless you are explicitly running into memory constraints, it is not recommended to change this namelist setting
+   to ``distribute_mean = .true.``, as it can significantly hurt your performance by increasing MPI communication overhead.
 
 
 Advice for Running on Multi-node Machines
