@@ -106,6 +106,13 @@ For instructions on how to use these tools, see :ref:`QCEFF`.
 For step-by-step examples of the QCEFF tools, you can work through 
 :ref:`examples with the Lorenz 96 tracer model <quantile tracer>`
 
+High Resolution Capabilities
+----------------------------
+
+DART's utilization of parallelism with The Message Passing Interface (MPI) and distributed memory allows it to 
+run with extremely high resolution models, large ensembles, and high numbers of observations. For more information on confuguring your DART 
+assimilation to work with high resolution models, see :ref:`high-res-tips`.
+
 Organization of the documentation
 ---------------------------------
 
@@ -296,7 +303,7 @@ References
    guide/how-to-test-your-model-mod-routines
    guide/controlling-files-output
    guide/vertical-conversion
-   guide/data-management-issues
+   guide/running-with-high-res-models
    assimilation_code/programs/readme
 
 .. toctree::
