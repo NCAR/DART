@@ -63,37 +63,7 @@ computation interspersed between calls to the model. There are many possible exe
    sequential or parallel program.
 -  Compiling 'filter' separately from the model, and having 2 separate executables. Either or both can be sequential or
    parallel.
-
-| The choice of how to combine the 'filter' program and the model has 2 parts: building the executables and then running
-  them. At build time, the choice of using MPI or not must be made. At execution time, the setting of the 'async'
-  namelist value in the filter_nml section controls how the 'filter' program interacts with the model.
-| Choices include:
-
--  async = 0
-   The model and filter programs are compiled into a single executable, and when the model needs to advance, the filter
-   program calls a subroutine. See a `diagram <filter_async_modes.html#async0>`__ which illustrates this option.
--  async = 2
-   The model is compiled into a sequential (single task) program. If 'filter' is running in parallel, each filter task
-   will execute the model independently to advance the group of ensembles. See a
-   `diagram <filter_async_modes.html#async2>`__ which illustrates this option.
--  async = 4
-   The model is compiled into an MPI program (parallel) and only 'filter' task 0 tells the startup script when it is
-   time to advance the model. Each ensemble is advanced one by one, with the model using all the processors to run in
-   parallel. See a `diagram <filter_async_modes.html#async4>`__ which illustrates this option.
--  async ignored (sometimes referred to as 'async 5', but not a setting in the namelist)
-   This is the way most large models run now. There is a separate script, outside of filter, which runs the N copies of
-   the model to do the advance. Then filter is run, as an MPI program, and it only assimilates for a single time and
-   then exits. The external script manages the file motion between steps, and calls both the models and filter in turn.
-
-| This release of DART has the restriction that if the model and the 'filter' program are both compiled with MPI and are
-  run in 'async=4' mode, that they both run on the same number of processors; e.g. if 'filter' is run on 16 processors,
-  the model must be started on 16 processors as well. Alternatively, if the user model is compiled as a single
-  executable (async=2), 'filter' can run in parallel on any number of processors and each model advance can be executed
-  independently without the model having to know about MPI or parallelism.
-| Compiling and running an MPI application can be substantially more complicated than running a single executable. There
-  are a suite of small test programs to help diagnose any problems encountered in trying to run the new version of DART.
-  Look in ``DART/developer_tests/mpi_utilities/tests/README`` for
-  instructions and a set of tests to narrow down any difficulties.
+   
 
 Performance issues and timing results
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
