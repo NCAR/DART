@@ -1,8 +1,3 @@
-! This code may (or may not) be part of the MPAS distribution,
-! So it is not protected by the DART copyright agreement.
-!
-! DART $Id$
-
   module get_coeff_mod
 
   use types_mod, only : r8
@@ -11,14 +6,10 @@
   implicit none
 
   private
-  save
   public :: mpas_rbf_interp_func_3D_plane_vec_const_dir_comp_coeffs
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=256), parameter :: source   = 'get_coeff_mod'
 
   character(len=256) :: string1
 
@@ -265,7 +256,7 @@ subroutine elgs (A,N,INDX)
 ! This should never happen, but just in case:
     IF (K == 0) THEN
       write(string1,*)'K was never initialized!'
-      call error_handler(E_ERR,'elgs',string1,source,revision,revdate)
+      call error_handler(E_ERR,'elgs',string1,source)
     ENDIF
 
 !
@@ -293,8 +284,3 @@ END subroutine elgs
 
 end module get_coeff_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
