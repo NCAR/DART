@@ -31,6 +31,9 @@
    /
 
 
+# The param_files.txt (4th entry) is required for file lists 
+# when estimate_params = .true.;  MUST REMOVE for state-only runs,
+# when estimate_params = .false.
 &filter_nml
    allow_missing_clm = .true.
    perturb_from_single_instance = .FALSE.
@@ -42,10 +45,12 @@
    obs_sequence_out_name    = 'obs_seq.final'
    input_state_file_list    = 'restart_files.txt',
                               'history_files.txt',
-                              'vector_files.txt' 
+                              'vector_files.txt',
+                              'param_files.txt'
    output_state_file_list   = 'restart_files.txt',
                               'history_files.txt',
-                              'vector_files.txt'
+                              'vector_files.txt',
+                              'param_files.txt'
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
@@ -88,21 +93,34 @@
    /
 
 
+# clm_param_file and clm_param_expanded_file required when 
+# estimate_params = .true. 
 &clm_to_dart_nml
-   clm_restart_file =  'clm.nc'
-   verbose          = 0
-   /
-
-
-&dart_to_clm_nml
-   dart_to_clm_input_file  = 'dart_posterior.nc'
-   dart_to_clm_output_file = 'clm_restart.nc'
-   repartition_swe         = 0
-   repartition_vhist_file = 'clm_vector_history.nc'
-   repartition_analysis_file = 'dart_posterior_vector.nc'
+   clm_restart_file        = 'clm.nc'
+   clm_param_file          = 'clm_params.nc'
+   clm_param_expanded_file = 'clm_params_expanded.nc'
    verbose                 = 0
    /
 
+
+# dart_to_clm_param_* entries and param_spatial_avg_method required when estimate_params = .true.
+# param_spatial_avg_method: AREA_WEIGHTED (default, uses gridcell area) or
+#   PFT_WEIGHTED (uses fractional PFT coverage; requires pfts1d_itype_veg in restart file).
+&dart_to_clm_nml
+   dart_to_clm_input_file           = 'dart_posterior.nc'
+   dart_to_clm_output_file          = 'clm_restart.nc'
+   repartition_swe                  = 0
+   repartition_vhist_file           = 'clm_vector_history.nc'
+   repartition_analysis_file        = 'dart_posterior_vector.nc'
+   dart_to_clm_param_expanded_file  = 'clm_params_expanded.nc'
+   dart_to_clm_param_output_file    = 'clm_params.nc'
+   param_spatial_avg_method         = 'AREA_WEIGHTED'
+   verbose                          = 0
+   /
+
+ The clm_params_expanded.nc (4th entry) is required for input_state_files 
+# when estimate_params = .true.;  MUST REMOVE for state-only runs,
+# when estimate_params = .false.
 &fill_inflation_restart_nml
    write_prior_inf   = .true.
    prior_inf_mean    = 1.00
@@ -112,7 +130,10 @@
    post_inf_mean     = 1.00
    post_inf_sd       = 0.6
 
-   input_state_files = 'clm_restart.nc','clm_history.nc','clm_vector_history.nc'
+   input_state_files = 'clm_restart.nc',
+                       'clm_history.nc',
+                       'clm_vector_history.nc',
+                       'clm_params_expanded.nc'
    single_file       = .false.
    verbose           = .false.
    /
@@ -208,6 +229,36 @@
 #    all these variables will be updated INTERNALLY IN DART
 #    only variables marked '.r', 'UPDATE' will be modified for CLM.
 
+#  Parameter estimation controls (estimate_params, clm_parameter_filename, assimilate_pfts):
+#   Set estimate_params = .true. to add the parameter domain (domain 4) 
+
+#
+#   assimilate_pfts: CLM PFT indices (0-based) to include in the DA. Set unused slots to -1.
+#   Multiple PFTs supported (e.g. assimilate_pfts = 7, 8, -1, ...).
+#   CLM natural vegetation PFT index reference (0-based):
+#     0  = bare ground (not vegetated)
+#     1  = needleleaf evergreen temperate tree
+#     2  = needleleaf evergreen boreal tree
+#     3  = needleleaf deciduous boreal tree
+#     4  = broadleaf evergreen tropical tree
+#     5  = broadleaf evergreen temperate tree
+#     6  = broadleaf deciduous tropical tree
+#     7  = broadleaf deciduous temperate tree
+#     8  = broadleaf deciduous boreal tree
+#     9  = broadleaf evergreen shrub
+#     10 = broadleaf deciduous temperate shrub
+#     11 = broadleaf deciduous boreal shrub
+#     12 = c3 arctic grass
+#     13 = c3 non-arctic grass
+#     14 = c4 grass
+#     15 = c3 crop (unmanaged)
+#   Note: crop PFTs continue from index 16 onward in CTSM.
+#
+#   To add parameter variables to the state vector, include them in clm_variables with
+#   'param' as the file-of-origin (column 5). Joint state+parameter estimation is supported:
+#   mix 'restart', 'history', 'vector', and 'param' entries freely in clm_variables.
+#   Example param entry: 'jmaxb0', 'QTY_PHOTO_PARAM', '0.0', 'NA', 'param', 'UPDATE'
+
 &model_nml
    clm_restart_filename         = 'clm_restart.nc'
    clm_history_filename         = 'clm_history.nc'
@@ -216,6 +267,9 @@
    assimilation_period_seconds  = 3600
    calendar                     = 'Gregorian'
    debug                        = 0
+   estimate_params              = .true.
+   clm_parameter_filename       = 'clm_params_expanded.nc'
+   assimilate_pfts              = 7, -1, -1, -1, -1, -1, -1, -1
    clm_variables  = 'leafc',       'QTY_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
                     'frac_sno',    'QTY_SNOWCOVER_FRAC',         '0.0', '1.', 'restart' , 'NO_COPY_BACK',
                     'SNOW_DEPTH',  'QTY_SNOW_THICKNESS',         '0.0', 'NA', 'restart' , 'NO_COPY_BACK',
@@ -238,7 +292,8 @@
                     'TWS',         'QTY_TOTAL_WATER_STORAGE',    'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
                     'SOILC_vr',    'QTY_SOIL_CARBON',            '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
                     'SOIL1N_vr',   'QTY_SOIL_NITROGEN',          '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
-                    'SMP',         'QTY_SOIL_MATRIC_POTENTIAL',  '0.0', 'NA', 'vector'  , 'NO_COPY_BACK'
+                    'SMP',         'QTY_SOIL_MATRIC_POTENTIAL',  '0.0', 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'jmaxb0',      'QTY_PHOTO_PARAM',            '0.0', 'NA', 'param'   , 'UPDATE'
    /
 
 # The list of variables and the files they come from are designed to exercise all likely 'shapes' of
