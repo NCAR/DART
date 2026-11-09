@@ -24,7 +24,7 @@ by national and regional ocean observing networks, including:
   project with NSF NCAR.
 
 The converter supports both **total (vector) currents** and **single-site radial currents**, 
-and can ingest NerCDF products from both the original and the new HF raadr systems. 
+and can ingest NetCDF products from both the original and the new HF raadr systems. 
 The two radar generations use different NetCDF conventions, including different
 coordinate and observation variable names. The converter automatically determines 
 the observation type and file format from the contents of each NetCDF file; 
@@ -60,7 +60,7 @@ Original radar format
 ^^^^^^^^^^^^^^^^^^^^^
 
 Totals
-~~~~~
+~~~~~~
 Original-format totals files use a regular latitude/longitude grid.
 
 - Dimensions: ``lat(nlat)``, ``lon(nlon)``
@@ -72,7 +72,7 @@ Original-format totals files use a regular latitude/longitude grid.
    + ``time`` dimension (length 1)
 
 Radials
-~~~~~~
+~~~~~~~
 Original-format radial files use a two-dimensional curvilinear grid.
 
 - Dimensions: ``x(nx)``, ``y(ny)`` (2-D variables)
@@ -97,7 +97,7 @@ also provide observation-error estimates directly, including errors for radial
 current observations.
 
 Totals
-~~~~~
+~~~~~~
 - Dimensions: ``latitude(nlat)``, ``longitude(nlon)``
 
 - Variables:
@@ -108,7 +108,7 @@ Totals
     + ``nsct_error``: observation-error standard deviation associated with ``nsct``.
 
 Radials
-~~~~~~
+~~~~~~~
 - Dimensions: ``latitude(nlat)``, ``longitude(nlon)``
 
 - Variables:
