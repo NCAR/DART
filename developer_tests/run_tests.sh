@@ -7,7 +7,7 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd)
 DART=$(cd "$here/.." && pwd)
 export DART
-build=1 run=1 list=0 plain=0 cov=0 nogcovr=0 out="$here/test_results" template=""
+build=1 run=1 verbose=0 list=0 plain=0 cov=0 nogcovr=0 out="$here/test_results" template=""
 jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)
 usage() {
   cat <<'USAGE'
@@ -25,6 +25,7 @@ Options:
   -b         build only, do not run
   -n         do not build; run existing executables
   -p         plain TAP, do not pipe through tapview
+  -v         for tap tests, also count each assertion as its own test
   -G         with -c, use plain gcov text summary even if gcovr is installed
   -c         gfortran/gcov coverage: build with -O0 -g --coverage and print a
              per-file line coverage summary after the run (HTML too if gcovr
@@ -46,7 +47,9 @@ Build strategy:
   A suite's location is "loc=oned" in tests.list; the default is threed_sphere.
 
   Note: the function compile_one builds a test program from a suite, the quickbuild.sh is
-        not run.
+        not run.  Extra sources in the quickbuild.sh EXTRA list (other than the
+        models/template model_mod, already in the library) are compiled with the
+        test program, e.g. cam_common's cam-common-code modules.
 
 Examples:
   ./run_tests.sh -l
@@ -62,9 +65,9 @@ Exit status: 0 all tests passed, 1 a test or build failed, 2 usage/setup error.
 USAGE
 }
 [ "${1:-}" = "--help" ] && { usage; exit 0; }
-while getopts "blnpcGj:o:T:h" o; do
+while getopts "blnpvcGj:o:T:h" o; do
   case $o in
-    b) run=0 ;; n) build=0 ;; l) list=1 ;; p) plain=1 ;; c) cov=1 ;; G) nogcovr=1 ;;
+    b) run=0 ;; v) verbose=1 ;; n) build=0 ;; l) list=1 ;; p) plain=1 ;; c) cov=1 ;; G) nogcovr=1 ;;
     j) jobs=$OPTARG ;; o) out=$OPTARG ;; T) template=$OPTARG ;;
     h) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
@@ -118,6 +121,13 @@ locof() {  # location module of suite $1 (loc=... in tests.list; default threed_
     fi
   done
   echo threed_sphere
+}
+
+suite_extra() {  # sources in a suite's quickbuild.sh EXTRA that the library lacks
+  # (the library already has models/template/{oned,threed}_model_mod.f90)
+  sed -n '/^EXTRA=/,/[^\\]$/p' "$here/$1/work/quickbuild.sh" | tr -d '\\"' | tr ' \t' '\n\n' \
+    | sed -e 's/^EXTRA=//' -e "s|\$DART|$DART|" -e 's|\${DART}|'"$DART"'|' \
+    | grep '\.f90$' | grep -v 'models/template/' | tr '\n' ' '
 }
 
 # ---- build ----
@@ -185,7 +195,8 @@ if [ $build -eq 1 ]; then
     fi
     compile_one() {  # suite prog loc
       local s=$1 p=$2 l=$3 d="$out/$1/build"
-      if $FC $FFLAGS -I"$here/lib/$l" "$here/$s/$p.f90" "$here/lib/$l/libdart.a" $LIBS \
+      local extra; extra=$(suite_extra "$s")   # suite-specific sources, compiled with the program
+      if $FC $FFLAGS -I"$here/lib/$l" $extra "$here/$s/$p.f90" "$here/lib/$l/libdart.a" $LIBS \
             -o "$d/$p" -J "$d/mod_$p" > "$d/$p.log" 2>&1; then rm -rf "$d/mod_$p" "$d/$p.log"
       else echo "BUILD FAILED $s/$p (see $d/$p.log)" >&2; rm -rf "$d/mod_$p"; fi
     }
@@ -261,6 +272,9 @@ run_one() {
     printf '%s\n' "$out_txt" | grep -q '^1\.\.[0-9]' || { ok=0; why="${why:+$why, }no TAP plan"; }
     [ $ok -eq 0 ] && why="${why:+$why }(${lines} passing assertions)"
   fi
+  if [ $verbose -eq 1 ] && [ "$st" = tap ]; then
+    printf '%s\n' "$out_txt" | grep -E '^(not )?ok ' > "$res/$i.sub"
+  fi
   if [ $ok -eq 1 ]; then printf 'ok\n%s\n' "$s/$e${lines:+ # $lines $([ "$st" = passfail ] && echo PASS lines || echo assertions)}" > "$r"
   else
     { printf 'not ok\n%s\n' "$s/$e${why:+ # $why}"
@@ -279,8 +293,20 @@ runtests() {
   wait
   echo "TAP version 13"
   for i in "${idx[@]}"; do
-    n=$((n+1))
     { read -r status; read -r title; } < "$res/$i"
+    if [ -s "$res/$i.sub" ]; then   # -v: each assertion is a numbered test
+      local line anybad=0 sname=${title%% *}
+      while IFS= read -r line; do
+        n=$((n+1)); case $line in "not ok "*) anybad=1; bad=$((bad+1)) ;; esac
+        echo "${line%% [0-9]*} $n - $sname: ${line#*[0-9] - }" | sed 's/ *$//'
+      done < "$res/$i.sub"
+      if [ "$status" = "not ok" ] && [ $anybad -eq 0 ]; then
+        n=$((n+1)); bad=$((bad+1)); echo "not ok $n - $title"
+      fi
+      tail -n +3 "$res/$i"
+      continue
+    fi
+    n=$((n+1))
     echo "$status $n - $title"
     [ "$status" = "not ok" ] && bad=$((bad+1))
     tail -n +3 "$res/$i"
@@ -295,11 +321,22 @@ coverage_report() {
   gc=${GCOV:-gcov}
   command -v "$gc" >/dev/null 2>&1 || { echo "# coverage: gcov not found" >&2; return; }
   rm -rf "$cdir"; mkdir -p "$cdir"
+  # source directories to report: DART core, the template model_mod built into
+  # the library, plus the directory of every EXTRA source in the selected suites
+  local dirs=("$DART/assimilation_code" "$DART/models/template") sdir x
+  for x in "${want[@]}"; do
+    for f in $(suite_extra "$x"); do
+      sdir=$(dirname "$f")
+      case " ${dirs[*]} " in *" $sdir "*) ;; *) dirs+=("$sdir") ;; esac
+    done
+  done
+  local fargs=() re=""
+  for d in "${dirs[@]}"; do fargs+=(--filter "$d"); re="${re:+$re|}${d#$DART/}"; done
   if [ $nogcovr -eq 0 ] && command -v gcovr >/dev/null 2>&1; then
     # --include-internal-functions: gfortran names module procedures __mod_MOD_x,
     # which gcovr would otherwise drop as compiler-generated (giving 0 lines)
-    gcovr -r "$DART" --gcov-executable "$gc" --include-internal-functions --filter "$DART/assimilation_code" \
-      --filter "$DART/models/template" --html-details "$cdir/index.html" \
+    gcovr -r "$DART" --gcov-executable "$gc" --include-internal-functions "${fargs[@]}" \
+      --html-details "$cdir/index.html" \
       --txt "$cdir/summary.txt" "$here/lib" "$out" > "$cdir/gcovr.log" 2>&1
     # gcovr tags 0% as coverage-none but colors it like coverage-low; make it
     # stand out (edit the colors here)
@@ -315,14 +352,14 @@ CSS
     return
   fi
   # fallback: plain gcov on the library objects; sources are DART core only
-  for d in "$here"/lib/*/; do
+  for d in "$here"/lib/*/ "$out"/*/build/; do
     ls "$d"*.gcda >/dev/null 2>&1 || continue
-    mkdir -p "$cdir/$(basename "$d")"
-    ( cd "$cdir/$(basename "$d")" && for f in "$d"*.gcda; do "$gc" -o "$d" "$f"; done ) > "$cdir/$(basename "$d").gcov.log" 2>&1
+    n=$(basename "$(dirname "$d")")_$(basename "$d"); mkdir -p "$cdir/$n"
+    ( cd "$cdir/$n" && for f in "$d"*.gcda; do "$gc" -o "$d" "$f"; done ) > "$cdir/$n.gcov.log" 2>&1
   done
   # per-source "Lines executed" summary (skip system headers and test support)
-  awk '/^File /{gsub(/\x27/,"",$2); file=$2}
-       /^Lines executed:/{ if (file ~ /assimilation_code|models\/template/ && file !~ /testanything/) {
+  awk -v re="$re" '/^File /{gsub(/\x27/,"",$2); file=$2}
+       /^Lines executed:/{ if (file ~ re && file !~ /testanything/) {
          split($0,a,/[:% ]+/); print a[3] "%  of " a[5] " lines  " file } }' \
     "$cdir"/*.gcov.log | sort -u > "$cdir/summary.txt"
   echo "# coverage (line %, lines, file) -- $cdir/summary.txt" >&2
