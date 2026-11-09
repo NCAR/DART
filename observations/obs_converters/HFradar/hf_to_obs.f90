@@ -648,6 +648,7 @@ character(len=*), parameter :: routine = 'read_new_radials'
 
 integer, intent(in)         :: ncid
 integer                     :: varid
+real(r8)                    :: Vr_val
 character(len=64)           :: vel_unit, angle_unit
 character(len=11)           :: station
 logical                     :: attin
@@ -678,7 +679,7 @@ elseif  (angle_unit(1:6) == 'radian') then
    phi = phi * rad2deg
    if (debug) write(*, '(5X, A)') 'Incoming bearing is in radians.'
 else
-   write(*, string1) 'Unknown angle units: '//trim(adjustl(angle_unit))
+   write(string1, *) 'Unknown angle units: '//trim(adjustl(angle_unit))
    call error_handler(E_ERR, routine, string1, source)
 endif
 
@@ -691,7 +692,11 @@ call nc_get_variable(ncid, 'hcsp_error', rstd, routine)
 
 do ix = 1, nx
    do iy = 1, ny
-      rstd(ix, iy) = obs_err_sd_check(rstd(ix, iy))
+      if (rstd(ix, iy) /= rstd(ix, iy)) rstd(ix, iy) = OBS_ERROR_SD_MIN
+      
+      Vr_val = abs(rvel(ix, iy))
+      if (Vr_val /= missing_Vr .and. Vr_val == Vr_val) &  
+         rstd(ix, iy) = obs_err_sd_check(rstd(ix, iy))
    enddo
 enddo
 
@@ -705,11 +710,11 @@ if (attin) then
    call nc_check(nf90_get_var(ncid, varid, station), routine)
 
    call clarify_instrument(station)
+   instrument = station
 else
    instrument = 'UNKNOWN'
 endif
 
-instrument = station
 call register_instrument(instrument)
 
 end subroutine read_new_radials
