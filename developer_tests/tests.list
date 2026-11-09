@@ -1,0 +1,48 @@
+# suite  executable  status  [options]
+#   status : tap     = emits TAP (contrib/fortran-testanything)
+#            exit    = no TAP; pass if exit code is 0
+#            passfail = prints PASS/FAIL lines but exits 0 on failure (checks that
+#                       are still in runtime modules); pass if exit code is 0, no
+#                       line contains FAIL, and at least one contains PASS
+#            manual  = interactive / long-running / unverified; skipped unless named
+#   A driver script (e.g. qceff/work/runall.sh) can be listed as the executable
+#   with status tap: it must print TAP (see tap.sh) and exit non-zero on failure.
+#   options: needs=rttov|mpi (skipped by default), stdin=<file in work/>,
+#            loc=oned (library to link against; default threed_sphere)
+# Executables are built by <suite>/work/quickbuild.sh and run from <suite>/work.
+namelist          test_parse_variables         tap
+perturb           test_perturb                 tap
+window            test_window                  tap
+qceff             test_force_bounds            tap
+qceff             runall.sh                    tap     # driver: runs test_table_read per input.nml case
+utilities         parse_args_test              tap
+utilities         parse_csv_test               tap
+utilities         csv_read_test                tap
+utilities         error_handler_test           manual
+utilities         file_utils_test              exit
+utilities         find_enclosing_indices_test  exit
+utilities         find_first_occurrence_test   exit
+utilities         nml_test                     exit
+utilities         sort_test                    exit
+utilities         stacktest                    manual
+utilities         PrecisionCheck               manual
+time_manager      timetest                     exit
+beta_dist         test_beta_dist               passfail
+gamma_dist        test_gamma_dist              passfail
+normal_dist       test_normal_dist             passfail
+kde_dist          test_kde_dist                passfail
+obs_sequence      obs_rwtest                   exit    loc=oned
+quad_interpolate  test_quad_irreg_interp       exit
+quad_interpolate  test_quad_reg_interp         exit
+random_seq        test_random                  exit
+random_seq        test_ran_unif                passfail
+random_seq        test_gaussian                exit
+random_seq        test_gamma                   exit
+random_seq        test_inv_gamma               exit
+random_seq        test_exp                     exit
+random_seq        test_corr                    manual
+random_seq        test_diff                    manual
+random_seq        test_hist                    manual
+random_seq        test_reseed                  manual
+forward_operators rttov_unit_tests             manual  needs=rttov
+forward_operators rttov_test                   manual  needs=rttov

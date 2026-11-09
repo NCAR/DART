@@ -11,6 +11,8 @@ module test_base
    integer :: test_unit = output_unit, diag_unit = error_unit
 
    integer :: tests = 0, todos = 0
+   ! DART local patch: count failures so done_testing can set a non-zero exit code
+   integer :: failed = 0
    character(len=120) :: todomsg = ""
 
    interface todo
@@ -34,6 +36,7 @@ contains
       character(len=*), intent(in) :: msg, idmsg, gotmsg, expectedmsg
 
       tests = tests + 1
+      if (.not. ok .and. todos == 0) failed = failed + 1
       if (.not. ok) call out("not ")
       write (test_unit, '("ok ",I0)', advance="NO") tests
 
@@ -111,7 +114,7 @@ contains
 end module test_base
 
 module test_planning
-   use test_base, only: test_unit, tests
+   use test_base, only: test_unit, tests, failed
    implicit none
 
    integer, private :: planned = 0 
@@ -125,7 +128,7 @@ contains
       else
          write (test_unit, '("Bail out!")')
       end if
-      stop
+      stop 1 ! DART local patch: non-zero exit
    end
 
    subroutine plan(tests)
@@ -155,6 +158,9 @@ contains
          if (planned == 0) call plan(tests)
          ! else - We already have a plan
       end if
+      ! DART local patch: non-zero exit if any test failed or plan mismatch
+      if (failed > 0) stop 1
+      if (planned > 0 .and. planned /= tests) stop 1
    end
 
    subroutine skip_all(msg)
