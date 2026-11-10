@@ -457,10 +457,13 @@ subroutine end_ensemble_manager(ens_handle)
 type(ensemble_type), intent(inout) :: ens_handle
 
 ! Free up the allocated storage
-deallocate(ens_handle%my_copies, ens_handle%time, ens_handle%my_vars, &
-           ens_handle%copies, ens_handle%task_to_pe_list, ens_handle%pe_to_task_list)
-
-if(allocated(ens_handle%vars)) deallocate(ens_handle%vars)
+if(allocated(ens_handle%my_copies))       deallocate(ens_handle%my_copies)
+if(allocated(ens_handle%time))            deallocate(ens_handle%time)
+if(allocated(ens_handle%my_vars))         deallocate(ens_handle%my_vars)
+if(allocated(ens_handle%copies))          deallocate(ens_handle%copies)
+if(allocated(ens_handle%task_to_pe_list)) deallocate(ens_handle%task_to_pe_list)
+if(allocated(ens_handle%pe_to_task_list)) deallocate(ens_handle%pe_to_task_list)
+if(allocated(ens_handle%vars))            deallocate(ens_handle%vars)
 
 end subroutine end_ensemble_manager
 
