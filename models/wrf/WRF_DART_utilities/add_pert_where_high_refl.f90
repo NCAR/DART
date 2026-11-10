@@ -112,25 +112,25 @@ call initialize_utilities('add_pert_where_high_refl')
 
 if( COMMAND_ARGUMENT_COUNT() .ne. 13 ) then
   print*, 'INCORRECT # OF ARGUMENTS ON COMMAND LINE:  ', COMMAND_ARGUMENT_COUNT()
-  call exit(1)
+  stop 1
 else
 
   call GET_COMMAND_ARGUMENT(1,refl_ob_file,length,status)
   if( status .ne. 0 ) then
     print*, 'refl_ob_file NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   endif
 
   call GET_COMMAND_ARGUMENT(2,wrf_file,length,status)
   if( status .ne. 0 ) then
     print*, 'wrf_file NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   endif
 
   call GET_COMMAND_ARGUMENT(3,string,length,status)
   if( status .ne. 0 ) then
     print*,  'lh NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) lh
   endif
@@ -138,7 +138,7 @@ else
   call GET_COMMAND_ARGUMENT(4,string,length,status)
   if( status .ne. 0 ) then
     print*,  'lv NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) lv
   endif
@@ -146,7 +146,7 @@ else
   call GET_COMMAND_ARGUMENT(5,string,length,status)
   if( status .ne. 0 ) then
     print*,  'u_sd NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) u_sd
   endif
@@ -154,7 +154,7 @@ else
   call GET_COMMAND_ARGUMENT(6,string,length,status)
   if( status .ne. 0 ) then
     print*,  'v_sd NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) v_sd
   endif
@@ -162,7 +162,7 @@ else
   call GET_COMMAND_ARGUMENT(7,string,length,status)
   if( status .ne. 0 ) then
     print*,  'w_sd NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) w_sd
   endif
@@ -170,7 +170,7 @@ else
   call GET_COMMAND_ARGUMENT(8,string,length,status)
   if( status .ne. 0 ) then
     print*,  't_sd NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) t_sd
   endif
@@ -178,7 +178,7 @@ else
   call GET_COMMAND_ARGUMENT(9,string,length,status)
   if( status .ne. 0 ) then
     print*,  'td_sd NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) td_sd
   endif
@@ -186,7 +186,7 @@ else
   call GET_COMMAND_ARGUMENT(10,string,length,status)
   if( status .ne. 0 ) then
     print*,  'qv_sd NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) qv_sd
   endif
@@ -194,7 +194,7 @@ else
   call GET_COMMAND_ARGUMENT(11,string,length,status)
   if( status .ne. 0 ) then
     print*,  'ens_num NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) ens_num
   endif
@@ -202,7 +202,7 @@ else
   call GET_COMMAND_ARGUMENT(12,string,length,status)
   if( status .ne. 0 ) then
     print*,  'gdays NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) gdays
   endif
@@ -210,7 +210,7 @@ else
   call GET_COMMAND_ARGUMENT(13,string,length,status)
   if( status .ne. 0 ) then
     print*,  'gsecs NOT RETRIEVED FROM COMMAND LINE:  ', status
-    call exit(1)
+    stop 1
   else
     read(string,*) gsecs
   endif

@@ -22,6 +22,120 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 4 2027 :: Build system and CI improvements. Tag v11.25.4**
+
+Bug fixes:
+
+- version string for dart now created in build rather than cppdefs
+  which had caused failure for some mpi wrappers.
+
+Documentation:
+
+- | obs_common_subset improvements
+  | *contributed by Yan Barros, PINNeAPPle Labs*
+
+CI:
+
+- GitHub action for obs converter build on pull request
+
+**September 10 2026 :: MOM6 regional grids. Tag v11.25.3**
+
+Bug fixes:
+
+- MOM6 regional grids may have different sizes for t,u,v grids.
+- end_ensemble_manager check before deallocating.
+- Bounds error fix in mpi utilities when make_copy_before_broadcast = .true.
+- Initialize do_scalar in mpi_utilities.
+
+Documentation:
+
+- CROCODILE (DART as a CESM component) added to MOM6 docs.
+- rst fixes in da-in-dart-with-lorenz-63 page.
+
+
+**August 26 2026 :: pyjedi IODA QC. Tag v11.25.2**
+
+Fixes:
+
+ - ObsQcName can be PreQC or QualityMarker depending on the IODA version.
+   *contributed by Shawn Murdzek, CIRES*
+ - Enforce terrain following coordinates in WRF scripting.
+
+Documentation:
+
+ - External (precomputed) Forward Operator documentation.
+
+Repo change:
+
+ - CIRRUS actions nvfortran compiler bug workaround.
+ - CIRRUS actions openmpi shared memory bug workaround.
+
+**August 10 2026 :: Localization Test Perturbations. Tag v11.25.1**
+
+New Testing Utility:
+
+ - A ‘uniform’ perturb option for testing localization. Perturbs the ensemble so localization 
+   is the only source of variability in the increment.
+
+MOM6 read_model_time improvements: 
+
+ - Allow user to set a reference date different to the MOM6  reference time 0001-01-01:00:00:00.
+ - Allow ‘time’ dimension to be called 'Time' or 'time' (restart vs history).
+ - Allow fractions of days in the time, (variable in the file is real not int).
+
+Quad_utilties_mod improvements:
+
+ - Reduced memory usage for quad_utilities: 3D scratch arrays replaced with compressed sparse row format.
+ - Removed the hardcoded grid search dimensions, now calculated from the grid.
+
+Repo change:
+
+ -  .mailmap file to map various emails, author names and aliases to individual people.
+
+
+**July 16 2026 :: Remove fixsystem. Tag v11.25.0**
+
+New feature / build system update:
+
+  - Removes fixystem script from the build system and subsequently removes compiler dependencies in the code
+
+Bug-fix:
+
+  - Read state before broadcasting single value state space inflation
+  - Fixes logic in which files to read for prior and posterior inflation
+
+Documentation update:
+
+  - Updates the custom.css to use Poppins font
+
+
+**June 24 2026 :: DART_LAB bug fix. Tag v11.24.1**
+
+Bug fix:
+
+  - DART_LAB del_q calculation ens_size + 1
+  
+Documentation update:
+
+  - Readthedocs theme updated to allow server side search.
+
+Repo Infrastructure:
+
+  - quickbuilds added for outstanding DART executables.
+
+
+**May 27 2026 :: Copernicus Observation Converters. Tag v11.24.0**
+
+New Features:
+
+  - Copernicus SSH L3 NRT Observation Converter
+  - Copernicus SST L3S Observation Converter
+ 
+Bug fix:
+
+  - DART version in observation converter logs
+
+
 **May 15 2026 :: CIRRUS GitHub actions. Tag v11.23.1**
 
 New Repo Infrastructure:

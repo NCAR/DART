@@ -5,8 +5,8 @@
 ! Utility routines for reading simple ASCII, CSV-like tabular data.
 !
 ! This module provides a lightweight interface to work with
-! non-NetCDF data products. It supports files with a single
-! header row and delimited fields (comma, semicolon, or whitespace).
+! non-NetCDF data products. It supports files with multiple
+! header rows and delimited fields (comma, semicolon, or whitespace).
 !
 ! Some features:
 !  - Cached CSV file handle with header, delimiter, and row & column count.
@@ -61,7 +61,8 @@ type csv_file_type
    private 
    character(len=256) :: filename = '' 
    integer            :: nrows    = 0  
-   integer            :: ncols    = 0 
+   integer            :: ncols    = 0
+   integer            :: skip     = 0   ! Optional lines to skip before the header  
    integer            :: iunit    = -1 
    character          :: delim    = ','
    character(len=512) :: fields(MAX_NUM_FIELDS)
@@ -332,7 +333,7 @@ subroutine csv_skip_header(cf, context)
 type(csv_file_type), intent(inout)        :: cf
 character(len=*),    intent(in), optional :: context
 
-integer                       :: io
+integer                       :: i, io
 character(len=MAX_FIELDS_LEN) :: line
 
 character(len=*), parameter :: routine = 'csv_skip_header'
@@ -346,12 +347,15 @@ if (io /= 0) then
    return
 endif
 
-read(cf%iunit, '(A)', iostat=io) line
-if (io /= 0) then
-   write(string1,'(A,I0)') 'READ(header) failed, io=', io
-   call error_handler(E_ERR, routine, string1, context)
-   return
-endif
+! Start skipping (include any other unnecessary lines)
+do i = 1, cf%skip+1
+   read(cf%iunit, '(A)', iostat=io) line
+   if (io /= 0) then
+      write(string1,'(A,I0)') 'READ(header) failed, io=', io
+      call error_handler(E_ERR, routine, string1, context)
+      return
+   endif
+enddo
 
 end subroutine csv_skip_header
 
@@ -372,37 +376,60 @@ end function csv_get_nrows
 ! Open a CSV handle: cache header/dims.
 ! By doing so, we won't need to open the file 
 ! every time to read header or get dimensions. 
-subroutine csv_open(fname, cf, forced_delim, context)
+subroutine csv_open(fname, cf, skip_lines, forced_delim, context)
 
 character(len=*),    intent(in)  :: fname
 type(csv_file_type), intent(out) :: cf
+integer,             intent(in), optional :: skip_lines
 character(len=*),    intent(in), optional :: forced_delim
 character(len=*),    intent(in), optional :: context
 
 character(len=*), parameter :: routine = 'csv_open'
 
-integer                       :: io
+integer                       :: i, io
 character(len=MAX_FIELDS_LEN) :: line
 
 ! Reset
 cf%filename = fname
 cf%nrows    = 0
 cf%ncols    = 0
+cf%skip     = 0
 cf%iunit    = -1
 cf%delim    = ','
 cf%fields   = ''
 cf%is_open  = .false.
 
-! Number of rows (excluding header)
+! Number of rows (excluding 1 header line)
 cf%nrows = csv_get_nrows_from_file(fname, context)
 
-! Read header and delimiter
+! Open the file
 cf%iunit = open_file(fname, action='read', form='formatted')
 
+! Check if any lines need to be skipped on top of the header
+if (present(skip_lines)) then 
+   cf%skip = skip_lines   
+
+   do i = 1, cf%skip
+      read(cf%iunit, '(A)', iostat=io) line
+
+      if (io /= 0) then
+         call csv_close(cf)
+
+         write(string1, '(A, I0)') 'Got bad read code from input file, io = ', io
+         call error_handler(E_ERR, routine, string1, context)
+         return
+      endif   
+   enddo
+endif
+
+! Update data rows
+cf%nrows = cf%nrows - cf%skip
+
+! The header
 read(cf%iunit, '(A)', iostat=io) line
 if (io /= 0) then
    call csv_close(cf)
-
+   
    write(string1, '(A, I0)') 'Got bad read code from input file, io = ', io
    call error_handler(E_ERR, routine, string1, context)
    return
@@ -429,6 +456,7 @@ if (cf%iunit > 0)  call close_file(cf%iunit)
 cf%filename = ''
 cf%nrows    = 0 
 cf%ncols    = 0 
+cf%skip     = 0
 cf%iunit    = -1
 cf%delim    = ',' 
 cf%fields   = ''

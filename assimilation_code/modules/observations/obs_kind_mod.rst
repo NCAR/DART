@@ -151,6 +151,9 @@ For example:
   Radiance observations have precomputed values for each ensemble member in the input observation sequence file which
   would be used instead of calling the forward operator code.
 
+For more detail on how to create an observation sequence file with precomputed forward
+operator values and how filter uses them, see :ref:`external-FOs`.
+
 Modules used
 ------------
 

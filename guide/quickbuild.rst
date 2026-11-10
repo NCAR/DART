@@ -20,7 +20,6 @@ consists of the following steps:
 #. Source the build functions
 #. Parse the arguments to quickbuild.sh
 #. Clean any existing .o .mod files
-#. Run fixsystem to alter compiler dependent source code
 #. Compile preprocess
 #. Run preprocess to create an obs_def_mod.f90 and obs_kind_mod.f90 specific
    to the observations you are using in DART.

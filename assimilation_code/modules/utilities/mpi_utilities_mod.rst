@@ -591,7 +591,7 @@ Public interfaces
 
 .. container:: indent1
 
-   Wrapper routine around the system() library function to execute shell level commands from inside the Fortran program.
+   Wrapper routine around execute_command_line() to execute shell level commands from inside the Fortran program.
    Will wait for the command to execute and will return the error code. 0 means ok, any other number indicates error.
 
    +--------------------+------------------------------------------------------------------------------------------------+

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-declare -a arr=("gcc" "ifort" "ifx" "cce" "nvhpc")
+declare -a arr=("gcc" "ifx" "cce" "nvhpc")
 
 for compiler in "${arr[@]}"; do
 

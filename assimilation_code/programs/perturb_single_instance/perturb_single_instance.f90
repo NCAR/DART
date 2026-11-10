@@ -4,7 +4,7 @@
 
 
 !> This is a utility program that computes an ensemble of restarts
-!> using the model_mod pert_model_copies
+!> by perturbing a single instance.  
 
 program perturb_single_instance
 
@@ -26,7 +26,7 @@ use  obs_kind_mod,        only : get_num_quantities, get_index_for_quantity, &
 use  sort_mod,            only : index_sort
 
 use assim_model_mod,      only : static_init_assim_model, get_model_size, &
-                                 get_state_meta_data, pert_model_copies
+                                 get_state_meta_data
 
 use state_vector_io_mod,  only : read_state, write_state
 
@@ -43,7 +43,9 @@ use mpi_utilities_mod,    only : initialize_mpi_utilities, task_count, &
                                  send_sum_to
 
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_copy_mean, &
-                                 get_my_num_vars, end_ensemble_manager
+                                 end_ensemble_manager
+
+use perturb_mod,          only : perturb_ensemble
 
 implicit none
 
@@ -58,6 +60,11 @@ character(len=256)    :: output_file_list(MAX_NUM_DOMS) = ''
 character(len=256)    :: output_files(MAX_FILES)        = '' 
 real(r8)              :: perturbation_amplitude         = 0.0
 logical               :: single_restart_file_in         = .false.
+! How to perturb: 'model' lets the model_mod do it, falling back to a
+! perturbation that is bitwise across any number of tasks.  'uniform'
+! perturbs every state variable identically, for a clean test of
+! observation localization.
+character(len=32)     :: perturbation_method            = 'model'
 
 namelist /perturb_single_instance_nml/  &
    ens_size,                &
@@ -65,6 +72,7 @@ namelist /perturb_single_instance_nml/  &
    output_files,            &
    output_file_list,        &
    perturbation_amplitude,  &
+   perturbation_method,     &
    single_restart_file_in
 
 !----------------------------------------------------------------
@@ -75,9 +83,8 @@ character(len=256), allocatable :: file_array_input(:,:)
 character(len=256), allocatable :: file_array_output(:,:)
 character(len=512)              :: msgstring, msgstring1
 character(len=256)              :: my_base, my_desc
-integer                         :: idom, imem, iunit, io, i
+integer                         :: idom, imem, iunit, io
 integer                         :: ndomains
-logical                         :: interf_provided
 integer(i8)                     :: model_size
 type(time_type)                 :: member_time
 type(file_info_type)            :: file_info_input, file_info_output
@@ -185,16 +192,11 @@ member_time = set_time_missing()
 call read_state(ens_handle, file_info_input, read_time_from_file=.true., model_time=member_time)
 
 !----------------------------------------------------------------------
-! Copy from ensemble member 1 to the other copies
+! Copy member 1 to the other members and perturb them.  If the model
+! provides no pert_model_copies, perturb_ensemble falls back to a
+! perturbation that is bitwise across any number of tasks.
 !----------------------------------------------------------------------
-do i = 1, get_my_num_vars(ens_handle)
-   ens_handle%copies(2:ens_size, i) = ens_handle%copies(1, i)
-enddo
-
-call pert_model_copies(ens_handle, ens_size, perturbation_amplitude, interf_provided)
-if (.not. interf_provided) then
-   call error_handler(E_ERR, 'model_mod::pert_model_copies interface required', source)
-endif 
+call perturb_ensemble(ens_handle, ens_size, perturbation_amplitude, perturbation_method)
 
 
 !----------------------------------------------------------------------

@@ -15,6 +15,12 @@ Available tools:
 * :ref:`pyqceff`
 * :ref:`pyfortran`
 
+.. seealso::
+
+   `pyDARTdiags <https://ncar.github.io/pyDARTdiags/>`_ is a standalone Python
+   library, distributed separately from the DART repository, for reading,
+   manipulating, and plotting DART observation sequence files. 
+   
 Installation
 ------------
 

@@ -293,3 +293,34 @@ item will contain the changed values.  If your model is reading NetCDF format
 it can ingest these directly.  If not, an additional step is needed to copy
 over the updated values for the next model run.
 
+
+Testing Localization Using a Single Observation and An Idealized Ensemble
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One suggested step for testing the implementation of a new model or a new 
+observation forward operator with DART is to examine the impact of assimilating 
+a single observation. A recommended way to do this is to create an idealized 
+initial ensemble in which the ensemble perturbations are identical for all 
+state variables. DART provides this capability as a version of the 
+perturb_from_single_instance method that was described earlier in this section. 
+In &filter_nml namelist, set ‘perturb_from_single_instance’ to .true. and set 
+‘perturbation_method’ to ‘uniform’. This will generate an initial ensemble where 
+for every state variable, the difference between the ith ensemble member and the 
+first ensemble member is (i-1)*P where P is the ‘perturbation_amplitude’ in the 
+namelist. The covariance between the prior for an observation and all state 
+variables is the same in this case. With no localization, the increment for every 
+state variable will be identical. With localization turned on, the details of the 
+localization are clearly revealed by examining the observation increments. An 
+observation sequence with a single observation in it can be created using the 
+instructions earlier in this section. The time of the observation should be the 
+same as the time of the model state being used so that no model advance is 
+required in ‘filter’ before the assimilation (the advance would alter the nice 
+characteristics of the ensemble). Inflation and sampling error correction should 
+be turned off, at least for basic tests. Running ‘perfect_model_obs’ and ‘filter’ 
+will produce output files and the difference between the prior (preassim) and 
+posterior (analysis) outputs should reveal the pattern of localization. Note that 
+vertical localization in realistic Earth system models like CAM, MPAS, WRF, MOM 
+and POP is affected by the vertical coordinate choices and may lead to 
+localization patterns that are not as nicely circular in the horizontal as one 
+might expect. In large models, it is often a good step to begin with 
+‘horiz_dist_only’ set to .true. in &location_nml. 

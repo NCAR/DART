@@ -471,9 +471,17 @@ def _iodaDF2obsqDF(iodaDF, epochDT, iodaVarName, iodaVarType, obsCategoryConfig)
     # other conventional obs types. Put in radiance obs types later.
     obsValName = 'ObsValue/' + iodaVarName
     obsErrorName = 'ObsError/' + iodaVarName
-    obsQcName = 'PreQC/' + iodaVarName
     numLocs = len(iodaDT)
     emptyList = [ ]
+
+    # obsQcName can be PreQC for older IODA files or QualityMarker for newer IODA files
+    groups = [s.split('/')[0] for s in iodaDF.columns]
+    if 'PreQC' in groups:
+        obsQcName = 'PreQC/' + iodaVarName
+    elif 'QualityMarker' in groups:
+        obsQcName = 'QualityMarker/' + iodaVarName
+    else:
+        raise ValueError('Missing QC field in IODA file') 
 
     obsqDF = pd.DataFrame()
     obsqDF.insert(0, 'obs_num', np.arange(1, (numLocs + 1), 1, np.int32))

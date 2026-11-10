@@ -1,0 +1,24 @@
+diff --git a/assimilation_code/programs/obs_diag/oned/obs_diag.f90 b/assimilation_code/programs/obs_diag/oned/obs_diag.f90
+index e12587186..e4510d494 100644
+--- a/assimilation_code/programs/obs_diag/oned/obs_diag.f90
++++ b/assimilation_code/programs/obs_diag/oned/obs_diag.f90
+@@ -1774,9 +1774,16 @@ end function Rank_Histogram
+               'model - observation' ), 'WriteNetCDF', 'put_att bias '//trim(fname))
+ 
+    if ( create_rank_histogram ) then
+-      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'DART_QCs_in_histogram', &
+-              hist_qcs(1:numqcvals) ), &
+-              'WriteNetCDF', 'put_att qcs in histogram '//trim(fname))
++      ! WORKAROUND: nvfortran 26.5 fort1 SIGSEGVs with -C on a section of a
++      ! default-integer PARAMETER array passed to a module procedure.
++      ! Copying into a local variable dodges it. Remove once nvhpc is fixed.
++      block
++         integer :: qcs_used(size(hist_qcs))
++         qcs_used = hist_qcs
++         call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'DART_QCs_in_histogram', &
++                 qcs_used(1:numqcvals) ), &
++                 'WriteNetCDF', 'put_att qcs in histogram '//trim(fname))
++      end block
+ 
+       if ( outliers_in_histogram ) then
+       call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'outliers_in_histogram', &

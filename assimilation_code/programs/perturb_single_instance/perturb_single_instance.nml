@@ -5,6 +5,7 @@
    output_files           = ''
    output_file_list       = ''
    perturbation_amplitude = 0.0
+   perturbation_method    = 'model'
    single_restart_file_in = .false.,
  /
 

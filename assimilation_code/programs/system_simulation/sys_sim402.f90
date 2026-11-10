@@ -16,7 +16,7 @@ read(*, *) n_samples
 
 ! Loop through a range of values for alpha until alpha is 0.0
 do i = 0, 300
-   sd_ratio = (i - 1.) / 100.0_r8
+   sd_ratio = (i - 1.) / 100.d0
    call sub_sim402(sd_ratio, n, n_samples, alpha)
    write(*, *) 'sd_ratio, alpha ', sd_ratio, alpha
 !!!   if(alpha <= 0.0) stop

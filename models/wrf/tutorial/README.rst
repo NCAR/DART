@@ -21,11 +21,16 @@ scientfic WRF-DART application.
 .. Important ::
 
   This tutorial was designed to be compatible with WRF Version 4 and later, and was
-  tested with WRFv4.5.2. It is mandatory to use the terrain following coordinate
-  system (hybrid_opt=0) and not the default sigma hybrid coordinates (hybrid_opt=1)
-  when using WRF-DART. Using the sigma hybrid coordinate can lead to adverse effects
-  when generating ensemble spread leading to poor forecast performance.  For more 
-  details see `DART Issue #650 <https://github.com/NCAR/DART/pull/650>`__.
+  tested with WRFv4.5.2. The standard WRF-DART shell scripting generates
+  boundary condition (BC) perturbations by applying WRFDA CV3 derived perturbations to
+  a mean WRF state generated from WPS. We have made it mandatory to use the terrain following 
+  coordinate system (hybrid_opt=0) and not the WRF Version 4 default sigma
+  hybrid coordinates (hybrid_opt=1) when using WRF-DART. This is because the 
+  sigma hybrid coordinates lead to adverse effects when generating ensemble spread 
+  (i.e. pert_wrf_bc step) causing suboptimal forecast performance. For more details see `DART Issue #807 
+  <https://github.com/NCAR/DART/issues/807>`__.  As an alternative, if you modify the scripting
+  to use a pre-generated ensemble of BC's, which is not reliant on the internally generated DART BC's, you
+  may turn off this protection and use sigma-hybrid corrdinates with WRF-DART.   
   
   It is also mandatory to include the prognostic temperature variable ``THM`` within
   the DART state. This means that ``THM`` must be included alongside ``TYPE_T`` within

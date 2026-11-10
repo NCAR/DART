@@ -12,7 +12,8 @@ module model_mod
 
 use        types_mod, only : r8, i8, MISSING_R8, vtablenamelength
 
-use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type
+use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type, &
+                             get_time
 
 use     location_mod, only : location_type, get_close_type, &
                              loc_get_close_obs => get_close_obs, &
@@ -31,7 +32,8 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_begin_define_mode, nc_end_define_mode, &
                                  nc_open_file_readonly, nc_close_file, &
                                  nc_get_variable, nc_get_variable_size, &
-                                 NF90_MAX_NAME, nc_get_attribute_from_variable
+                                 NF90_MAX_NAME, nc_get_attribute_from_variable, &
+                                 nc_variable_exists
 
 use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
                                    set_quad_coords, quad_lon_lat_locate, &
@@ -95,7 +97,7 @@ integer :: dom_id ! used to access the state structure
 integer(i8) :: model_size
 integer :: nfields ! number of fields in the state vector
 ! Grid parameters, nz is number of layers
-integer :: nx=-1, ny=-1, nz=-1     ! grid counts for each field
+integer :: nx=-1, ny=-1, nx_u=-1, ny_u=-1, nx_v=-1, ny_v=-1, nz=-1     ! grid counts for each field
 real(r8), allocatable :: geolon(:,:), geolat(:,:),     & ! T
                          geolon_u(:,:), geolat_u(:,:), & ! U
                          geolon_v(:,:), geolat_v(:,:)    ! V
@@ -131,10 +133,18 @@ integer  :: assimilation_period_seconds   = 0
 character(len=vtablenamelength) :: model_state_variables(MAX_STATE_VARIABLE_FIELDS_CLAMP) = ' '
 character(len=NF90_MAX_NAME) :: layer_name = 'Layer'
 logical :: use_pseudo_depth = .false. ! use pseudo depth instead of sum(layer thickness) for vertical location
+! reference date to use instead of "days since 0001-01-01 00:00:00"
+integer :: reference_year = 1 ! reference year
+integer :: reference_month = 1 ! reference month
+integer :: reference_day = 1! reference day
+integer :: reference_hour = 0 ! reference hour
+integer :: reference_minute = 0 ! reference minute
+integer :: reference_second = 0 ! reference second
 
 namelist /model_nml/ template_file, static_file, ocean_geometry, assimilation_period_days, &
                      assimilation_period_seconds, model_state_variables, layer_name, &
-                     use_pseudo_depth
+                     use_pseudo_depth, reference_year, reference_month, reference_day, &
+                     reference_hour, reference_minute, reference_second
 
 
 interface on_land
@@ -702,22 +712,28 @@ character(len=*), parameter :: routine = 'read_horizontal_grid'
 
 ncid = nc_open_file_readonly(static_file)
 
+! T
 call nc_get_variable_size(ncid, 'geolon', nxy)
-nx = nxy(1)
-ny = nxy(2)
+nx = nxy(1); ny = nxy(2)
 allocate(geolon(nx,ny), geolat(nx,ny))      ! T grid
-allocate(geolon_u(nx,ny), geolat_u(nx,ny))  ! U grid
-allocate(geolon_v(nx,ny), geolat_v(nx,ny))  ! V grid
 allocate(mask(nx,ny))  ! missing values
-allocate(mask_u(nx,ny))  ! missing values
-allocate(mask_v(nx,ny))  ! missing values
-
 call nc_get_variable(ncid, 'geolon', geolon, routine)
-call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
-call nc_get_variable(ncid, 'geolon_v', geolon_v, routine)
-
 call nc_get_variable(ncid, 'geolat', geolat, routine)
+
+! U 
+call nc_get_variable_size(ncid, 'geolon_u', nxy)
+nx_u = nxy(1); ny_u = nxy(2)
+allocate(geolon_u(nx_u,ny_u), geolat_u(nx_u,ny_u))  ! U grid
+allocate(mask_u(nx_u,ny_u))  ! missing values
+call nc_get_variable(ncid, 'geolon_u', geolon_u, routine)
 call nc_get_variable(ncid, 'geolat_u', geolat_u, routine)
+
+! V
+call nc_get_variable_size(ncid, 'geolon_v', nxy)
+nx_v = nxy(1); ny_v = nxy(2)
+allocate(geolon_v(nx_v,ny_v), geolat_v(nx_v,ny_v))  ! V grid
+allocate(mask_v(nx_v,ny_v))  ! missing values
+call nc_get_variable(ncid, 'geolon_v', geolon_v, routine)
 call nc_get_variable(ncid, 'geolat_v', geolat_v, routine)
 
 ! mom6 has missing values in the grid
@@ -801,13 +817,19 @@ end subroutine read_ocean_geometry
 ! 0 is land
 function on_land_quad(ilon, ilat)
 
-integer :: ilon(4), ilat(4) ! these are indices into lon, lat
+integer, intent(in) :: ilon(4), ilat(4) ! these are indices into lon, lat
 logical ::  on_land_quad
 
-if ( wet(ilon(1), ilat(1)) + &
-     wet(ilon(2), ilat(2)) + &
-     wet(ilon(3), ilat(3)) + &
-     wet(ilon(4), ilat(4))  < 4) then
+integer :: ilon_t(4), ilat_t(4) ! these are indices into lon, lat
+! wet is only defined on the T grid.
+! Assume if nx is wet, nx_v and nx_u are wet.
+ilon_t = min(ilon, nx)
+ilat_t = min(ilat, ny)
+
+if ( wet(ilon_t(1), ilat_t(1)) + &
+     wet(ilon_t(2), ilat_t(2)) + &
+     wet(ilon_t(3), ilat_t(3)) + &
+     wet(ilon_t(4), ilat_t(4))  < 4) then
    on_land_quad = .true.
 else
    on_land_quad = .false.
@@ -821,7 +843,14 @@ function on_land_point(ilon, ilat)
 integer :: ilon, ilat ! these are indices into lon, lat
 logical :: on_land_point
 
-if ( wet(ilon, ilat) == 0) then
+integer :: ilon_t, ilat_t
+
+! wet is only defined on the T grid. 
+! u/v grids may have one extra point in the x and/or y direction.
+ilon_t = min(ilon, nx)
+ilat_t = min(ilat, ny)
+
+if ( wet(ilon_t, ilat_t) == 0) then
    on_land_point = .true.
 else
    on_land_point = .false.
@@ -842,11 +871,17 @@ logical :: on_basin_edge
 
 integer  :: i, e
 real(r8) :: d(4) ! basin depth at each corner
+integer  :: ilon_t(4), ilat_t(4)
 
-d(1) = basin_depth(ilon(1), ilat(1))
-d(2) = basin_depth(ilon(2), ilat(2))
-d(3) = basin_depth(ilon(3), ilat(3))
-d(4) = basin_depth(ilon(4), ilat(4))
+! basin_depth is only defined on the t grid
+! u/v grids may have one extra point in the x and/or y direction.
+ilon_t = min(ilon, nx)
+ilat_t = min(ilat, ny)
+
+d(1) = basin_depth(ilon_t(1), ilat_t(1))
+d(2) = basin_depth(ilon_t(2), ilat_t(2))
+d(3) = basin_depth(ilon_t(3), ilat_t(3))
+d(4) = basin_depth(ilon_t(4), ilat_t(4))
 
 do e = 1, ens_size
    do i = 1, 4
@@ -963,7 +998,7 @@ call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
 call set_quad_coords(interp_t_grid, geolon, geolat, mask)
 
 ! U
-call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx_u, ny_u, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_u_grid)
@@ -972,7 +1007,7 @@ call set_quad_coords(interp_u_grid, geolon_u, geolat_u, mask_u)
 
 
 ! V
-call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx, ny, &
+call init_quad_interp(GRID_QUAD_FULLY_IRREGULAR, nx_v, ny_v, &
                       QUAD_LOCATED_CELL_CENTERS, &
                       global=.true., spans_lon_zero=.true., pole_wrap=.true., &
                       interp_handle=interp_v_grid)
@@ -1057,6 +1092,8 @@ sensible_temp = t
 end function sensible_temp
 
 !--------------------------------------------------------------------
+! restart files use Time
+! history files use time
 function read_model_time(filename)
 
 character(len=*), intent(in) :: filename
@@ -1064,22 +1101,45 @@ type(time_type) :: read_model_time
 
 integer :: ncid
 character(len=*), parameter :: routine = 'read_model_time'
-real(r8) :: days
-type(time_type) :: mom6_time
-integer :: dart_base_date_in_days, dart_days
+real(r8) :: days, seconds
+integer :: ref_days, ref_seconds
+type(time_type) :: user_reference_time
+integer :: dart_base_date_in_days, dart_days, dart_seconds
 
-dart_base_date_in_days = 584388 ! 1601 1 1 0 0
+if ( .not. module_initialized ) call static_init_model
+
 ncid = nc_open_file_readonly(filename, routine)
 
-call nc_get_variable(ncid, 'Time', days, routine)
+if (nc_variable_exists(ncid, 'Time')) then
+   call nc_get_variable(ncid, 'Time', days, routine)
+else
+   call nc_get_variable(ncid, 'time', days, routine)
+endif
 
 call nc_close_file(ncid, routine)
 
-! MOM6 counts days from year 1
-! DART counts days from 1601 
-dart_days = int(days) - dart_base_date_in_days
+! DART counts days from 1601-01-01, MOM6 counts days from 0001-01-01
+! However, user may want a different reference date for MOM6 set from model_nml
+if (reference_year == 1) then
+   ! Convert straight to DART's 1601-01-01 epoch using the fixed calendar offset.
+   dart_base_date_in_days = 584388 ! 1601 1 1 0 0, expressed as days since 0001-01-01
+   dart_days = floor(days) - dart_base_date_in_days
+   seconds = (days - floor(days)) * 86400.0_r8
+else
+   if (reference_year < 1601) then
+      call error_handler(E_ERR, routine, 'reference_year must be >= 1601 to use a year, or 1 to use MOM6 reference date of 0001-01-01')
+   endif
+   ! days from file is days since user supplied reference date.
+   user_reference_time = set_date(reference_year, reference_month, reference_day, &
+                        reference_hour, reference_minute, reference_second)
+   call get_time(user_reference_time, ref_seconds, ref_days) ! ref time in seconds and days since 1601-01-01
+   dart_days = ref_days + floor(days) ! add days read from file to days since 1601-01-01
+   seconds = real(ref_seconds, r8) + (days - floor(days)) * 86400.0_r8
+endif
 
-read_model_time = set_time(0,dart_days)
+dart_seconds = int(seconds)
+
+read_model_time = set_time(dart_seconds,dart_days)
 
 end function read_model_time
 
