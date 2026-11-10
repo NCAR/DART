@@ -3812,12 +3812,12 @@ end subroutine get_wrf_horizontal_location
 !***********************************************************************
 
 
-subroutine nc_write_model_atts( ncid, id ) 
+subroutine nc_write_model_atts( ncid, state_id ) 
 !-----------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 
 integer, intent(in) :: ncid      ! netCDF file identifier
-integer, intent(in) :: id
+integer, intent(in) :: state_id ! state domain_id
 
 logical, parameter :: write_precip = .false.
 
@@ -3839,7 +3839,7 @@ integer :: TimeDimID
 ! test to be sure they exist before trying to read them from the netcdf file.
 !integer, dimension(num_domains) :: MapFacMVarID, MapFacUVarID, MapFacVVarID
 
-integer :: var_id
+integer :: var_id, id
 integer :: i, ret, tmp
 
 character(len=129) :: title
@@ -3855,6 +3855,8 @@ logical               :: debug = .false.
 character(len=256) :: filename
 
 
+! convert state_id to domain id
+id = get_wrf_domain(state_id)
 
 ! use netcdf file id for identification
 write(filename,*) 'ncid', ncid
