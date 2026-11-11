@@ -489,7 +489,7 @@ RTTOV v13 namelist
 .. code-block:: text
 
   &obs_def_rttov_nml
-     rttov_sensor_db_file   = 'unspecified' ! Set to rttov_sensor_db.csv, example provided in DART/observations/forward_operators/rttov_sensor_db.csv
+     rttov_sensor_db_file = 'rttov_sensor_db.csv'
      first_lvl_is_sfc     = .true.   ! is level 1 the surface (true) or top of atmosphere (false)?
      mw_clear_sky_only    = .false.  ! only use clear-sky for MW (plus clw emission if clw_data is true) or full RTTOV-SCATT (false)?
      interp_mode          = 1        ! Interpolation mode: Rochon on OD (1), Log-linear (2), Rochon on log-linear OD (3), Rochon on WF (4), Rochon on log-linear WF (5)
