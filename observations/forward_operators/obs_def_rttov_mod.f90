@@ -622,7 +622,7 @@ integer ::    rttovkey = 0       ! useful length of metadata arrays
 integer ::    visirnum = 0
 integer ::       mwnum = 0
 
-character(len=512)   :: rttov_sensor_db_file = 'unspecified'
+character(len=512)   :: rttov_sensor_db_file = 'rttov_sensor_db.csv'
 
 ! -----------------------------------------------------------------------------
 ! DART/RTTOV options in the input.nml namelist.
