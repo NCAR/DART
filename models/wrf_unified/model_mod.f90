@@ -840,6 +840,7 @@ logical :: surface_qty
 select case (qty)
 
    case (QTY_2M_TEMPERATURE, &
+         QTY_2M_POTENTIAL_TEMPERATURE, &
          QTY_2M_SPECIFIC_HUMIDITY, &
          QTY_10M_U_WIND_COMPONENT, &
          QTY_10M_V_WIND_COMPONENT, &
