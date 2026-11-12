@@ -407,6 +407,7 @@ integer, parameter :: NOT_IN_ANY_DOMAIN = 11
 integer, parameter :: VERTICAL_LOCATION_FAIL = 66
 integer, parameter :: SURFACE_ELEVATION_DIFF_FAIL = 77
 integer, parameter :: SURFACE_PRESSURE_FAIL = 88
+integer, parameter :: VORTEX_FAIL = 99
 real(r8) :: lon_lat_vert(3)
 real(r8) :: xloc, yloc ! WRF i,j in the grid
 integer  :: i, j ! grid
@@ -510,6 +511,8 @@ select case (qty)
          return
       endif
    case (QTY_VORTEX_LAT, QTY_VORTEX_LON, QTY_VORTEX_PMIN, QTY_VORTEX_WMAX)
+      istatus = VORTEX_FAIL
+      return
       call vortex()
    case (QTY_GEOPOTENTIAL_HEIGHT)
       zloc(:) = zloc(:) + 0.5_r8 ! Adjust zloc for staggered
