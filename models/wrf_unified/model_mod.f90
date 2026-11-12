@@ -2354,17 +2354,6 @@ do ob = 1, num
             zloc = zloc + 0.5_r8 ! Adjust zloc for staggered
             call toGrid(zloc(1),k(1),dz,dzm)
 
-            ! This method does not give bitwise with main
-            !zk  = geopotential_height_interpolate(ens_size, state_handle, QTY_GEOPOTENTIAL_HEIGHT, id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-            !zk1 = geopotential_height_interpolate(ens_size, state_handle, QTY_GEOPOTENTIAL_HEIGHT, id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
-            !geop = vertical_interpolation(ens_size, zloc, zk, zk1)
-            !zout = compute_geometric_height(geop(1), lon_lat_vert(2))
-
-            ! horizontal then vertical interpolation, not what main code does
-            zk = interpolate_geometric_height(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-            zk1 = interpolate_geometric_height(ens_size, state_handle, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
-            zout = vertical_interpolation(ens_size, zloc, zk, zk1)
-
             ! vertical then horizontal interpolation
             h1 = interpolate_geometric_height_vertically(ens_size, state_handle, grid_id, ll, k, zloc) 
             h2 = interpolate_geometric_height_vertically(ens_size, state_handle, grid_id, lr, k, zloc)
