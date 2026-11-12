@@ -2386,20 +2386,22 @@ do ob = 1, num
 
             zout = -log(lon_lat_vert(3) / (dym*( dxm*pres1(1) + dx*pres2(1) ) + dy*( dxm*pres3(1) + dx*pres4(1) )))
 
-         else ! vert_cood_in == VERTISHEIGHT
+         else ! vert_coord_in == VERTISHEIGHT or VERTISLEVEL
 
-            ! horizontal interpolation, then vertical interpolation
-            !zk  = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
-            !zk1 = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
-            !zout = vertical_interpolation(ens_size, zloc, zk, zk1)
-
-            ! vertical interpolation, then horizontal interpolation
+            ! pressure at the observation: vertical interpolation, then horizontal
             pres1 = pressure_interpolate_vertically(ens_size, state_handle, grid_id, ll, k, zloc)
             pres2 = pressure_interpolate_vertically(ens_size, state_handle, grid_id, lr, k, zloc)
             pres3 = pressure_interpolate_vertically(ens_size, state_handle, grid_id, ul, k, zloc)
             pres4 = pressure_interpolate_vertically(ens_size, state_handle, grid_id, ur, k, zloc)
+            zk = dym*( dxm*pres1(1) + dx*pres2(1) ) + dy*( dxm*pres3(1) + dx*pres4(1) )
 
-            zout = -log(zout / (dym*( dxm*pres1(1) + dx*pres2(1) ) + dy*( dxm*pres3(1) + dx*pres4(1) )))
+            ! surface pressure
+            pres1 = model_pressure_s(ll(1), ll(2), grid_id, state_handle, ens_size)
+            pres2 = model_pressure_s(lr(1), lr(2), grid_id, state_handle, ens_size)
+            pres3 = model_pressure_s(ul(1), ul(2), grid_id, state_handle, ens_size)
+            pres4 = model_pressure_s(ur(1), ur(2), grid_id, state_handle, ens_size)
+
+            zout = -log(zk / (dym*( dxm*pres1(1) + dx*pres2(1) ) + dy*( dxm*pres3(1) + dx*pres4(1) )))
 
          endif
         
