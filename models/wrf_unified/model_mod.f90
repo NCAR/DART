@@ -3827,8 +3827,8 @@ call map_init(grid(id)%proj)
 !   loninc = 360.0_r8/wrf%dom(id)%we
 !endif
 
-latinc = 180.0_r8/size(grid(id)%longitude(:,1)) ! west_east
-loninc = 360.0_r8/size(grid(id)%longitude(1,:)) ! north_south
+latinc = 180.0_r8/size(grid(id)%longitude(1,:)) ! north_south
+loninc = 360.0_r8/size(grid(id)%longitude(:,1)) ! west_east
 
 if(grid(id)%map_proj == PROJ_LATLON) then !HK why are these different to the wrfinput file?
    truelat1 = latinc
