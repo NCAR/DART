@@ -697,7 +697,7 @@ end subroutine get_close_state
 
 !------------------------------------------------------------------
 ! write any additional attributes to netcdf files
-! HK todo nc_write_model_atts
+! HK todo nc_write_model_atts, what is need for this?
 subroutine nc_write_model_atts(ncid, domain_id)
 
 integer, intent(in) :: ncid      ! netCDF file identifier
@@ -712,7 +712,7 @@ call nc_begin_define_mode(ncid)
 call nc_add_global_creation_time(ncid)
 
 call nc_add_global_attribute(ncid, "model_source", source )
-call nc_add_global_attribute(ncid, "model", "template")
+call nc_add_global_attribute(ncid, "model", "wrf_unified")
 
 call nc_end_define_mode(ncid)
 
