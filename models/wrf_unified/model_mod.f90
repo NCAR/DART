@@ -2270,7 +2270,7 @@ do ob = 1, num
       cycle
    endif
    
-   if (lon_lat_vert(3) == VERTISUNDEF) then ! no vertical, no conversion
+   if (vert_coord_in == VERTISUNDEF) then ! no vertical, no conversion
       istatus(ob) = 0
       cycle
    endif
