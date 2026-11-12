@@ -406,6 +406,7 @@ integer, parameter :: POLAR_RESTRICTED = 10 ! polar observation while restrict_p
 integer, parameter :: NOT_IN_ANY_DOMAIN = 11
 integer, parameter :: VERTICAL_LOCATION_FAIL = 66
 integer, parameter :: SURFACE_ELEVATION_DIFF_FAIL = 77
+integer, parameter :: SURFACE_PRESSURE_FAIL = 88
 real(r8) :: lon_lat_vert(3)
 real(r8) :: xloc, yloc ! WRF i,j in the grid
 integer  :: i, j ! grid
@@ -503,7 +504,11 @@ select case (qty)
       fld_k1 = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k, dxm, dx, dy, dym)
       fld_k2 = pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
    case (QTY_SURFACE_PRESSURE)
-      fld_k1 = surface_pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, dxm, dx, dy, dym)
+      fld_k1 = surface_pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, dxm, dx, dy, dym, fail)
+      if (fail) then
+         istatus(:) = SURFACE_PRESSURE_FAIL
+         return
+      endif
    case (QTY_VORTEX_LAT, QTY_VORTEX_LON, QTY_VORTEX_PMIN, QTY_VORTEX_WMAX)
       call vortex()
    case (QTY_GEOPOTENTIAL_HEIGHT)
@@ -2024,17 +2029,20 @@ end function pressure_interpolate_vertically
 
 
 !------------------------------------------------------------------
-function surface_pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, dxm, dx, dy, dym)
+function surface_pressure_interpolate(ens_size, state_handle, grid_id, ll, ul, lr, ur, dxm, dx, dy, dym, fail)
 
 integer,             intent(in) :: ens_size
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: grid_id
 integer,             intent(in) :: ll(2), ul(2), lr(2), ur(2) ! (x,y) at  four corners
 real(r8),            intent(in) :: dxm, dx, dy, dym
+logical,             intent(out) :: fail ! true if any corner surface pressure is zero
 real(r8) :: surface_pressure_interpolate(ens_size)
 
 real(r8), dimension(ens_size) :: x_ill, x_iul, x_ilr, x_iur
 integer :: e
+
+fail = .false.
 
 x_ill = model_pressure_s(ll(1), ll(2), grid_id, state_handle, ens_size)
 x_iul = model_pressure_s(ul(1), ul(2), grid_id, state_handle, ens_size)
@@ -2050,7 +2058,10 @@ do e = 1, ens_size
       x_iur(e) /= 0.0_r8 ) then
       
       surface_pressure_interpolate(e) = dym*( dxm*x_ill(e) + dx*x_ilr(e) ) + dy*( dxm*x_iul(e) + dx*x_iur(e) )
-   endif  !HK todo initialize to missing_r8?
+   else
+      surface_pressure_interpolate(e) = MISSING_R8
+      fail = .true.
+   endif
 enddo
 
 
