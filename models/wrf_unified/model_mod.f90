@@ -526,7 +526,7 @@ select case (qty)
       fld_k2(:) = simple_interpolation(ens_size, state_handle, qty, wrf_id, ll, ul, lr, ur, k+1, dxm, dx, dy, dym)
 end select
 
-if (surface_qty(qty) .or. which_vert == VERTISSURFACE) then
+if (surface_qty(qty) .or. which_vert == VERTISSURFACE .or. which_vert == VERTISUNDEF) then
   expected_obs(:) = fld_k1(:)
 else
    fld1  = force_non_negative_if_required(ens_size, qty, fld_k1)
