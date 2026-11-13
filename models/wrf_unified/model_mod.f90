@@ -142,7 +142,7 @@ public :: get_domain_info
 
 
 ! module variables
-character(len=256), parameter :: source   = "wrf/model_mod.f90"
+character(len=256), parameter :: source   = "wrf_unifed/model_mod.f90"
 logical :: module_initialized = .false.
 
 integer, parameter :: MAX_STATE_VARIABLES = 100
