@@ -745,7 +745,8 @@ call error_handler(E_ERR,'pert_model_copies', &
                       text2='see comments in wrf/model_mod.f90::pert_model_copies()')
 endif
 
-print*, 'not done'
+!HK @todo do you want the perturb routine from wrf/model_mod.f90?
+interf_provided = .false.
 
 end subroutine pert_model_copies
 
