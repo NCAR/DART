@@ -142,7 +142,7 @@ public :: get_domain_info
 
 
 ! module variables
-character(len=256), parameter :: source   = "wrf_unifed/model_mod.f90"
+character(len=256), parameter :: source   = "wrf_unified/model_mod.f90"
 logical :: module_initialized = .false.
 
 integer, parameter :: MAX_STATE_VARIABLES = 100
@@ -316,6 +316,8 @@ do i = 1, num_domains
 enddo
 
 deallocate(domain_mask)
+
+call verify_required_state_variables()
 
 if (chemistry_separate_file) then
    call verify_chem_state_variables(nfields, varname, state_qty, update_var, in_domain)
@@ -1061,6 +1063,41 @@ subroutine verify_chem_state_variables(nvar, varname, qty, update, in_domain)
   character(len=9),  intent(out) :: in_domain(MAX_STATE_VARIABLES)
   call verify_state_variables_generic(nvar, varname, qty, update, in_domain, chem_state_variables)
 end subroutine verify_chem_state_variables
+
+!------------------------------------------------------------------
+! Fields required on every meterology domain, matching the original WRF model_mod:
+!   PH          geopotential, used for height and for density in pressure
+!   MU or PSFC  needed for surface pressure
+! Note: T, QVAPOR and MU are also needed if you compute pressure at model levels.
+! These area checked when you build the column, not here.  
+subroutine verify_required_state_variables()
+
+integer :: i
+
+do i = 1, num_domains
+   call require_var(i, get_varid_from_kind(wrf_dom(i), QTY_GEOPOTENTIAL_HEIGHT), 'PH')
+   if (get_varid_from_varname(wrf_dom(i), 'MU') < 0 .and. &
+       get_varid_from_varname(wrf_dom(i), 'PSFC') < 0) then
+      call require_var(i, -1, 'MU or PSFC')
+   endif
+enddo
+
+end subroutine verify_required_state_variables
+
+
+!------------------------------------------------------------------
+subroutine require_var(dom, var_id, name)
+
+integer,          intent(in) :: dom, var_id
+character(len=*), intent(in) :: name
+character(len=256) :: msg
+if (var_id < 0) then
+   write(msg, '(3A,I0)') 'wrf_state_variables must include ', name, ' for domain ', dom
+   call error_handler(E_ERR, 'verify_required_state_variables', msg, source, &
+         text2='needed to compute model pressure and height')
+endif
+end subroutine require_var
+
 
 !------------------------------------------------------------------
 ! matches WRF variable name in bounds table to input name, and assigns
