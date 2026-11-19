@@ -19,7 +19,7 @@ DART uses the Message Passing Interface (MPI) to distribute ensembles of
 state and extended state data across processors and nodes in a distributed-memory system. 
 For models with relatively small memory demands, DART can be compiled and run as a serial program. 
 However, when compiled with MPI, it can scale to tens of thousands of processors 
-and handle memory requirements ranging from gigabytes to petabytes. This allows DART to run with 
+and handle memory requirements ranging from gigabytes to terabytes. This allows DART to run with 
 extremely high resolution models and large ensembles. 
 
 There is an inherent trade-off between memory usage and internode communication.
@@ -55,18 +55,35 @@ Recommended setting for ``distributed_state``:
 .. note::
 
    For debugging purposes, you may want to run in "transpose mode". If all data values for a single 
-   ensemble are needed, data transposes are used to collect the state vector data onto the first N 
+   ensemble member are needed, data transposes are used to collect the state vector data onto the first N 
    tasks, where N is the ensemble size.
 
    This is done by setting the namelist option ``distributed_state = .false.`` in the 
    filter_nml namelist. In general, this is not recommended as it requires the full state vector 
    to fit into a single task’s memory, has less vectorization, and does not scale beyond N tasks. 
 
-To minimize per node memory and IO contention, we recommend you assign the logical MPI tasks 
-to physical MPI tasks using a round-robin layout in the ensemble_manager_nml namelist.
+To minimize per node memory and IO contention, we recommend changing some parameters in the ensemble_manager_nml
+namelist. 
 
-You must also set the ``tasks_per_node`` parameter so that the number of logical MPI 
-tasks per node matches the number of physical MPI tasks per node you are using on your machine.
+The first is the ``layout`` parameter, which controls the mapping between logical MPI tasks 
+and physical MPI tasks. We recommend setting this to a value of 2, which tells DART to distribute the 
+logical MPI tasks across the physical MPI tasks in a round-robin fashion. This means that each node gets 
+a task in turn before assigning a second task to each node, until all tasks are assigned. This helps to 
+balance memory usage across nodes and can improve performance.
+
+If the ``layout`` parameter is not set in the ensemble_manager_nml namelist, DART will use the default 
+value of 1, which is a one-to-one mapping between logical and physical MPI tasks (PE = MPI task).
+
+Once you have set the ``layout`` parameter, you must also set the ``tasks_per_node`` parameter so that 
+the number of logical MPI tasks per node matches the number of physical MPI tasks per node you are using 
+on your machine.
+
+If ``tasks_per_node`` is not set in the ensemble_manager_nml namelist, DART will use the default 
+value of 1 MPI task per node, which will most likely be suboptimal for your system.
+
+The job will still run if this number does not match the real “tasks_per_node” at the hardware level, 
+but it may run out of memory if the mismatch causes multiple high-memory-use tasks to be run on the 
+same node.
 
 Recommended setting for a round-robin layout in ensemble_manager_nml:
 
@@ -74,7 +91,8 @@ Recommended setting for a round-robin layout in ensemble_manager_nml:
 
     &ensemble_manager_nml
        layout                      = 2
-       tasks_per_node              = 128 ! Note this should match your mpirun settings
+       tasks_per_node              = 128 ! Note this should match your mpirun settings; 128 is the recommended 
+                                         ! value when using all available MPI tasks per node on Derecho
 
 
 IO - reading and writing of the model state
@@ -162,8 +180,8 @@ DART does have strong scaling, so utlizing more nodes can greatly improve the pe
 by reducing each processor's workload. However, it is important to be aware of the limits to strong 
 scaling, or strong scaling breakdown. 
 
-For a specific assimilation (i.e. fixed problem size), there is a limit to how much adding more nodes 
-will improve performance. As you add more processors to a fixed problem, you eventaully hit a point 
-of diminishing returns where communication overwhelms computation and your runtime will start to 
-increase. It is important to be aware of this limit and to avoid using more nodes than necessary, 
-as it can lead to diminished performance, wasted resources, and increased energy costs.
+There is a limit to how much adding more nodes will improve performance. As you add more processors 
+to a fixed problem, you eventaully hit a point of diminishing returns where communication overwhelms 
+computation and your runtime will start to increase. It is important to be aware of this limit and to 
+avoid using more nodes than necessary, as it can lead to diminished performance, wasted resources, 
+and increased energy costs.
