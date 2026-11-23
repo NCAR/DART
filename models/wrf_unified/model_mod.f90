@@ -476,6 +476,10 @@ else
       istatus(:) = VERTICAL_LOCATION_FAIL
       return
   endif
+  if (.not. within_bounds_vertical(grid_id, qty, zloc, ens_size)) then
+      istatus(:) = FAILED_BOUNDS_CHECK
+      return
+  endif
 endif
 
 ! For mete qtys, wrf_id = grid_id, 
@@ -1389,7 +1393,7 @@ fail = .false.
 select case (which_vert)
    case(VERTISLEVEL)
       zloc(:) = lon_lat_vert(3)
-      level_below(:) = nint(zloc(:))
+      level_below(:) = max(1, int(zloc(:)))
       fail = .false.
    case(VERTISPRESSURE)
       call get_model_pressure_profile(grid_id, ll, ul, lr, ur, dx, dy, dxm, dym, ens_size, state_handle, v_p)
@@ -3357,8 +3361,6 @@ select case (qty_in)
       qty = qty_in
 end select
 
-! HK @todo chemistry separate file var_id
-
 var_id = get_varid_from_kind(wrf_dom(grid_id), qty) 
 state_id = wrf_dom(grid_id)
 if (var_id < 0 .and. chemistry_separate_file) then
@@ -3377,6 +3379,35 @@ endif
 within_bounds_horizontal = (bounds_check_lon(i, grid_id, state_id, var_id) .and. bounds_check_lat(j, grid_id, state_id, var_id))
 
 end function within_bounds_horizontal
+
+!------------------------------------------------------------------
+! Check the vertical location leaves room for the level above.
+! Interpolation reads levels k and k+1, so k must be below the top level.
+! Geopotential height and vertical velocity are on the staggered (w) grid:
+! model_interpolate shifts zloc by +0.5 for these, so check the shifted level
+! against bottom_top_stag. Everything else is on mass levels (bottom_top).
+function within_bounds_vertical(grid_id, qty, zloc, ens_size)
+
+integer,  intent(in) :: grid_id
+integer,  intent(in) :: qty
+integer,  intent(in) :: ens_size
+real(r8), intent(in) :: zloc(ens_size)
+logical :: within_bounds_vertical
+
+integer :: k(ens_size), top
+
+select case (qty)
+   case (QTY_GEOPOTENTIAL_HEIGHT, QTY_VERTICAL_VELOCITY)
+      k(:) = max(1, int(zloc(:) + 0.5_r8))
+      top  = grid(grid_id)%bts
+   case default
+      k(:) = max(1, int(zloc(:)))
+      top  = grid(grid_id)%bt
+end select
+
+within_bounds_vertical = all(k(:) < top)
+
+end function within_bounds_vertical
 
 !------------------------------------------------------------------
 function able_to_interpolate_qty(grid_id, qty)
@@ -4145,64 +4176,6 @@ if ( grid(grid_id)%periodic_y ) then
 
 end function bounds_check_lat
 
-
-!------------------------------------------------------------------
-function bounds_check_vertical(ind, grid_id, state_id, var_id) 
-
-integer,  intent(in)  :: ind ! index into the grid
-integer,  intent(in)  :: grid_id
-integer,  intent(in)  :: state_id
-integer,  intent(in)  :: var_id
-
-logical :: bounds_check_vertical
-! III. Vertical -- z-direction (periodicity not an issue)
-!    
-!    Consider Mass vertical grid with 4 bottom-top gridpoints
-!      Values  :: [ 0.875 0.625 0.375 0.125 ]
-!      Indices :: [   1     2     3     4   ]
-!    Complementary W-grid
-!      Values  :: [   1   0.75  0.50  0.25    0   ]
-!      Indices :: [   1     2     3     4     5   ]
-!
-!    What are the allowable values for a real-valued index on each of these grids?
-!    1. M-grid  --->  [1 4]           ---> [1 bt]
-!               --->  [0.875 0.125]  
-!    2. W-grid  --->  [1.5 4.5]       ---> [1.5 bt+0.5]
-!               --->  [0.875 0.125]
-!
-!    [Note that above "allowable values" reflect that one should only be able to
-!     have an observation within the M-grid, since that is the only way to  
-!     guarantee that the necessary information exists in order to successfully 
-!     interpolate to a specified location.]
-
-bounds_check_vertical = .false.
-
-if ( on_w_grid(state_id, var_id) ) then
-   ! W vertical grid allows [1 bts)
-   if ( ind >= 1 .and. ind < grid(grid_id)%bts ) bounds_check_vertical = .true.
-else
-   ! M vertical grid allows [1 bt)
-   if ( ind >= 1 .and. ind < grid(grid_id)%bt ) bounds_check_vertical = .true.
-endif
-  
-end function bounds_check_vertical 
-
-!------------------------------------------------------------------
-! Summary of Allowable REAL-VALUED Index Values ==> INTEGER Index Values 
-!
-! In longitude (x) direction
-!   Periodic     & M_grid ==> [1 we+1)       ==> [1 wes)
-!   Periodic     & U_grid ==> [1 wes)        ==> [1 wes)
-!   NOT Periodic & M_grid ==> [1 we]         ==> [1 we)
-!   NOT Periodic & U_grid ==> [1.5 we+0.5]   ==> [1 wes)
-! In latitude (y) direction
-!   Periodic     & M_grid ==> [0.5 sn+0.5]   ==> [0 sns) *though in practice, [1 sn)*
-!   Periodic     & V_grid ==> [1 sns]        ==> [1 sns) *though allowable range, [1.5 sn+.5]*
-!   NOT Periodic & M_grid ==> [1 sn]         ==> [1 sn)
-!   NOT Periodic & V_grid ==> [1.5 sn+0.5]   ==> [1 sns)
-! In vertical (z) direction
-!                  M_grid ==> [1 bt]         ==> [1 bt)
-!                  W_grid ==> [1.5 bt+0.5]   ==> [1 bts)
 !------------------------------------------------------------------
 
 function phb(state_handle, ens_size, grid_id, i, j, k)
