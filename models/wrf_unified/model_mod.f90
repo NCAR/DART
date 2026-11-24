@@ -3344,37 +3344,17 @@ integer, intent(in) :: grid_id
 integer, intent(in) :: qty_in
 logical :: within_bounds_horizontal
 
-integer :: var_id, state_id, qty
+integer :: var_id, wrf_id, state_id
 
-! Some qtys we can interpolate, but the qty is not in the state.
-! using QTY_POTENTIAL_TEMPERATURE because this is on the mass grid.
-! internal to model_mod, QTY_TEMPERATURE is QTY_POTENTIAL_TEMPERATURE
-select case (qty_in)
-
-   case (QTY_SURFACE_TYPE); qty = QTY_POTENTIAL_TEMPERATURE ! uses land mask XLAND which is static data on mass grid
-   case (QTY_LANDMASK); qty = QTY_POTENTIAL_TEMPERATURE ! land mask XLAND is static data on mass grid
-   case (QTY_SURFACE_ELEVATION); qty = QTY_POTENTIAL_TEMPERATURE ! terrain height HGT is static data on mass grid
-   case (QTY_TEMPERATURE); qty = QTY_POTENTIAL_TEMPERATURE ! QTY_TEMPERATURE is not in the state, use QTY_POTENTIAL_TEMPERATURE
-   case (QTY_SPECIFIC_HUMIDITY); qty = QTY_VAPOR_MIXING_RATIO ! we use vapor mixing ratio to compute specific humidity
-   case (QTY_DENSITY); qty = QTY_GEOPOTENTIAL_HEIGHT ! density interpolated from geopotential height and pressure
-   case default
-      qty = qty_in
-end select
-
-var_id = get_varid_from_kind(wrf_dom(grid_id), qty) 
-state_id = wrf_dom(grid_id)
-if (var_id < 0 .and. chemistry_separate_file) then
-   ! chemistry variables stored in separate file
-   var_id = get_varid_from_kind(wrf_dom(grid_id+num_domains), qty)
-   state_id = wrf_dom(grid_id+num_domains)
-endif
+call get_state_variable_for_qty(grid_id, qty_in, wrf_id, var_id)
 if (var_id < 0) then
    within_bounds_horizontal = .false.
    call error_handler(E_ERR, 'within_bounds_horizontal', &
-        'Quantity ' // trim(adjustl(get_name_for_quantity(qty))) // &
+        'Quantity ' // trim(adjustl(get_name_for_quantity(qty_in))) // &
         ' not in state')
    return
 endif
+state_id = wrf_dom(wrf_id)
 
 within_bounds_horizontal = (bounds_check_lon(i, grid_id, state_id, var_id) .and. bounds_check_lat(j, grid_id, state_id, var_id))
 
@@ -3583,15 +3563,54 @@ integer :: wrf_id
 
 integer :: var_id
 
-var_id = get_varid_from_kind(wrf_dom(grid_id), qty)
-wrf_id = grid_id
-if (var_id < 0 .and. chemistry_separate_file) then
-   ! chemistry variables stored in separate file
-   var_id = get_varid_from_kind(wrf_dom(grid_id+num_domains), qty)
-   wrf_id = grid_id + num_domains
-endif
+call get_state_variable_for_qty(grid_id, qty, wrf_id, var_id)
 
 end function get_wrf_id_from_qty
+
+!------------------------------------------------------------------
+! Some qtys we can interpolate, but the qty is not in the state.
+! using QTY_POTENTIAL_TEMPERATURE because this is on the mass grid.
+! internal to model_mod, QTY_TEMPERATURE is QTY_POTENTIAL_TEMPERATURE
+! Find the state variable used for a quantity on this grid:
+! Quantities that are not in the state, but are computed from a state
+! variable or from static data, map to a state variable on the same
+! horizontal grid:
+!   temperature, surface type, land mask, surface elevation -> potential temperature (mass grid)
+!   specific humidity -> vapor mixing ratio
+!   density           -> geopotential height
+! wrf_id is the index into wrf_dom: grid_id for meteorology,
+! grid_id + num_domains for chemistry stored in a separate file.
+! var_id is -1 if the quantity is not in the state.
+subroutine get_state_variable_for_qty(grid_id, qty_in, wrf_id, var_id)
+
+integer, intent(in)  :: grid_id
+integer, intent(in)  :: qty_in
+integer, intent(out) :: wrf_id
+integer, intent(out) :: var_id
+
+integer :: qty
+
+select case (qty_in)
+
+   case (QTY_SURFACE_TYPE); qty = QTY_POTENTIAL_TEMPERATURE ! uses land mask XLAND which is static data on mass grid
+   case (QTY_LANDMASK); qty = QTY_POTENTIAL_TEMPERATURE ! land mask XLAND is static data on mass grid
+   case (QTY_SURFACE_ELEVATION); qty = QTY_POTENTIAL_TEMPERATURE ! terrain height HGT is static data on mass grid
+   case (QTY_TEMPERATURE); qty = QTY_POTENTIAL_TEMPERATURE ! QTY_TEMPERATURE is not in the state, use QTY_POTENTIAL_TEMPERATURE
+   case (QTY_SPECIFIC_HUMIDITY); qty = QTY_VAPOR_MIXING_RATIO ! we use vapor mixing ratio to compute specific humidity
+   case (QTY_DENSITY); qty = QTY_GEOPOTENTIAL_HEIGHT ! density interpolated from geopotential height and pressure
+   case default
+      qty = qty_in
+end select
+
+wrf_id = grid_id
+var_id = get_varid_from_kind(wrf_dom(wrf_id), qty)
+if (var_id < 0 .and. chemistry_separate_file) then
+   ! chemistry variables stored in separate file
+   wrf_id = grid_id + num_domains
+   var_id = get_varid_from_kind(wrf_dom(wrf_id), qty)
+endif
+
+end subroutine get_state_variable_for_qty
 
 !------------------------------------------------------------------
 subroutine getCorners(i, j, grid_id, qty, ll, ul, lr, ur, rc)
@@ -3600,18 +3619,13 @@ integer, intent(in)  :: i, j, grid_id, qty
 integer, dimension(2), intent(out) :: ll, ul, lr, ur ! (x,y) of each corner
 integer, intent(out) :: rc
 
-integer :: var_id, state_id
+integer :: var_id, wrf_id, state_id
 
 ! set return code to 0, and change this if necessary
 rc = 0
 
-var_id = get_varid_from_kind(wrf_dom(grid_id), qty)
-state_id = wrf_dom(grid_id)
-if (var_id < 0 .and. chemistry_separate_file) then
-   ! chemistry variables stored in separate file
-   var_id = get_varid_from_kind(wrf_dom(grid_id+num_domains), qty)
-   state_id = wrf_dom(grid_id+num_domains)
-endif
+call get_state_variable_for_qty(grid_id, qty, wrf_id, var_id)
+state_id = wrf_dom(wrf_id)
 
 
 !----------------
