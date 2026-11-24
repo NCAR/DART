@@ -3346,7 +3346,7 @@ logical :: within_bounds_horizontal
 
 integer :: var_id, wrf_id, state_id
 
-call get_state_variable_for_qty(grid_id, qty_in, wrf_id, var_id)
+call get_wrf_var_from_qty(grid_id, qty_in, wrf_id, var_id)
 if (var_id < 0) then
    within_bounds_horizontal = .false.
    call error_handler(E_ERR, 'within_bounds_horizontal', &
@@ -3563,7 +3563,7 @@ integer :: wrf_id
 
 integer :: var_id
 
-call get_state_variable_for_qty(grid_id, qty, wrf_id, var_id)
+call get_wrf_var_from_qty(grid_id, qty, wrf_id, var_id)
 
 end function get_wrf_id_from_qty
 
@@ -3581,7 +3581,7 @@ end function get_wrf_id_from_qty
 ! wrf_id is the index into wrf_dom: grid_id for meteorology,
 ! grid_id + num_domains for chemistry stored in a separate file.
 ! var_id is -1 if the quantity is not in the state.
-subroutine get_state_variable_for_qty(grid_id, qty_in, wrf_id, var_id)
+subroutine get_wrf_var_from_qty(grid_id, qty_in, wrf_id, var_id)
 
 integer, intent(in)  :: grid_id
 integer, intent(in)  :: qty_in
@@ -3610,7 +3610,7 @@ if (var_id < 0 .and. chemistry_separate_file) then
    var_id = get_varid_from_kind(wrf_dom(wrf_id), qty)
 endif
 
-end subroutine get_state_variable_for_qty
+end subroutine get_wrf_var_from_qty
 
 !------------------------------------------------------------------
 subroutine getCorners(i, j, grid_id, qty, ll, ul, lr, ur, rc)
@@ -3624,7 +3624,7 @@ integer :: var_id, wrf_id, state_id
 ! set return code to 0, and change this if necessary
 rc = 0
 
-call get_state_variable_for_qty(grid_id, qty, wrf_id, var_id)
+call get_wrf_var_from_qty(grid_id, qty, wrf_id, var_id)
 state_id = wrf_dom(wrf_id)
 
 
