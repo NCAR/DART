@@ -46,7 +46,7 @@ namelist settings are set appropriately and fit your system's resources and assi
     /
                                          
     &filter_nml
-       distributed_state = .true.,
+       distributed_state        = .true.,
        stages_to_write          = 'output',
        single_file_out          = .false.,
        output_members           = .true.,
