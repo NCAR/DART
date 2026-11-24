@@ -74,14 +74,12 @@ balance memory usage across nodes and can improve performance.
 If the ``layout`` parameter is not set in the ensemble_manager_nml namelist, DART will use the default 
 value of 1, which is a one-to-one mapping between logical and physical MPI tasks (PE = MPI task).
 
-Once you have set the ``layout`` parameter, you must also set the ``tasks_per_node`` parameter so that 
+Once you have set the ``layout`` parameter to 2, you must also set the ``tasks_per_node`` parameter so that 
 the number of logical MPI tasks per node matches the number of physical MPI tasks per node you are using 
 on your machine.
 
 If ``tasks_per_node`` is not set in the ensemble_manager_nml namelist, DART will use the default 
-value of 1 MPI task per node, which will most likely be suboptimal for your system.
-
-The job will still run if this number does not match the real “tasks_per_node” at the hardware level, 
+value of 1 MPI task per node. The job will still run if this number does not match the real “tasks_per_node” at the hardware level, 
 but it may run out of memory if the mismatch causes multiple high-memory-use tasks to be run on the 
 same node.
 
@@ -95,8 +93,8 @@ Recommended setting for a round-robin layout in ensemble_manager_nml:
                                          ! value when using all available MPI tasks per node on Derecho
 
 
-IO - reading and writing of the model state
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+IO - Reading and Writing of the Model State and Observations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The first N logical MPI tasks read and write the N state vectors from disk, where N is the ensemble size. 
 For very large state vectors, you may not be able to read the entire state vector into memory on a single 
@@ -116,8 +114,120 @@ the MPI tasks.
    so it is only recommended if you have a very large state vector that does not fit into memory on a single node.
 
 
-Conversion of observation or state location
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+DART gives you fine-grained control over which output files are written and when. You can choose which stages of
+the assimilation cycle writes state files, how many ensemble members go into each file, and how much
+information is written to the observation-space diagnostic file, ``obs_seq.final``.
+
+For small models, writing everything costs little, so these settings aren't critical. For large models,
+writing unnecessary output can take a significant share of the runtime, use more memory, and fill up disk
+space. It helps to know which files the assimilation actually needs and which are only for diagnostics:
+
+- **Needed:** the input (prior) ensemble, which is the set of model restart files that filter reads, and the
+  updated (posterior) ensemble, which filter writes back to the model restart files in the ``'output'`` stage.
+  The model needs these to continue to the next cycle.
+- **Diagnostic only:** the ``'forecast'``, ``'preassim'``, ``'postassim'`` and ``'analysis'`` stages, the
+  posterior forward operators, and the ensemble members written to ``obs_seq.final``. These do not change
+  the assimilation result. However, they provide extra information and data to analyze and can be useful 
+  for checking and tuning an experiment. For example, comparing ``forecast`` and ``preassim`` members shows 
+  the effect of prior inflation. 
+
+For large models, it is recommended that you write only what you need for routine cycling, and turn on the 
+diagnostic output only when you need it, for example for a short test period.
+
+These options are set in the ``&filter_nml`` namelist in ``input.nml`` unless noted otherwise.
+
+``stages_to_write`` (default: ``'output'``)
+   The stages of the assimilation cycle at which state files are written. Valid values are ``'input'``,
+   ``'forecast'``, ``'preassim'``, ``'postassim'``, ``'analysis'``, ``'output'`` and ``'null'``. The values
+   are case-insensitive, but the output file names are always lowercase.
+
+   - ``'input'``: the mean and spread of the input ensemble (the members themselves are already the input files).
+   - ``'forecast'``: the ensemble before prior inflation is applied.
+   - ``'preassim'``: after prior inflation, before assimilation.
+   - ``'postassim'``: after assimilation, before posterior inflation.
+   - ``'analysis'``: after assimilation and posterior inflation.
+   - ``'output'``: the updated ensemble written to the restart files for the next model advance. All
+     ensemble members are always written in this stage.
+
+   For large models, ``stages_to_write = 'output'`` is usually all that is needed. Each additional stage
+   writes more files, which adds I/O time and disk use.
+
+``output_mean`` (default: ``.true.``) and ``output_sd`` (default: ``.true.``)
+   Whether the ensemble mean and ensemble standard deviation (spread) are written in
+   each enabled stage. The mean and spread are each the size of a single ensemble member, so they are typcailly 
+   cheap to write. Unless you are explicitly running into memory constraints, it is recommended to 
+   keep these namelist settings to ``.true.``, as they are useful for diagnostics and tuning.
+
+``output_members`` (default: ``.true.``)
+   Whether the ensemble members are written in each enabled stage.
+
+``num_output_state_members`` (default: ``0``)
+   The number of ensemble members written in the ``'forecast'``, ``'preassim'``, ``'postassim'`` and
+   ``'analysis'`` stages. ``output_members`` must be ``.true.``. With the default of 0, these stages write only
+   the mean, spread, and inflation values. Writing members in these stages multiplies the output size, so for
+   large models keep this at 0 or a small number. This setting does not affect the ``'output'`` stage.
+
+``single_file_out`` (default: ``.false.``)
+   How output state files are structured. If ``.true.``, all ensemble members for a stage are written to a single
+   file. If this is set to ``.false.``, each member is written to its own file, with the first N tasks each 
+   concurrently write the output file for a single ensemble member. This is the recommended setting for large models.
+
+``write_all_stages_at_end`` (default: ``.false.``)
+   If ``.false.``, state data for each stage is written as soon as it is computed. If ``.true.``, filter keeps a
+   copy of every requested stage (members, mean, spread, and inflation) in memory and writes all of them in
+   parallel at the end of the run. This can lower the cost of jobs where I/O time dominates, but it increases
+   memory use for every stage written. It cannot be used with ``single_file_out = .true.``. For memory-limited
+   runs, keep the default ``.false.``.
+
+``compute_posterior`` (default: ``.true.``)
+   Whether forward operators are computed on the posterior ensemble. If computed, these values are written to
+   ``obs_seq.final``. They do not change the assimilation result. Setting this to ``.false.`` skips the 
+   posterior forward operator calculation, saving time and memory, and halves the number of ensemble copies 
+   written to ``obs_seq.final``. It is recommended to set this to ``.false.`` for large models, unless you explicitly 
+   need the posterior forward operators for specific diagnostics or posterior inflation.
+
+``num_output_obs_members`` (default: ``0``)
+   The number of ensemble members whose forward operator values are written to ``obs_seq.final``, in addition to
+   the ensemble mean and spread. Each member adds one value per observation for the prior, and another for the
+   posterior if ``compute_posterior = .true.``. With many observations, writing the whole ensemble can make
+   ``obs_seq.final`` extremely large. MPI task 0 also holds all of these values in memory and writes the file by
+   itself, so it is recommended to write a subset of the ensemble, or use 0 if you only need the mean and spread.
+
+``write_binary_obs_sequence`` in ``&obs_sequence_nml`` (default: ``.false.``)
+   If ``.true.``, observation sequence files, including ``obs_seq.final``, are written in binary instead of
+   ASCII. Binary files are smaller and faster to read and write, which helps when an ASCII ``obs_seq.final``
+   becomes too large. They are not human-readable. If you read them on a machine with a different byte order,
+   set ``read_binary_file_format`` in ``&obs_sequence_nml``. Recommended to keep this setting ``.false.`` 
+   unless you are running into memory issues with ASCII files when writing the final observation sequence.
+
+To summarize, these are the recommended settings for large, memory-limited models:
+
+.. code-block:: text
+
+    &filter_nml
+       stages_to_write          = 'output'
+       single_file_out          = .false.
+       output_members           = .true.
+       output_mean              = .true.
+       output_sd                = .true.
+       num_output_state_members = 0         ! or a small subset of the ensemble
+       write_all_stages_at_end  = .false.
+       compute_posterior        = .false.   ! switch to .true. if you want posterior inflation or need O-A diagnostics
+       num_output_obs_members   = 0         ! or a small subset of the ensemble
+    /
+
+    &obs_sequence_nml
+       write_binary_obs_sequence = .true.   ! if obs_seq.final is too large in ASCII
+    /
+
+.. note::
+
+   Turn on the diagnostic stages, ensemble members, and posterior forward operators when you need them to
+   evaluate an experiment, for example for a short period while tuning inflation and localization.
+
+
+Conversion of Observation or State Location
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The vertical location of an observation or state element may depend on the model state. For example, 
 an observation might be reported in pressure coordinates, requiring conversion to, for example, height,
