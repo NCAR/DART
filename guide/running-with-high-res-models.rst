@@ -31,7 +31,44 @@ It may be necessary to adjust these runtime settings when working with high reso
 as the memory requirements may exceed the memory available on a single node. This document will detail 
 the different namelist options that control the distribution of data across MPI tasks, as well as 
 provide recommendations for requesting resources on multi-node systems to enable working with larger 
-model states. Ensure that the following namelist settings are set appropriately.
+model states.
+
+For quick reference, here is a collection of the recommended namelist settings for running with 
+high resolution models, which are discussed in more detail below. Ensure that the following 
+namelist settings are set appropriately and fit your system's resources and assimilation needs.
+
+.. code-block:: text
+
+    &ensemble_manager_nml
+       layout                      = 2
+       tasks_per_node              = 128 ! Note this should match your mpirun settings; 128 is the recommended 
+                                         ! value when using all available MPI tasks per node on Derecho
+    /
+                                         
+    &filter_nml
+       distributed_state = .true.,
+       stages_to_write          = 'output',
+       single_file_out          = .false.,
+       output_members           = .true.,
+       output_mean              = .true.,
+       output_sd                = .true.,
+       num_output_state_members = 0,         ! or a small subset of the ensemble
+       write_all_stages_at_end  = .false.,
+       compute_posterior        = .false.,   ! switch to .true. if you want posterior inflation or need O-A diagnostics
+       num_output_obs_members   = 0          ! or a small subset of the ensemble
+    /
+
+    &obs_sequence_nml
+       write_binary_obs_sequence = .false.   ! switch to .true. if obs_seq.final is too large to write in ASCII
+    /
+
+    &assim_tools_nml
+       distribute_mean = .false.
+    /
+
+    &state_vector_io_nml
+       buffer_state_io          = .true.
+    /
 
 
 Distributed State
@@ -205,19 +242,19 @@ To summarize, these are the recommended settings for large, memory-limited model
 .. code-block:: text
 
     &filter_nml
-       stages_to_write          = 'output'
-       single_file_out          = .false.
-       output_members           = .true.
-       output_mean              = .true.
-       output_sd                = .true.
-       num_output_state_members = 0         ! or a small subset of the ensemble
-       write_all_stages_at_end  = .false.
-       compute_posterior        = .false.   ! switch to .true. if you want posterior inflation or need O-A diagnostics
-       num_output_obs_members   = 0         ! or a small subset of the ensemble
+       stages_to_write          = 'output',
+       single_file_out          = .false.,
+       output_members           = .true.,
+       output_mean              = .true.,
+       output_sd                = .true.,
+       num_output_state_members = 0,         ! or a small subset of the ensemble
+       write_all_stages_at_end  = .false.,
+       compute_posterior        = .false.,   ! switch to .true. if you want posterior inflation or need O-A diagnostics
+       num_output_obs_members   = 0          ! or a small subset of the ensemble
     /
 
     &obs_sequence_nml
-       write_binary_obs_sequence = .true.   ! if obs_seq.final is too large in ASCII
+       write_binary_obs_sequence = .false.    ! switch to .true. if obs_seq.final is too large in ASCII
     /
 
 .. note::
@@ -235,24 +272,23 @@ based on the model state.
 For localization calculations, all MPI tasks use the ensemble mean state for any vertical coordinate 
 transformations that depend on the model state.
 
-If your state is small or your system has ample memory, it can be advantageous to store a full copy of the 
+If your state is small or your system has ample memory, it is advantageous to store a full copy of the 
 mean on each MPI task for use in vertical calculations. However, if the state is very large and you're 
 approaching (or exceeding) the available memory per node, you can reduce memory usage by distributing the 
 mean across MPI tasks.
 
-The default for ``distribute_mean`` is ``.false.``  but for models with large state vectors or models that 
-do not perform vertical coordinate conversions, it may be beneficial to set this to ``.true.``.
+The default for ``distribute_mean`` is ``.false.``, and it is recommended to keep it as such for most cases. 
+However, if you are running into memory constraints (the memory of an entire state vector can not fit into 
+a single task’s memory) or you do not need to perform vertical coordinate conversions, set this to ``.true.``.
+
+Note that distributing the mean can significantly hurt your performance by increasing MPI communication overhead,
+so only use it when necessary.
 
 .. code-block:: text
 
     &assim_tools_nml
        distribute_mean = .true.,
     /
-
-.. warning::
-
-   Unless you are explicitly running into memory constraints, it is not recommended to change this namelist setting
-   to ``distribute_mean = .true.``, as it can significantly hurt your performance by increasing MPI communication overhead.
 
 
 Advice for Running on Multi-node Machines
