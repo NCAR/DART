@@ -25,8 +25,7 @@
    last_obs_seconds           = -1
 
    async                      = 0
-   adv_ens_command            = "../shell_scripts/advance_model.csh"
-
+   
    trace_execution            = .true.
    output_timestamps          = .false.
    print_every_nth_obs        = -1
@@ -36,7 +35,6 @@
 
 &filter_nml
    async                    = 0,
-   adv_ens_command          = "../shell_scripts/advance_model.csh",
    ens_size                 = 3,
    obs_sequence_in_name     = "obs_seq.10",
    obs_sequence_out_name    = "obs_seq.final",
