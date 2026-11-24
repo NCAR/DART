@@ -22,7 +22,28 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
-**November 4 2027 :: Build system and CI improvements. Tag v11.25.4**
+**November 24 2026 :: HF radar converter update. Tag v11.26.0**
+
+HF Radar observation converter:
+
+- HF radar converter can now ingest NetCDF products from both legacy
+  and newer HF radar systems.
+- Additional checks on radial velocity and its error before assigning
+  the observation error standard deviation.
+
+Fixes:
+
+- CLM dart_to_clm: Fortran standard fix, unary operator cannot follow
+  an arithmetic operator.
+- RTTOV forward operators: default rttov_sensor_db_file is now
+  'rttov_sensor_db.csv'. Updated namelist documentation.
+
+Documentation:
+
+- Added tips for running DART with high resolution models,
+  replacing the data management issues page. 
+
+**November 4 2026 :: Build system and CI improvements. Tag v11.25.4**
 
 Bug fixes:
 
