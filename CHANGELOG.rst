@@ -22,6 +22,36 @@ individual files.
 
 The changes are now listed with the most recent at the top.
 
+**November 25 2026 :: WRF WRF-Chem Unified Model Interface. Tag v11.27.0**
+
+- New model_mod for WRF and WRF-Chem added as models/wrf_unified 
+
+User facing differences from models/wrf:
+
+- PHB (base state geopotential) must be in the state vector, with the
+  NO_COPY_BACK option. models/wrf read PHB from wrfinput_d0N and
+  stored a copy on every task; wrf_unified reads it from the distributed
+  state, so it uses less memory per task. PHB is used to compute model
+  heights and is not changed by the assimilation.
+- There is no default state: list every variable in wrf_state_variables
+  and wrf_state_bounds.
+- Namelist entries removed: default_state_variables, num_moist_vars,
+  surf_obs, soil_data, h_diab, adv_mod_command, scm,
+  center_search_half_length, center_spline_grid_scale,
+  circulation_pres_level, circulation_radius.
+- Namelist entries added: chemistry_separate_file, chem_state_variables,
+  chem_state_bounds, log_vert_interp, log_horz_interpM,
+  log_horz_interpQ.
+- Vortex observations (QTY_VORTEX_*) are not supported.
+- The WRF-specific perturbation of the initial ensemble is not ported;
+  filter's default perturbation is used.
+
+New quantities:
+
+- QTY_2M_POTENTIAL_TEMPERATURE
+- QTY_BASE_STATE_GEOP
+
+
 **November 24 2026 :: HF radar converter update. Tag v11.26.0**
 
 HF Radar observation converter:
