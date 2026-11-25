@@ -45,7 +45,7 @@ members may bifurcate over to the other lobe of the attractor on different
 cycles. Also, as they diverge from each other they do not spread out uniformly
 in 3D space, but spread along the linear attractor lines.
 
-The Lorenz 63 model is used in the :doc:`DART tutorial <../../theory/readme>`.
+The Lorenz 63 model is used in the :ref:`DART tutorial <DART-tutorial>`.
 
 The ``work/workshop_setup.sh`` script can be used to run an example. It
 builds the executables and runs ``perfect_model_obs`` and ``filter``.

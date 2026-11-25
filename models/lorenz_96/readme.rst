@@ -53,7 +53,7 @@ For Lorenz 96, DART advances the model, gets the model state and metadata
 describing this state, finds state variables that are close to a given
 location, and does spatial interpolation for model state variables.
 
-The Lorenz 96 model is used throughout the :doc:`DART tutorial <../../theory/readme>`.
+The Lorenz 96 model is used throughout the :ref:`DART tutorial <DART-tutorial>`.
 
 There are also some excellent Matlab tools to explore the behavior of the 
 Lorenz 96 model, namely ``run_lorenz_96.m`` and ``run_lorenz_96_inf.m``, both of 

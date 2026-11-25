@@ -31,7 +31,7 @@ The ``work/workshop_setup.sh`` script can be used to run an example. It
 builds the executables and runs ``perfect_model_obs`` and ``filter``.
 
 The Lorenz 84 model may be used instead of the Lorenz 63 model in many parts
-of the :doc:`DART tutorial <../../theory/readme>`. It has a more complex
+of the :ref:`DART tutorial <DART-tutorial>`. It has a more complex
 attractor, is not as periodic as Lorenz 63 and may be more challenging for
 certain filter variants.
 
