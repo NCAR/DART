@@ -23,11 +23,8 @@ Palmer (2001), [2]_ Smith (2001), [3]_ Orrell (2002), [4]_ Orrel (2003), [5]_
 Vannitsem and Toth (2002), [6]_ Roulston and Smith (2003), [7]_ and Wilks
 (2005). [8]_
 
-The Lorenz 96 2-scale model has a ``work/workshop_setup.csh`` script that 
-compiles and runs an example. This example may be explored in the
-:doc:`DART tutorial <../../theory/readme>`
-and is intended to provide insight into model/assimilation behavior.
-The example **may or may not** result in good (*or even decent!*) results!
+The ``work/workshop_setup.sh`` script can be used to run an example. It
+builds the executables and runs ``perfect_model_obs`` and ``filter``.
 
 Development History
 ~~~~~~~~~~~~~~~~~~~

@@ -14,11 +14,9 @@ I) To build the model and simply test that it runs:
    (copy the closest template in that directory to this name and customize it).
 *  take -r8 out for the portland fortran compiler
 
-2) Go to DART/models/pe2lyr/work and run 'csh ./workshop_setup.csh'
-   This creates make files and runs make to create an assortment of
-   executables.  It also runs 'perfect_model_obs' and 'filter' before exiting.
-   These use an existing obs_seq.in file which contains 10 observations and
-   runs quickly for testing.
+2) Go to DART/models/pe2lyr/work and build the executables.
+   Note that pe2lyr has not been updated for current versions of DART
+   (see readme.rst).
 
 
 II) To run an experiment with the existing grid size and with a 100 day spinup:
@@ -31,7 +29,7 @@ III) To spin up a different grid size, or to spin up the state for other than
 
 0) To change grid size, edit DART/models/pe2lyr/model_mod.f90 and include one of
    the 3 existing 'resoltXX.h' files.  cd into 'work' and rebuild the 
-   executables by running 'csh ./workshop_setup.csh'
+   executables.
 
 1) Generate a single identity observation by running ./create_obs_sequence
    and use the following inputs when prompted:

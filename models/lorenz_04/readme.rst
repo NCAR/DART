@@ -39,13 +39,6 @@ user is free to choose Model II or III by editing the `namelist`_. For users
 interested in Model I, please use Lorenz 96. The slow scale in Model III is
 Model II, and thus Model II is a deficient form of Model III.
 
-The Lorenz 05 model has a ``work/workshop_setup.csh`` script that compiles and 
-runs an example.  This example may be used anywhere in the
-:doc:`DART tutorial <../../theory/readme>` to explore 
-multiscale dynamics
-and to provide insight into model/assimilation behavior.
-The example **may or may not** result in good (*or even decent!*) results!
-
 Model Formulation
 ~~~~~~~~~~~~~~~~~
 

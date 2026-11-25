@@ -14,9 +14,7 @@ Overview
 The rose model is an atmospheric model for the Mesosphere Lower-Thermosphere
 (MLT). The DART interface was developed by Tomoko Matsuo (now at CU-Boulder).
 
-The source code for rose is not distributed with DART, thus the
-DART/models/rose/work/workshop_setup.csh script is SUPPOSED to fail without the
-rose code.
+The source code for rose is not distributed with DART.
 
 The rose model is a research model that is still being developed. The DART
 components here are simply to help the rose developers with the DART framework.

@@ -24,12 +24,10 @@ DART state vector composition:
 | ``indices 1 - 40``                     | ``indices 41 - 80``                    |
 +----------------------------------------+----------------------------------------+
 
-The *forced_lorenz_96* model has a ``work/workshop_setup.csh`` script that 
-compiles and runs an example.  This example is referenced in Section 20 of the
-`DART_tutorial <https://dart.ucar.edu/pages/Tutorial.html>`__ 
-and is intended to provide insight into parameter estimation and model/assimilation 
-behavior. 
-Be aware that the ``input.nml`` file is modified by the ``workshop_setup.csh`` script.
+The ``work/workshop_setup.sh`` script can be used to run an example. It
+builds the executables and runs ``perfect_model_obs`` and ``filter``.
+Be aware that the ``input.nml`` file is modified by the ``workshop_setup.sh``
+script.
 
 Quick Start
 -----------
