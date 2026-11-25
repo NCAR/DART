@@ -174,8 +174,3 @@ Historical and Deprecated
    A collection of standalone programs for simulating various properties of ensembles.
    Talk to Jeff Anderson about the programs in this directory.
 
-:doc:`wakeup_filter <wakeup_filter/wakeup_filter>`
-   For use in the "async=4" case where both the main filter program and the hindcast model are MPI programs. 
-   The main MPI job script runs each of the model advances for the ensemble members, 
-   and then runs this program to restart the filter program.
-   

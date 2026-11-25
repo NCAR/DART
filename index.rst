@@ -511,7 +511,6 @@ References
    assimilation_code/location/threed_cartesian/location_mod
    assimilation_code/location/threed_sphere/location_mod
    assimilation_code/programs/obs_seq_verify/obs_seq_verify
-   assimilation_code/programs/wakeup_filter/wakeup_filter
    assimilation_code/programs/compare_states/compare_states
    assimilation_code/programs/gen_sampling_err_table/gen_sampling_err_table
    assimilation_code/programs/perturb_single_instance/perturb_single_instance
