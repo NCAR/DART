@@ -4,10 +4,14 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 
+# Emits TAP (one ok / not ok per case) and exits non-zero if any case fails.
 # Usage:
 #  ./runall.sh
-#  ./runall.sh  | grep FAIL
-#  ./runall.sh  | grep PASS
+#  ./runall.sh  | grep '^not ok'
+#  ./runall.sh  | grep '^ok'
+# run_tests.sh runs this script (see developer_tests/tests.list).
+
+source "${DART:-$(git rev-parse --show-toplevel)}/developer_tests/tap.sh"
 
 function set_table () {
 echo "&algorithm_info_nml
@@ -19,25 +23,26 @@ $(cat input.nml)" > input.nml
 function run_test () {
 cp input.nml input.nml.orig
 set_table $1
-./test_table_read $1
+# keep program output out of the TAP stream; show it only for failing cases
+last_out=$(./test_table_read $1 2>&1)
 res=$?
-cp input.nml.orig input.nml
+mv input.nml.orig input.nml
 return $res
 }
 
 should_pass () {
 if [[ $? -ne 0 ]]; then
-  echo $1: "FAIL"
+  tap_not_ok "$1" #; echo "$last_out" | tail -n 20 | sed 's/^/# /'
 else
-  echo $1: "PASS"
+  tap_ok "$1"
 fi
 }
 
 should_fail () {
 if [[ $? -eq 0 ]]; then
-   echo $1: "FAIL"
+  tap_not_ok "$1" #; echo "$last_out" | tail -n 20 | sed 's/^/# /'
 else
-   echo $1: "PASS"
+  tap_ok "$1"
 fi
 }
 
@@ -72,4 +77,7 @@ run_test all_bnrhf_qceff_table.csv ; should_pass "lower case QTY"
 
 run_test qcf_table_lower_case_dist.txt; should_pass "lower case dist_type"
 
-cp input.nml.bak input.nml
+mv input.nml.bak input.nml
+
+tap_done
+exit $?
