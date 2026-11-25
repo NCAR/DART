@@ -113,8 +113,8 @@ metadata refer to this GOES observation converter example here:
 RTTOV coefficient files
 -----------------------
 
-The RTTOV coefficent file (.dat) contains the parameter values for a specific satellite
-radiance observation. The DART file (``rttov_sensor_db.csv``) refers to the RTTOV coefficent
+The RTTOV coefficient file (.dat) contains the parameter values for a specific satellite
+radiance observation. The DART file (``rttov_sensor_db.csv``) refers to the RTTOV coefficient
 file.  For the ``HIMAWARI_9_AHI_RADIANCE`` observation type, for example, the following information
 is provided within ``rttov_sensor_db.csv``:
 
@@ -122,23 +122,23 @@ is provided within ``rttov_sensor_db.csv``:
 
    HIMAWARI_9_AHI	31	9	56	ir	rtcoef_himawari_9_ahi.dat
 
-The coefficent file (.dat) is included with the RTTOV installation and can be found at the
+The coefficient file (.dat) is included with the RTTOV installation and can be found at the
 path  ``${RTTOV_install}/rtcoef_rttov13/rttov9pred54L/rtcoef_himawari_9_ahi.dat``. This file
-should be included in your run folder at runtime. Additional coefficent files for a given
+should be included in your run folder at runtime. Additional coefficient files for a given
 satellite sensor may be required.
 
-It is good practice to always view your coefficent file (.dat) to confirm that the 
-channels listed in the file match the channel from the ``obs_seq.out`` file. The coefficent
+It is good practice to always view your coefficient file (.dat) to confirm that the 
+channels listed in the file match the channel from the ``obs_seq.out`` file. The coefficient
 file will include a list of channels (wavebands) with the associated wavelength (microns).
 
 
 .. Important ::
 
-  The RTTOV package includes multiple coefficent files (e.g. all wavelengths, IR only, etc.)  that 
+  The RTTOV package includes multiple coefficient files (e.g. all wavelengths, IR only, etc.)  that 
   contain the appropriate parameter data for each satellite/sensor/channel combination. Whether
   the file contains all wavelengths versus only IR wavelengths is **extremely important** because
   it will shift the value of the channel number. Recommended practice is to choose a coefficient file
-  with all channels included.  If, on the other hand, you subset your coefficent file to only include
+  with all channels included.  If, on the other hand, you subset your coefficient file to only include
   IR channels, you should edit your observation converter such that the channels match.
   If RTTOV always returns expected observations of radiance = 0, or if the prior expected radiance
   is unusually biased from your prior, this could be a sign there is a mismatch between the 
@@ -257,12 +257,14 @@ RTTOV v12 Namelist
    | Item                   | Type               | Description                                                          |
    +========================+====================+======================================================================+
    | rttov_sensor_db_file   | character(len=512) | The location of the DART file with RTTOV sensor metadata. The format |
-   |                        |                    | is a comma-separated file. The columns are the DART                  |
-   |                        |                    | observation type, the platform/satellite/sensor ID, the              |
-   |                        |                    | wavelength band, the coefficient file, and a comma-separated list    |
-   |                        |                    | of RTTOV channels to use for this observation type. The default file |
-   |                        |                    | does not provide a list of channels, thus default behavior is to     |
-   |                        |                    | make all channels available.                                         |
+   |                        |                    | is a comma-separated file. The columns are the DART observation      |
+   |                        |                    | type, the platform/satellite/sensor ID, the wavelength band, the     |
+   |                        |                    | coefficient file, and a comma-separated list of RTTOV channels to    |
+   |                        |                    | use for this observation type. The 'rttov_sensor_db.csv' file        |
+   |                        |                    | provided by DART in                                                  |
+   |                        |                    | observations/forward_operators/rttov_sensor_db.csv does not provide  |
+   |                        |                    | a list of channels, thus default behavior is to make all channels    |
+   |                        |                    | available.                                                           |
    +------------------------+--------------------+----------------------------------------------------------------------+
    | first_lvl_is_sfc       | logical            | Whether the first level of the model represents the surface (true)   |
    |                        |                    | or the top of the atmosphere (false).                                |
@@ -487,6 +489,7 @@ RTTOV v13 namelist
 .. code-block:: text
 
   &obs_def_rttov_nml
+     rttov_sensor_db_file = 'rttov_sensor_db.csv'
      first_lvl_is_sfc     = .true.   ! is level 1 the surface (true) or top of atmosphere (false)?
      mw_clear_sky_only    = .false.  ! only use clear-sky for MW (plus clw emission if clw_data is true) or full RTTOV-SCATT (false)?
      interp_mode          = 1        ! Interpolation mode: Rochon on OD (1), Log-linear (2), Rochon on log-linear OD (3), Rochon on WF (4), Rochon on log-linear WF (5)
