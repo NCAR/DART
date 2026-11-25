@@ -1572,8 +1572,8 @@ system performance, please consider contact DART support  at dart(at)ucar(dot)ed
 Additional materials from previous in-person tutorials
 ------------------------------------------------------
 
--  Introduction - :doc:`DART Lab
-   materials <../../../guide/DART_LAB/DART_LAB>`
+-  Introduction - :ref:`DART Lab
+   materials <DART_LAB>`
 -  WRF-DART basic building blocks
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
    (some material is outdated)

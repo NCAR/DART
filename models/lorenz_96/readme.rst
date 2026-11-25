@@ -57,7 +57,7 @@ The Lorenz 96 model is used throughout the :ref:`DART tutorial <DART-tutorial>`.
 
 There are also some excellent Matlab tools to explore the behavior of the 
 Lorenz 96 model, namely ``run_lorenz_96.m`` and ``run_lorenz_96_inf.m``, both of 
-which are part of the :doc:`DART_LAB Tutorial. <../../guide/DART_LAB/DART_LAB>`
+which are part of the :ref:`DART_LAB Tutorial <DART_LAB>`.
 
 Namelist
 --------

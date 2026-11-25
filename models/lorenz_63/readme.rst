@@ -53,7 +53,7 @@ Be aware that the script overwrites ``input.nml`` with ``input.workshop.nml``.
 
 ``run_lorenz_63.m`` is an excellent Matlab tool to explore the behavior of the
 Lorenz 63 model. It is part of the 
-:doc:`DART_LAB Tutorial. <../../guide/DART_LAB/DART_LAB>`
+:ref:`DART_LAB Tutorial <DART_LAB>`.
 
 
 Namelist
