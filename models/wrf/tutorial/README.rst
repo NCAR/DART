@@ -59,7 +59,7 @@ The DART team is not responsible for and does not maintain the WRF code. For WRF
 or the `WRF github page. <https://github.com/wrf-model>`__
 
 If you are new to DART, we recommend that you become familiar with EnKF
-theory by working through the :doc:`../../../theory/readme` and then
+theory by working through the :ref:`DART-tutorial` and then
 understanding the :ref:`DART getting started <Welcome page>` documentation.
 
 May 2024 Great Plains Severe Storm Event
@@ -1572,8 +1572,8 @@ system performance, please consider contact DART support  at dart(at)ucar(dot)ed
 Additional materials from previous in-person tutorials
 ------------------------------------------------------
 
--  Introduction - :doc:`DART Lab
-   materials <../../../guide/DART_LAB/DART_LAB>`
+-  Introduction - :ref:`DART Lab
+   materials <DART_LAB>`
 -  WRF-DART basic building blocks
    -`slides <https://www.image.ucar.edu/wrfdart/classic/wrf_workshop_building_blocks.pdf>`__
    (some material is outdated)

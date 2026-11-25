@@ -44,11 +44,8 @@ For the simple advection model, DART advances the model, gets the model state
 and metadata describing this state, finds state variables that are close to a
 given location, and does spatial interpolation for model state variables.
 
-The simple advection model has a ``work/workshop_setup.csh`` script that compiles 
-and runs an example.  This example is referenced in Section 25 of the
-:doc:`DART tutorial <../../theory/readme>`.
-and is intended to provide insight into model/assimilation behavior.
-The example **may or may not** result in good (*or even decent!*) results!
+The ``work/workshop_setup.sh`` script can be used to run an example. It
+builds the executables and runs ``perfect_model_obs`` and ``filter``.
 
 
 Namelist

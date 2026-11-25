@@ -45,15 +45,15 @@ members may bifurcate over to the other lobe of the attractor on different
 cycles. Also, as they diverge from each other they do not spread out uniformly
 in 3D space, but spread along the linear attractor lines.
 
-The Lorenz 63 model has a ``work/workshop_setup.csh`` script that compiles and 
-runs an example.  This example is referenced at various points in the 
-:doc:`DART tutorial <../../theory/readme>` 
-and is intended to provide insight into model/assimilation behavior. 
-The example **may or may not** result in good (*or even decent!*) results!
+The Lorenz 63 model is used in the :ref:`DART tutorial <DART-tutorial>`.
+
+The ``work/workshop_setup.sh`` script can be used to run an example. It
+builds the executables and runs ``perfect_model_obs`` and ``filter``.
+Be aware that the script overwrites ``input.nml`` with ``input.workshop.nml``.
 
 ``run_lorenz_63.m`` is an excellent Matlab tool to explore the behavior of the
 Lorenz 63 model. It is part of the 
-:doc:`DART_LAB Tutorial. <../../guide/DART_LAB/DART_LAB>`
+:ref:`DART_LAB Tutorial <DART_LAB>`.
 
 
 Namelist
