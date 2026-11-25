@@ -71,7 +71,7 @@ use     obs_kind_mod, only : ACARS_DEWPOINT, ACARS_RELATIVE_HUMIDITY, ACARS_SPEC
                              RADIOSONDE_V_WIND_COMPONENT, SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT
 use        model_mod, only : static_init_model, get_grid_dims, get_xland, &
                              model_interpolate, find_closest_cell_center, &
-                             cell_ok_to_interpolate, is_global_grid,      &
+                             cell_ok_to_interpolate,     &
                              get_bdy_mask, get_cell_center_coords
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, end_ensemble_manager
 use           netcdf
@@ -80,8 +80,6 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = 'models/mpas_atm/mpas_dart_obs_preprocess.f90'
-character(len=*), parameter :: revision = ''
-character(len=*), parameter :: revdate  = ''
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
@@ -988,7 +986,7 @@ real(r8), parameter :: new_qc_value =  2.0_r8
 character(len=129)    :: qcmeta
 integer               :: fid, var_id, okind, cellid, dsec, nobs, nth_obs
 integer               :: bsec, bday, esec, eday, num_excluded_bytime
-logical               :: file_exist, last_obs, input_ncep_qc, global
+logical               :: file_exist, last_obs, input_ncep_qc
 real(r8), allocatable :: qc(:)
 real(r8)              :: llv_loc(3)
 
@@ -1009,8 +1007,6 @@ call init_obs(obs,      get_num_copies(seq), get_num_qc(seq))
 call init_obs(obs_in,   get_num_copies(seq), get_num_qc(seq))
 call init_obs(prev_obs, get_num_copies(seq), get_num_qc(seq))
 allocate(qc(get_num_qc(seq)))
-
-global = is_global_grid()
 
 input_ncep_qc = .false.
 qcmeta = get_qc_meta_data(seq, 1)
@@ -1547,7 +1543,7 @@ do k = 1, nloc  !  loop over all observation locations
    icell = find_closest_cell_center(airobs(k)%lat, airobs(k)%lon)
    if(icell < 1) then
       write(string,*) 'Cannot find any cell for this obs at ', airobs(k)%lat, airobs(k)%lon
-      call error_handler(E_MSG, routine, source, revision, revdate, text2=string) 
+      call error_handler(E_MSG, routine, source, text2=string) 
    endif
    if(airobs(k)%pressure > ps) then
       ik = 1
@@ -1919,7 +1915,7 @@ do k = 1, nloc  ! loop over all locations
         if(icell < 1) then
            write(string,*) 'Cannot find any cell for this obs at ',&
                             satobs(k)%lat,satobs(k)%lon  
-           call error_handler(E_MSG, routine, source, revision, revdate, text2=string) 
+           call error_handler(E_MSG, routine, source, text2=string) 
         endif
         if(satobs(k)%pressure > ps) then
            ik = 1
