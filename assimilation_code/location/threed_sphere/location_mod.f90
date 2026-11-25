@@ -479,13 +479,7 @@ else
       ! running r8 == r4. 
       rtemp = sin(loc2%lat) * sin(loc1%lat) + &
               cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif)
-      if (rtemp < -1.0_r8) then
-         get_dist = PI
-      else if (rtemp > 1.0_r8) then
-         get_dist = 0.0_r8
-      else
-         get_dist = acos(rtemp)
-      endif
+      get_dist = acos(max(-1.0_r8, min(1.0_r8, rtemp))) ! clamp [-1,1] for acos
    endif
 endif
 
@@ -1276,13 +1270,7 @@ do n=1, gc%nt
                   ! Compute the lon offset directly by inverting distance
                   cos_del_lon = (cos(gc%gtt(n)%maxdist) - sin(base_lat(bj)) * sin(target_lat(tj))) / &
                      (cos(base_lat(bj)) * cos(target_lat(tj)))
-                  if(cos_del_lon < -1.0_r8) then
-                     del_lon = PI
-                  else if(cos_del_lon > 1.0_r8) then
-                     del_lon = 0.0_r8
-                  else
-                     del_lon = acos(cos_del_lon)
-                  endif
+                  del_lon = acos(max(-1.0_r8, min(1.0_r8, cos_del_lon)))
                   if(del_lon > max_del_lon) max_del_lon = del_lon
                
                end do
@@ -1999,10 +1987,10 @@ b = sin(poleward_lat)
 c = cos(poleward_lat)
 
 ! lat at which max offset is found
-latval = asin(b/a)
+latval = asin(max(-1.0_r8, min(1.0_r8, b/a)))
 
-! distance to furthest lon, at latval
-find_del_lon = acos((a - (b*sin(latval))) / (c*cos(latval)))
+! distance to furthest lon, at latval, clamp [-1,1] for acos
+find_del_lon = acos(max(-1.0_r8, min(1.0_r8, (a - (b*sin(latval))) / (c*cos(latval)))))
 
 end function find_del_lon
 
