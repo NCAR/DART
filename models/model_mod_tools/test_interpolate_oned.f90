@@ -58,7 +58,7 @@ contains
 !-------------------------------------------------------------------------------
 !> Interpolate over a range of x values.
 !> Returns the number of failures.
-!> Exercises model_mod:model_interpolate().
+!> Exercises model_mod:interpolate().
 !> This will result in a netCDF file with all salient metadata.
 
 function test_interpolate_range( ens_handle,            &

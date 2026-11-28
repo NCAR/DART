@@ -1011,7 +1011,7 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
          if (overwrite_time_in_output_file) then
             call get_copy_owner_index(state_ens_handle, copy, time_owner, time_owner_index)
             call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
-            call write_model_time(ncfile_out, dart_time)
+            call write_model_time(ncfile_out, dart_time, domain)
          endif
 
       else ! create and open file
@@ -1331,7 +1331,7 @@ COPIES : do c = 1, ens_size
             if (overwrite_time_in_output_file) then
                call get_copy_owner_index(state_ens_handle, my_copy, time_owner, time_owner_index)
                call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
-               call write_model_time(ncfile_out, dart_time)
+               call write_model_time(ncfile_out, dart_time, domain)
             endif
 
          else ! create and open output file
@@ -1747,7 +1747,7 @@ enddo
 ret = nf90_enddef(ncfile_out)
 call nc_check(ret, routine, 'nf90_enddef end define mode')
 
-call write_model_time(ncfile_out, dart_time)
+call write_model_time(ncfile_out, dart_time, dom_id)
 
 end function create_and_open_state_output
 
